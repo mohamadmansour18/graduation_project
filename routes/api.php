@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,11 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+//'auth:api'
+
+Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function () {
+    Route::get('/test' , function (){
+        return response()->json(['message' => 'test']);
+    })->middleware('throttle:api-global');
+    Route::post('/refresh', [AuthController::class, 'refresh']);
 });

@@ -17,6 +17,9 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Throwable;
+use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
+use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
+use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
 
 class Handler extends ExceptionHandler
 {
@@ -32,6 +35,9 @@ class Handler extends ExceptionHandler
         MethodNotAllowedHttpException::class,
         TooManyRequestsHttpException::class,
         ApiException::class,
+        TokenExpiredException::class,
+        TokenInvalidException::class,
+        JWTException::class,
     ];
 
     protected function context(): array
@@ -85,7 +91,31 @@ class Handler extends ExceptionHandler
 
             $e instanceof AuthenticationException => ApiErrorResponse::make(
                 title: '! غير موثق',
-                message: 'المصادة مطلوبة للوصول الى المورد الذي تحاول استخدامه',
+                message: 'المصادقة مطلوبة للوصول الى المورد الذي تحاول استخدامه',
+                status: 401
+            ),
+
+            $e instanceof TokenExpiredException => $request->is('api/v1/auth/refresh')
+                ? ApiErrorResponse::make(
+                    title: '! انتهت جلسة المصادقة',
+                    message: 'انتهت مهلة تجديد التوكن، يرجى تسجيل الدخول من جديد',
+                    status: 401
+                )
+                : ApiErrorResponse::make(
+                    title: '! انتهت صلاحية التوكن',
+                    message: 'انتهت صلاحية رمز الوصول الحالي، يرجى طلب توكن جديد عبر refresh',
+                    status: 401
+                ),
+
+            $e instanceof TokenInvalidException => ApiErrorResponse::make(
+                title: '! توكن غير صالح',
+                message: 'رمز الوصول المرسل غير صالح أو تعرض للتعديل',
+                status: 401
+            ),
+
+            $e instanceof JWTException => ApiErrorResponse::make(
+                title: '! مشكلة في التوكن',
+                message: 'التوكن مفقود أو لا يمكن التعامل معه بشكل صحيح',
                 status: 401
             ),
 

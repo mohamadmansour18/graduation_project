@@ -9,8 +9,10 @@
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^10.10",
         "laravel/horizon": "^5.45",
+        "laravel/pulse": "^1.7",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
+        "php-open-source-saver/jwt-auth": "^2.8",
         "predis/predis": "^3.4"
     },
     "require-dev": {
