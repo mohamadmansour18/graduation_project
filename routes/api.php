@@ -1,7 +1,6 @@
 <?php
 
-use App\Http\Controllers\Auth\AuthController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\V1\Auth\AuthController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,8 +17,6 @@ use Illuminate\Support\Facades\Route;
 //'auth:api'
 
 Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function () {
-    Route::get('/test' , function (){
-        return response()->json(['message' => 'test']);
-    })->middleware('throttle:api-global');
+
     Route::post('/refresh', [AuthController::class, 'refresh']);
 });
