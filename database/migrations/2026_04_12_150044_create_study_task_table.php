@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\StudyTaskRepeatPattern;
 use App\Enums\StudyTaskStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;

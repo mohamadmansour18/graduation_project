@@ -10,8 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AdminYearlyFinancialMonthStat extends Model
 {
-    use HasFactory;
-
     protected $table = 'admin_yearly_financial_month_stats';
 
     protected $fillable = [
