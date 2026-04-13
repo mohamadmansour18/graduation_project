@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AdminYearlyLibraryMaterialActivityMonthStat extends Model
 {
-    use HasFactory;
 
     protected $table = 'admin_yearly_library_material_activity_month_stats';
 

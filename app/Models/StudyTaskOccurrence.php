@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class StudyTaskOccurrence extends Model
 {
-    use HasFactory;
 
     protected $table = 'study_task_occurrence';
 

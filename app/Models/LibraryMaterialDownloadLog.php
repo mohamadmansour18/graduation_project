@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class LibraryMaterialDownloadLog extends Model
 {
-    use HasFactory;
 
     protected $table = 'library_material_download_logs';
 

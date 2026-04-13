@@ -11,8 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class UserFollow extends Model
 {
-    use HasFactory;
-
     protected $table = 'user_follows';
 
     protected $fillable = [

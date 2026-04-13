@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class LibraryMaterialInterestSelection extends Model
 {
-    use HasFactory;
 
     protected $table = 'library_material_interest_selections';
 

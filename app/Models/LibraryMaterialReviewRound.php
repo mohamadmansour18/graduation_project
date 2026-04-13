@@ -14,7 +14,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class LibraryMaterialReviewRound extends Model
 {
-    use HasFactory;
 
     protected $table = 'library_material_review_rounds';
 

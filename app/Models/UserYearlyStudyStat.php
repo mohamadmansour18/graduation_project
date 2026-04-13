@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class UserYearlyStudyStat extends Model
 {
-    use HasFactory;
 
     protected $table = 'user_yearly_study_stats';
 

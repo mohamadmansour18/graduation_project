@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class LibraryMaterialStatusHistory extends Model
 {
-    use HasFactory;
 
     protected $table = 'library_material_status_histories';
 

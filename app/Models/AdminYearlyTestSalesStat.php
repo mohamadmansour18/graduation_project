@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AdminYearlyTestSalesStat extends Model
 {
-    use HasFactory;
 
     protected $table = 'admin_yearly_test_sales_stats';
 

@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class LibraryMaterialLike extends Model
 {
-    use HasFactory;
 
     protected $table = 'library_material_likes';
 

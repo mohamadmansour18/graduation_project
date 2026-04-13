@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class UserAcademicVerificationRequest extends Model
 {
-    use HasFactory;
 
     protected $table = 'user_academic_verification_requests';
 

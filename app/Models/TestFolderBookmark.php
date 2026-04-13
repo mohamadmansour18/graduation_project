@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class TestFolderBookmark extends Model
 {
-    use HasFactory;
 
     protected $table = 'test_folder_bookmarks';
 

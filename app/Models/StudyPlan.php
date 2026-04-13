@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class StudyPlan extends Model
 {
-    use HasFactory;
 
     protected $table = 'study_plan';
 

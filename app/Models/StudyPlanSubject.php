@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class StudyPlanSubject extends Model
 {
-    use HasFactory;
 
     protected $table = 'study_plan_subject';
 

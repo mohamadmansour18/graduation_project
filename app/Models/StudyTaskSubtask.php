@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class StudyTaskSubtask extends Model
 {
-    use HasFactory;
 
     protected $table = 'study_task_subtask';
 
