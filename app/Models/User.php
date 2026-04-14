@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Gender;
+use App\Enums\SystemRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -281,5 +282,25 @@ class User extends Authenticatable implements JWTSubject
     public function userProfileStat(): HasOne
     {
         return $this->hasOne(UserProfileStat::class, 'user_id');
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->role?->name === SystemRole::Owner->vale;
+    }
+
+    public function isSupervisor(): bool
+    {
+        return $this->role?->name === SystemRole::Supervisor->value;
+    }
+
+    public function isMobileUser(): bool
+    {
+        return $this->role?->name === SystemRole::Mobile_User->value;
+    }
+
+    public function isDashboardUser():bool
+    {
+        return in_array($this->role?->name , [SystemRole::Owner->vale , SystemRole::Supervisor->value] , true);
     }
 }

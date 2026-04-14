@@ -19,4 +19,16 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function () {
 
     Route::post('/refresh', [AuthController::class, 'refresh']);
+
+    Route::middleware(['auth:api' , 'role:mobile_user'])->group(function () {
+
+    });
+
+    Route::middleware(['auth:api' , 'role:owner'])->group(function () {
+
+    });
+
+    Route::middleware(['auth:api' , 'role:owner,supervisor'])->group(function () {
+
+    });
 });

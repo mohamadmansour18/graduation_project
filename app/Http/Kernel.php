@@ -66,5 +66,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'force.json' => \App\Http\Middleware\ForceJsonResponse::class,
         'request.id' => \App\Http\Middleware\AssignRequestId::class,
+        'role' => \App\Http\Middleware\EnsureUserHasRole::class,
     ];
 }

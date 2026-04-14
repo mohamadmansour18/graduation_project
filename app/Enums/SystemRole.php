@@ -4,7 +4,7 @@ namespace App\Enums;
 
 enum SystemRole : string
 {
-    case Owner = 'مالك التطبيق';
-    case Supervisor = 'مشرف';
-    case User = 'مستخدم';
+    case Owner = 'owner';
+    case Supervisor = 'supervisor';
+    case Mobile_User = 'mobile_user';
 }

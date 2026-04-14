@@ -54,24 +54,41 @@ return [
     'channels' => [
         'stack' => [
             'driver' => 'stack',
-            'channels' => ['single'],
+            'channels' => ['daily'],
             'ignore_exceptions' => false,
         ],
 
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
+            'level' => env('LOG_LEVEL', 'info'),
             'replace_placeholders' => true,
         ],
 
         'daily' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/laravel.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => 14,
+            'path' => storage_path('logs/applicationLog/application.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => 20,
             'replace_placeholders' => true,
         ],
+
+        'errors' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ErrorLog/errors.log'),
+            'level' => env('LOG_LEVEL', 'error'),
+            'days' => 40,
+            'replace_placeholders' => true,
+        ],
+
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/AuditLog/audit.log'),
+            'level' => env('LOG_AUDIT_LEVEL', 'info'),
+            'days' => 60,
+            'replace_placeholders' => true,
+        ],
+
 
         'slack' => [
             'driver' => 'slack',
