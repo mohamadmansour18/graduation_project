@@ -11,7 +11,7 @@ return new class extends Migration
     {
         Schema::create('roles', function (Blueprint $table) {
             $table->id();
-            $table->enum('name' , array_column(SystemRole::cases() , 'value'));
+            $table->enum('name' , array_column(SystemRole::cases() , 'value'))->unique();
             $table->timestamps();
 
         });

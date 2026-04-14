@@ -20,6 +20,12 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
+    Route::prefix('auth')->group(function () {
+
+        Route::post('/register' , [AuthController::class, 'register'])->middleware('throttle:api-register');
+        Route::post('/login');
+    });
+
     Route::middleware(['auth:api' , 'role:mobile_user'])->group(function () {
 
     });

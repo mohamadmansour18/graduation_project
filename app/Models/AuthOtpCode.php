@@ -22,15 +22,11 @@ class AuthOtpCode extends Model
         'send_to_email',
         'expires_at',
         'consumed_at',
-        'revoked_at',
-        'attempts_count',
     ];
 
     protected $casts = [
         'expires_at' => 'datetime',
         'consumed_at' => 'datetime',
-        'revoked_at' => 'datetime',
-        'attempts_count' => 'integer',
         'purpose' => PurposeOTP::class
     ];
 
