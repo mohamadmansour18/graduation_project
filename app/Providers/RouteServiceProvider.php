@@ -49,7 +49,7 @@ class RouteServiceProvider extends ServiceProvider
 
         RateLimiter::for('api-login' , function (Request $request) {
             $key = 'login:' . ($request->ip());
-            return Limit::perMinute(3)->by($key);
+            return Limit::perMinutes(5, 3)->by($key);
         });
 
         RateLimiter::for('api-register' , function (Request $request) {

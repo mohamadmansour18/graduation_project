@@ -24,7 +24,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
         Route::prefix('auth')->group(function () {
 
             Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:api-register');
-            Route::post('/login', [AuthController::class, 'login']);
+            Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:api-login');
 
         });
 
