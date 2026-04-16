@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\V1\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Services\Auth\AuthService;
 use App\Trait\ApiResponse;
@@ -24,6 +25,22 @@ class AuthController extends Controller
             data: $data,
             title: "تم انشاء حساب المستخدم بنجاح",
             statusCode: 201,
+        );
+    }
+
+    public function login(LoginRequest $request)
+    {
+        $payLoad = [
+            ...$request->validated(),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ];
+
+        $data = $this->authService->login($payLoad);
+
+        return $this->dataResponse(
+            data: $data,
+            title: "تم تسجيل الدخول بنجاح",
         );
     }
 

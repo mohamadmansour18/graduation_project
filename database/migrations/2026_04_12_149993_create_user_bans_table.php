@@ -15,7 +15,7 @@ return new class extends Migration
             $table->foreignId('imposed_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->enum('ban_type', array_column(BanType::cases(), 'value'));
             $table->text('reason');
-            $table->timestamp('starts_at');
+            $table->timestamp('starts_at')->nullable();
             $table->timestamp('ends_at')->nullable();
             $table->foreignId('lifted_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('lifted_at')->nullable();

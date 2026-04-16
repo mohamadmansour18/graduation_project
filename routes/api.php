@@ -20,16 +20,19 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
-    Route::prefix('auth')->group(function () {
+    Route::prefix('userMobile')->group(function () {
+        Route::prefix('auth')->group(function () {
 
-        Route::post('/register' , [AuthController::class, 'register'])->middleware('throttle:api-register');
-        Route::post('/login');
+            Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:api-register');
+            Route::post('/login', [AuthController::class, 'login']);
+
+        });
+
+        Route::middleware(['auth:api', 'role:mobile_user'])->group(function () {
+
+        });
+
     });
-
-    Route::middleware(['auth:api' , 'role:mobile_user'])->group(function () {
-
-    });
-
     Route::middleware(['auth:api' , 'role:owner'])->group(function () {
 
     });

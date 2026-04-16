@@ -2,15 +2,19 @@
 
 namespace App\Repositories\Auth;
 
+use App\Enums\BanType;
 use App\Enums\SystemRole;
 use App\Models\AuthOtpCode;
+use App\Models\FailedLogin;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\UserBan;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class AuthRepository
 {
+    //--------------------------------[REGISTER]--------------------------------//
     public function findUserByEmail(string $email): ?User
     {
         return User::query()
@@ -30,21 +34,100 @@ class AuthRepository
         return User::query()->create($data);
     }
 
-    public function revokeActiveOtpCodes(int $userId, string $purpose): void
+    public function createOtpCode(array $data): AuthOtpCode
     {
-        AuthOtpCode::query()
+        return AuthOtpCode::query()->create($data);
+    }
+
+    //--------------------------------[LOGIN]--------------------------------//
+
+    public function findUserByEmailWithRelations(string $email): ?User
+    {
+        return User::query()
+            ->with([
+                'role:id,name',
+                'userOnboardingProfile:id,user_id,last_completed_step',
+            ])
+            ->where('email', $email)
+            ->first();
+    }
+
+    public function getActiveBanForUser(int $userId): ?object
+    {
+        return UserBan::query()
             ->where('user_id', $userId)
-            ->where('purpose', $purpose)
-            ->whereNull('consumed_at')
-            ->whereNull('revoked_at')
+            ->whereNull('lifted_at')
+            ->where(function ($query) {
+                $query->where(function ($q) {
+                    $q->where('ban_type', BanType::Permanent->value)
+                        ->where('starts_at', '<=', now());
+                })->orWhere(function ($q) {
+                    $q->where('ban_type', BanType::Temporary->value)
+                        ->where('starts_at', '<=', now())
+                        ->where('ends_at', '>=', now());
+                });
+            })
+            ->latest('starts_at')
+            ->first();
+    }
+
+    public function updateLastLoginAt(int $userId): void
+    {
+        User::query()
+            ->whereKey($userId)
             ->update([
-                'revoked_at' => now(),
+                'last_login_at' => now(),
                 'updated_at' => now(),
             ]);
     }
 
-    public function createOtpCode(array $data): AuthOtpCode
+    public function findFailedLoginByEmail(string $email): FailedLogin|Builder|null
     {
-        return AuthOtpCode::query()->create($data);
+        return FailedLogin::query()
+            ->where('email', $email)
+            ->first();
+    }
+
+    public function createFailedLogin(array $data): FailedLogin
+    {
+        return FailedLogin::query()->create($data);
+    }
+
+    public function incrementFailedLogin(FailedLogin $failedLogin, bool $resetWindow = false , ?string $ipAddress = null , ?string $userAgent = null): FailedLogin
+    {
+        if ($resetWindow) {
+            $failedLogin->update([
+                'attempts_count' => 1,
+                'window_started_at' => now(),
+                'last_attempt_at' => now(),
+                'last_ip_address' => $ipAddress,
+                'last_user_agent' => $userAgent,
+            ]);
+
+            return $failedLogin->refresh();
+        }
+
+        $failedLogin->increment('attempts_count');
+        $failedLogin->update([
+            'last_attempt_at' => now(),
+            'last_ip_address' => $ipAddress,
+            'last_user_agent' => $userAgent,
+        ]);
+
+        return $failedLogin->refresh();
+    }
+
+    public function markFailedLoginNotified(FailedLogin $failedLogin): void
+    {
+        $failedLogin->update([
+            'last_notified_at' => now(),
+        ]);
+    }
+
+    public function clearFailedLoginForEmail(string $email): void
+    {
+        FailedLogin::query()
+            ->where('email', $email)
+            ->delete();
     }
 }

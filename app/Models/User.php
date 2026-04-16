@@ -17,6 +17,7 @@ class User extends Authenticatable implements JWTSubject
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+
     protected $table = 'users';
 
     protected $fillable = [
@@ -291,16 +292,21 @@ class User extends Authenticatable implements JWTSubject
 
     public function isSupervisor(): bool
     {
-        return $this->role?->name === SystemRole::Supervisor->value;
+        return $this->role?->name === SystemRole::Supervisor;
     }
 
     public function isMobileUser(): bool
     {
-        return $this->role?->name === SystemRole::Mobile_User->value;
+        return $this->role?->name === SystemRole::Mobile_User;
     }
 
     public function isDashboardUser():bool
     {
-        return in_array($this->role?->name , [SystemRole::Owner->vale , SystemRole::Supervisor->value] , true);
+        return in_array($this->role?->name , [SystemRole::Owner , SystemRole::Supervisor] , true);
+    }
+
+    public function failedLogin(): hasOne
+    {
+        return $this->hasOne(FailedLogin::class , 'user_id' );
     }
 }
