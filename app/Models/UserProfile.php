@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Governorate;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,10 +24,12 @@ class UserProfile extends Model
         'cover_disk',
         'cover_path',
         'profile_slug',
+        'governorate',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
+        'governorate' => Governorate::class ,
     ];
 
     public function user(): BelongsTo

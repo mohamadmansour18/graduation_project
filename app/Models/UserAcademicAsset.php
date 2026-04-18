@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class UserAcademicAsset extends Model
 {
 
-    protected $table = 'user_academic_verification_assets';
+    protected $table = 'user_academic_assets';
 
     protected $fillable = [
         'verification_request_id',

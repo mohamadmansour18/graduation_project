@@ -56,5 +56,10 @@ class RouteServiceProvider extends ServiceProvider
             $key = 'register:' . ($request->ip());
             return Limit::perMinute(3)->by($key);
         });
+
+        RateLimiter::for('api-onboarding' , function (Request $request) {
+            $key = 'register:' . ($request->ip());
+            return Limit::perMinute(2)->by($key);
+        });
     }
 }

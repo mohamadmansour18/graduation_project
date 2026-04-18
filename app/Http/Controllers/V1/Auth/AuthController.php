@@ -49,7 +49,6 @@ class AuthController extends Controller
         $newToken = JWTAuth::parseToken()->refresh();
 
         return $this->dataResponse([
-            'success' => true,
             'newToken' => $newToken,
             'expires_in' => JWTAuth::factory()->getTTL() * 60,
         ]);

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\V1\Auth\AuthController;
+use App\Http\Controllers\V1\Auth\OnboardingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,11 +21,24 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
-    Route::prefix('userMobile')->group(function () {
+    Route::prefix('user-mobile')->group(function () {
         Route::prefix('auth')->group(function () {
 
             Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:api-register');
             Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:api-login');
+
+            //ONBOARDING
+            Route::middleware('throttle:api-onboarding')->group(function () {
+                Route::post('/onboarding/discovery-source' , [OnboardingController::class , 'saveDiscoverySource']);
+                Route::Post('/onboarding/education-level' , [OnboardingController::class , 'saveEducationLevel']);
+                Route::post('/onboarding/school-stage' , [OnboardingController::class , 'saveSchoolStage']);
+                Route::post('/onboarding/university-profile' , [OnboardingController::class , 'saveUniversityProfile']);
+                Route::post('/onboarding/graduate-academic-profile' , [OnboardingController::class , 'saveGraduateAcademicProfile']);
+                Route::post('/onboarding/user-interests' , [OnboardingController::class , 'saveUserInterests']);
+            });
+
+            Route::get('/onboarding/interests' , [OnboardingController::class , 'getInterestCategoriesWithInterests']);
+            Route::Post('/onboarding/progress-preview' , [OnboardingController::class , 'getOnboardingProgressPreview']);
 
         });
 

@@ -6,10 +6,10 @@
     <title>Security Alert - Nerd</title>
 </head>
 @php
-    $logoPath = public_path('Logo/Nerd-Logo.png');
+    $logoPath = public_path('Logo/Nerd-Logo-White.png');
     $logoSrc = isset($message) && file_exists($logoPath)
         ? $message->embed($logoPath)
-        : asset('Logo/Nerd-Logo.png');
+        : asset('Logo/Nerd-Logo-White.png');
 @endphp
 <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: Arial, Helvetica, sans-serif; color: #1f2937;">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8fafc; margin: 0; padding: 32px 16px;">
@@ -74,7 +74,7 @@
                                 <tr>
                                     <td style="padding: 18px 20px;">
                                         <p style="margin: 0 0 8px; font-size: 13px; color: #64748b;">
-                                            نوع الجهاز / المتصفح <span dir="ltr" style="unicode-bidi: embed;">User Agent</span>
+                                            نوع الجهاز / المتصفح
                                         </p>
                                         <p dir="ltr" style="margin: 0; font-size: 14px; line-height: 1.9; color: #334155; unicode-bidi: embed; text-align: left; word-break: break-word;">
                                             {{ $userAgent ?? 'Not Available' }}
@@ -87,14 +87,14 @@
                                 <tr>
                                     <td style="background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 16px; padding: 16px 18px;">
                                         <p style="margin: 0; font-size: 15px; line-height: 1.9; color: #9a3412; text-align: center;">
-                                            إذا لم تكن هذه المحاولات صادرة منك، فننصحك بتغيير كلمة المرور فورًا والتأكد من أن بيانات الدخول الخاصة بك لم تتم مشاركتها مع أي جهة أخرى.
+                                            إذا لم تكن هذه المحاولات صادرة منك، فننصحك بتغيير كلمة المرور فورًا والتأكد من أن بيانات الدخول الخاصة بك لم تتم مشاركتها مع أي جهة أخرى
                                         </p>
                                     </td>
                                 </tr>
                             </table>
 
                             <p style="margin: 0 0 12px; font-size: 15px; line-height: 1.9; color: #475569; text-align: center;">
-                                إذا كنت أنت من حاول تسجيل الدخول، يمكنك تجاهل هذه الرسالة.
+                                إذا كنت أنت من حاول تسجيل الدخول، يمكنك تجاهل هذه الرسالة
                             </p>
 
                             <p style="margin: 0; font-size: 15px; line-height: 1.9; color: #64748b; text-align: center;">

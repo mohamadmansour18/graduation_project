@@ -784,7 +784,7 @@ user_yearly_test_publish_month_stats(
 user_profile(
   id, user_id, phone, birth_date,
   avatar_disk, avatar_path, cover_disk,
-  cover_path, profile_slug
+  cover_path, profile_slug, governorate enum
 )
 
 user_follows(

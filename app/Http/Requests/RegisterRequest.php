@@ -59,7 +59,7 @@ class RegisterRequest extends ApiFormRequest
             'password.min' => 'يجب أن تتكون كلمة المرور من 8 أحرف على الأقل',
 
             'gender.required' => 'حقل الجنس مطلوب',
-            'gender.enum' => 'قيمة حقل الجنس يجب أن تكون ذكر أو أنثى فقط',
+            'gender.' . Enum::class => 'قيمة حقل الجنس يجب أن تكون ذكر أو أنثى فقط',
         ];
     }
 }

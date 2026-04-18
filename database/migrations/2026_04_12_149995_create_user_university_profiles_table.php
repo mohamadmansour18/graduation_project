@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->unique()->constrained('users')->cascadeOnDelete();
             $table->enum('university_name' , array_column(App\Enums\UniversityName::cases(), 'value'));
-            $table->unsignedTinyInteger('university_year');
+            $table->unsignedTinyInteger('university_year')->nullable();
             $table->enum('department' , array_column(App\Enums\UniversityDepartment::cases(), 'value'));
             $table->timestamps();
         });
