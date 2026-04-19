@@ -1,13 +1,12 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Onboarding;
 
-use App\Enums\EducationLevel;
-use App\Enums\Governorate;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Enums\SchoolStage;
+use App\Http\Requests\ApiFormRequest;
 use Illuminate\Validation\Rules\Enum;
 
-class SaveEducationLevelRequest extends ApiFormRequest
+class SaveSchoolStageRequest extends ApiFormRequest
 {
     protected $stopOnFirstFailure = true;
     /**
@@ -26,15 +25,10 @@ class SaveEducationLevelRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required' , 'exists:users,email'],
-            'governorate' => [
+            'email' => ['required', 'exists:users,email'],
+            'school_stage' => [
                 'required',
-                new Enum(Governorate::class),
-            ],
-
-            'education_level' => [
-                'required',
-                new Enum(EducationLevel::class),
+                new Enum(SchoolStage::class),
             ],
         ];
     }
@@ -45,11 +39,8 @@ class SaveEducationLevelRequest extends ApiFormRequest
             'email.required' => 'حقل البريد الإلكتروني مطلوب',
             'email.exists' => 'البريد الالكتروني الذي تحاول الوصول اليه غير موجود',
 
-            'governorate.required' => 'يرجى اختيار المحافظة',
-            'governorate.' . Enum::class => 'المحافظة المحددة غير صالحة',
-
-            'education_level.required' => 'يرجى اختيار المستوى الدراسي',
-            'education_level.' . Enum::class => 'المستوى الدراسي المحدد غير صالح',
+            'school_stage.required' => 'يرجى اختيار المرحلة الدراسية',
+            'school_stage.' . Enum::class => 'المرحلة الدراسية المحددة غير صالحة'
         ];
     }
 }

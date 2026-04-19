@@ -1,12 +1,11 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Reset_Password;
 
-use App\Enums\SchoolStage;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Enum;
+use App\Http\Requests\ApiFormRequest;
 
-class SaveSchoolStageRequest extends ApiFormRequest
+class RequestPasswordResetOtpRequest extends ApiFormRequest
 {
     protected $stopOnFirstFailure = true;
     /**
@@ -25,11 +24,7 @@ class SaveSchoolStageRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'exists:users,email'],
-            'school_stage' => [
-                'required',
-                new Enum(SchoolStage::class),
-            ],
+            'email' => ['required', 'string', 'email:rfc' ],
         ];
     }
 
@@ -37,10 +32,8 @@ class SaveSchoolStageRequest extends ApiFormRequest
     {
         return [
             'email.required' => 'حقل البريد الإلكتروني مطلوب',
-            'email.exists' => 'البريد الالكتروني الذي تحاول الوصول اليه غير موجود',
-
-            'school_stage.required' => 'يرجى اختيار المرحلة الدراسية',
-            'school_stage.' . Enum::class => 'المرحلة الدراسية المحددة غير صالحة'
+            'email.string' => 'حقل البريد الإلكتروني غير صالح',
+            'email.email' => 'صيغة البريد الإلكتروني غير صحيحة',
         ];
     }
 }

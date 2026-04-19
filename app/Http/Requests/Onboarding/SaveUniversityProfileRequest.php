@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Onboarding;
 
 use App\Enums\UniversityDepartment;
 use App\Enums\UniversityName;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 use Illuminate\Validation\Rules\Enum;
 
 class SaveUniversityProfileRequest extends ApiFormRequest

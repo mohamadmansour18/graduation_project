@@ -40,6 +40,9 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             Route::get('/onboarding/interests' , [OnboardingController::class , 'getInterestCategoriesWithInterests']);
             Route::Post('/onboarding/progress-preview' , [OnboardingController::class , 'getOnboardingProgressPreview']);
 
+            //RESET PASSWORD
+
+
         });
 
         Route::middleware(['auth:api', 'role:mobile_user'])->group(function () {

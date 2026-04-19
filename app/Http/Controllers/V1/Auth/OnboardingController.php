@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers\V1\Auth;
 
-use App\Exceptions\Api\OnboardingException;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\GetOnboardingPreviewRequest;
-use App\Http\Requests\SaveDiscoverySourceRequest;
-use App\Http\Requests\SaveEducationLevelRequest;
-use App\Http\Requests\SaveGraduateAcademicProfileRequest;
-use App\Http\Requests\SaveSchoolStageRequest;
-use App\Http\Requests\SaveUniversityProfileRequest;
-use App\Http\Requests\SaveUserInterestsRequest;
+use App\Http\Requests\Onboarding\GetOnboardingPreviewRequest;
+use App\Http\Requests\Onboarding\SaveDiscoverySourceRequest;
+use App\Http\Requests\Onboarding\SaveEducationLevelRequest;
+use App\Http\Requests\Onboarding\SaveGraduateAcademicProfileRequest;
+use App\Http\Requests\Onboarding\SaveSchoolStageRequest;
+use App\Http\Requests\Onboarding\SaveUniversityProfileRequest;
+use App\Http\Requests\Onboarding\SaveUserInterestsRequest;
 use App\Services\Auth\OnboardingService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
