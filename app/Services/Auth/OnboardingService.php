@@ -79,8 +79,7 @@ class OnboardingService
                     'governorate' => $governorate,
                 ]);
             }
-
-            if($onboardingProfile->education_level->value !== $educationalLevel) {
+            if($onboardingProfile->education_level?->value !== $educationalLevel) {
                 $onboardingProfile = $this->onboardingRepository->updateOnboardingProfile($onboardingProfile, [
                     'education_level' => $educationalLevel,
                     'last_completed_step' => max( (int)($onboardingProfile->last_completed_step ?? 0) , 2)
