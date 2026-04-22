@@ -10,6 +10,24 @@
     $logoSrc = isset($message) && file_exists($logoPath)
         ? $message->embed($logoPath)
         : asset('Logo/Nerd-Logo.png');
+
+    $isPasswordReset = ($purpose ?? null) === \App\Enums\PurposeOTP::Password_Reset->value;
+
+    $emailCopy = $isPasswordReset
+        ? [
+            'title' => 'Reset Password',
+            'intro' => 'طلبت إعادة تعيين كلمة المرور لحسابك في نيرد',
+            'instruction' => 'لإعادة تعيين كلمة المرور الخاصة بك، استخدم رمز التحقق التالي:',
+            'fallback' => 'إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة بكل أمان',
+            'footer' => 'هذه رسالة تلقائية من تطبيق <span dir="ltr" style="unicode-bidi: embed;">Nerd</span> لإعادة تعيين كلمة المرور.',
+        ]
+        : [
+            'title' => 'Email Verification',
+            'intro' => 'أهلاً بك في نيرد، يسعدنا انضمامك إلينا',
+            'instruction' => 'لإكمال إنشاء حسابك وتأكيد بريدك الإلكتروني، استخدم رمز التحقق التالي:',
+            'fallback' => 'إذا لم تقم بإنشاء هذا الحساب، يمكنك تجاهل هذه الرسالة بكل أمان',
+            'footer' => 'هذه رسالة تلقائية من تطبيق <span dir="ltr" style="unicode-bidi: embed;">Nerd</span> لتأكيد البريد الإلكتروني.',
+        ];
 @endphp
 <body style="margin: 0; padding: 0; background-color: #f4f7fb; font-family: Arial, Helvetica, sans-serif; color: #1f2937;">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f7fb; margin: 0; padding: 32px 16px;">
@@ -19,7 +37,7 @@
                     <tr>
                         <td style="padding-bottom: 20px; text-align: center;">
                             <span dir="ltr" style="display: inline-block; font-size: 13px; color: #6b7280; letter-spacing: 0.08em; unicode-bidi: embed;">
-                                Email Verification
+                                {{ $emailCopy['title'] }}
                             </span>
                         </td>
                     </tr>
@@ -35,7 +53,7 @@
                                 مرحباً {{ $user->name }}
                             </h1>
                             <p style="margin: 12px 0 0; font-size: 16px; line-height: 1.8; color: #dbeafe;">
-                                أهلاً بك في نيرد، يسعدنا انضمامك إلينا
+                                {{ $emailCopy['intro'] }}
                             </p>
                         </td>
                     </tr>
@@ -43,7 +61,7 @@
                     <tr>
                         <td style="background-color: #ffffff; border-radius: 0 0 24px 24px; padding: 32px 24px 28px; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);">
                             <p style="margin: 0 0 18px; font-size: 16px; line-height: 1.9; color: #374151; text-align: center;">
-                                لإكمال إنشاء حسابك وتأكيد بريدك الإلكتروني، :استخدم رمز التحقق التالي
+                                {{ $emailCopy['instruction'] }}
                             </p>
 
                             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 auto 24px;">
@@ -67,7 +85,7 @@
                             </table>
 
                             <p style="margin: 0 0 12px; font-size: 15px; line-height: 1.9; color: #4b5563; text-align: center;">
-                                إذا لم تقم بإنشاء هذا الحساب، يمكنك تجاهل هذه الرسالة بكل أمان
+                                {{ $emailCopy['fallback'] }}
                             </p>
 
                             <p style="margin: 0; font-size: 15px; line-height: 1.9; color: #6b7280; text-align: center;">
@@ -80,7 +98,7 @@
                     <tr>
                         <td style="padding: 18px 12px 0; text-align: center;">
                             <p style="margin: 0; font-size: 12px; line-height: 1.8; color: #94a3b8;">
-                                هذه رسالة تلقائية من تطبيق <span dir="ltr" style="unicode-bidi: embed;">Nerd</span> لتأكيد البريد الإلكتروني.
+                                {!! $emailCopy['footer'] !!}
                             </p>
                         </td>
                     </tr>

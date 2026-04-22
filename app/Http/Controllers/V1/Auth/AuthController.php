@@ -5,8 +5,10 @@ namespace App\Http\Controllers\V1\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\VerifyEmailOtpRequest;
 use App\Services\Auth\AuthService;
 use App\Trait\ApiResponse;
+use Illuminate\Http\JsonResponse;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
@@ -17,7 +19,7 @@ class AuthController extends Controller
         protected AuthService $authService
     ){}
 
-    public function register(RegisterRequest $request)
+    public function register(RegisterRequest $request): JsonResponse
     {
         $data = $this->authService->register($request->validated());
 
@@ -28,7 +30,7 @@ class AuthController extends Controller
         );
     }
 
-    public function login(LoginRequest $request)
+    public function login(LoginRequest $request): JsonResponse
     {
         $payLoad = [
             ...$request->validated(),
@@ -51,6 +53,16 @@ class AuthController extends Controller
         return $this->dataResponse([
             'newToken' => $newToken,
             'expires_in' => JWTAuth::factory()->getTTL() * 60,
-        ]);
+        ] , "تم تحديث التوكن بنجاح");
+    }
+
+    public function verifyEmail(VerifyEmailOtpRequest $request): JsonResponse
+    {
+        $this->authService->verifyEmail($request->validated('email'), $request->validated('otp_code'),);
+
+        return $this->successResponse(
+            title: 'تمت العملية بنجاح',
+            message: 'تم تأكيد البريد الإلكتروني بنجاح'
+        );
     }
 }

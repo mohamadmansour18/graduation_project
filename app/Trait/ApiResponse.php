@@ -13,6 +13,7 @@ trait ApiResponse
             'success' => true,
             'title' => $title,
             'message' => $message,
+            'status_code' => $statusCode,
         ], $statusCode);
     }
 
@@ -22,6 +23,7 @@ trait ApiResponse
             'success' => true,
             'title' => $title,
             'data' => $data,
+            'status_code' => $statusCode,
         ], $statusCode);
     }
 
@@ -37,6 +39,7 @@ trait ApiResponse
                 'last_page' => $paginator->lastPage(),
                 'has_more_pages' => $paginator->hasMorePages(),
             ],
+            'status_code' => $statusCode,
         ], $statusCode);
     }
 

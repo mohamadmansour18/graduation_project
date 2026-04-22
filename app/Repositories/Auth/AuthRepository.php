@@ -130,4 +130,51 @@ class AuthRepository
             ->where('email', $email)
             ->delete();
     }
+
+    //--------------------------------[VERIFY]--------------------------------//
+    public function findLatestActiveOtpByPurpose(int $userId, string $purpose): Builder|Model|null
+    {
+        return AuthOtpCode::query()
+            ->where('user_id', $userId)
+            ->where('purpose', $purpose)
+            ->whereNull('consumed_at')
+            ->whereNull('revoked_at')
+            ->latest('id')
+            ->first();
+    }
+
+    public function consumeOtpCode(int $otpId): void
+    {
+        AuthOtpCode::query()
+            ->whereKey($otpId)
+            ->update([
+                'consumed_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function markEmailAsVerified(int $userId): void
+    {
+        User::query()
+            ->whereKey($userId)
+            ->update([
+                'email_verified_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function revokeOtherActiveOtpCodesByPurpose(int $userId, string $purpose, int $exceptOtpId): void
+    {
+        AuthOtpCode::query()
+            ->where('user_id', $userId)
+            ->where('purpose', $purpose)
+            ->whereNull('consumed_at')
+            ->whereNull('revoked_at')
+            ->where('id', '!=', $exceptOtpId)
+            ->update([
+                'revoked_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
 }

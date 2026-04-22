@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('send_to_email' , 255);
             $table->timestamp('expires_at');
             $table->timestamp('consumed_at')->nullable();
+            $table->timestamp('revoked_at')->nullable();
             $table->timestamps();
         });
     }

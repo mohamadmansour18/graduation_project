@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
+use App\Http\Controllers\V1\Auth\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,10 +23,12 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
     Route::prefix('user-mobile')->group(function () {
+
         Route::prefix('auth')->group(function () {
 
             Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:api-register');
             Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:api-login');
+            Route::post('/verify-email' , [AuthController::class, 'verifyEmail'])->middleware('throttle:api-verify-email');
 
             //ONBOARDING
             Route::middleware('throttle:api-onboarding')->group(function () {
@@ -41,7 +44,14 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             Route::Post('/onboarding/progress-preview' , [OnboardingController::class , 'getOnboardingProgressPreview']);
 
             //RESET PASSWORD
+            Route::middleware('throttle:api-reset-password')->group(function () {
+                Route::post('/forgot-password/request-otp', [PasswordResetController::class, 'requestPasswordResetOtp']);
+                Route::post('/forgot-password/verify-otp', [PasswordResetController::class, 'verifyPasswordResetOtp']);
+                Route::post('/forgot-password/resend-otp', [PasswordResetController::class, 'resendPasswordResetOtp']);
+                Route::post('/forgot-password/reset' , [PasswordResetController::class , 'resetPassword']);
+            });
 
+            });
 
         });
 
@@ -49,12 +59,14 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
         });
 
-    });
-    Route::middleware(['auth:api' , 'role:owner'])->group(function () {
+        Route::middleware(['auth:api' , 'role:owner'])->group(function () {
+
+        });
+
+        Route::middleware(['auth:api' , 'role:owner,supervisor'])->group(function () {
+
+        });
 
     });
 
-    Route::middleware(['auth:api' , 'role:owner,supervisor'])->group(function () {
 
-    });
-});

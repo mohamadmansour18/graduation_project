@@ -40,7 +40,7 @@ class SendOtpMailJob implements ShouldQueue
 
     public function failed(\Throwable $exception):void
     {
-        Log::channel('daily_errors')->error('OTP email job failed', [
+        Log::channel('errors')->error('OTP email job failed', [
             'user_id' => $this->user->id,
             'email' => $this->user->email,
             'purpose' => $this->purpose,

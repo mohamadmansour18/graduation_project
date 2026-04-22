@@ -61,4 +61,33 @@ class AuthenticationException extends ApiException
             ]
         );
     }
+
+    //--------------------------------[VERIFY]--------------------------------//
+
+    public static function emailAlreadyVerified(): self
+    {
+        return new self(
+            title: 'البريد الإلكتروني مؤكد مسبقًا',
+            message: 'تم تأكيد البريد الإلكتروني مسبقًا.',
+            status: 422
+        );
+    }
+
+    public static function invalidEmailVerificationOtp(): self
+    {
+        return new self(
+            title: 'رمز التحقق غير صالح',
+            message: 'رمز التحقق غير صحيح أو غير صالح.',
+            status: 422
+        );
+    }
+
+    public static function expiredEmailVerificationOtp(): self
+    {
+        return new self(
+            title: 'انتهت صلاحية الرمز',
+            message: 'انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد.',
+            status: 422
+        );
+    }
 }

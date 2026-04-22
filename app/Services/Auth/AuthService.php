@@ -52,7 +52,6 @@ class AuthService
                 'expires_at' => now()->addMinutes(5),
                 'consumed_at' => null,
                 'revoked_at' => null,
-                'attempts_count' => 0,
             ]);
 
             return $user;
@@ -171,5 +170,35 @@ class AuthService
 
             $this->authRepository->markFailedLoginNotified($failedLogin);
         }
+    }
+
+    public function verifyEmail(string $email, string $otpCode): void
+    {
+        $user = $this->authRepository->findUserByEmail($email);
+
+        if (! is_null($user->email_verified_at)) {
+            throw AuthenticationException::emailAlreadyVerified();
+        }
+
+        $otpRecord = $this->authRepository->findLatestActiveOtpByPurpose($user->id, PurposeOTP::Email_Verification->value);
+
+        if (! $otpRecord) {
+            throw AuthenticationException::invalidEmailVerificationOtp();
+        }
+
+        if (! Hash::check($otpCode, $otpRecord->code_hash)) {
+            throw AuthenticationException::invalidEmailVerificationOtp();
+        }
+
+        if ($otpRecord->expires_at->isPast()) {
+            throw AuthenticationException::expiredEmailVerificationOtp();
+        }
+
+        DB::transaction(function () use ($user, $otpRecord) {
+            $this->authRepository->markEmailAsVerified($user->id);
+
+            $this->authRepository->consumeOtpCode($otpRecord->id);
+
+        });
     }
 }

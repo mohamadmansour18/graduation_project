@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Reset_Password;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 
-class LoginRequest extends ApiFormRequest
+class VerifyPasswordResetOtpRequest extends ApiFormRequest
 {
     protected $stopOnFirstFailure = true;
     /**
@@ -23,9 +23,10 @@ class LoginRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email:rfc' ],
-            'password' => ['required', 'string' , 'min:8'],
+            'email' => ['required', 'string', 'email:rfc'],
+            'otp_code' => ['required', 'digits:6'],
         ];
+
     }
 
     public function messages(): array
@@ -34,9 +35,9 @@ class LoginRequest extends ApiFormRequest
             'email.required' => 'حقل البريد الإلكتروني مطلوب',
             'email.string' => 'حقل البريد الإلكتروني غير صالح',
             'email.email' => 'صيغة البريد الإلكتروني غير صحيحة',
-            'password.required' => 'كلمة المرور مطلوبة.',
-            'password.string' => 'كلمة المرور غير صالحة.',
-            'password.min' => 'كلمة المرور غير صحيحة',
+
+            'otp_code.required' => 'رمز التحقق مطلوب',
+            'otp_code.digits' => 'رمز التحقق يجب أن يتكون من 6 أرقام',
         ];
     }
 }

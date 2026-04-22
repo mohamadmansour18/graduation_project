@@ -23,7 +23,8 @@ class ApiErrorResponse
             'meta' => array_merge([
                 'request_id' => $request?->attributes->get('request_id'),
                 'timestamp' => now()->toISOString(),
-            ], $meta)
+            ], $meta),
+            'status_code' => $status,
         ] , $status);
     }
 }
