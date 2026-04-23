@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\Reset_Password\RequestPasswordResetOtpRequest;
 use App\Http\Requests\VerifyEmailOtpRequest;
 use App\Services\Auth\AuthService;
 use App\Trait\ApiResponse;
@@ -63,6 +64,16 @@ class AuthController extends Controller
         return $this->successResponse(
             title: 'تمت العملية بنجاح',
             message: 'تم تأكيد البريد الإلكتروني بنجاح'
+        );
+    }
+
+    public function resetPassword(RequestPasswordResetOtpRequest $request)
+    {
+        $this->authService->requestPasswordResetOtp($request->validated('email'));
+
+        return $this->successResponse(
+            title: 'تمت العملية بنجاح',
+            message: 'سيتم إرسال رمز تحقق جديد إليك'
         );
     }
 }

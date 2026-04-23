@@ -29,6 +29,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:api-register');
             Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:api-login');
             Route::post('/verify-email' , [AuthController::class, 'verifyEmail'])->middleware('throttle:api-verify-email');
+            Route::post('/reset-send-otp' , [AuthController::class , 'resetPassword'])->middleware('throttle:2,5');
 
             //ONBOARDING
             Route::middleware('throttle:api-onboarding')->group(function () {

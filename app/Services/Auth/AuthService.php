@@ -7,6 +7,7 @@ use App\Enums\PurposeOTP;
 use App\Enums\SystemRole;
 use App\Exceptions\Api\ApiException;
 use App\Exceptions\Api\AuthenticationException;
+use App\Exceptions\Api\PasswordResetException;
 use App\Jobs\SendFailedLoginAlertJob;
 use App\Jobs\SendOtpMailJob;
 use App\Models\Role;
@@ -200,5 +201,41 @@ class AuthService
             $this->authRepository->consumeOtpCode($otpRecord->id);
 
         });
+    }
+
+    public function requestPasswordResetOtp(string $email): void
+    {
+        $user = $this->authRepository->findUserByEmail($email);
+
+        if (!$user) {
+            Log::channel('audit')->warning('تم طلب OTP لتأكيد البريد الالكتروني ولكن البريد غير موجود في النظام', [
+                'email' => $email,
+            ]);
+            return;
+        }
+
+        if(!is_null($user->email_verified_at))
+        {
+            throw AuthenticationException::emailAlreadyVerified();
+        }
+
+        $otp = (string) random_int(100000, 999999);
+
+        DB::transaction(function () use ($user , $otp) {
+            $this->authRepository->revokeActiveOtpCodesByPurpose($user->id , PurposeOTP::Email_Verification->value);
+
+            $this->authRepository->createOtpCode([
+                'user_id' => $user->id,
+                'purpose' => PurposeOTP::Email_Verification->value,
+                'code_hash' => Hash::make($otp),
+                'send_to_email' => $user->email,
+                'expires_at' => now()->addMinutes(5),
+                'consumed_at' => null,
+                'revoked_at' => null,
+            ]);
+        });
+
+        SendOtpMailJob::dispatch($user , $otp , PurposeOTP::Email_Verification->value)->afterCommit();
+
     }
 }

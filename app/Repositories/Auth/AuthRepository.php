@@ -163,18 +163,18 @@ class AuthRepository
             ]);
     }
 
-    public function revokeOtherActiveOtpCodesByPurpose(int $userId, string $purpose, int $exceptOtpId): void
+    public function revokeActiveOtpCodesByPurpose(int $userId, string $purpose): void
     {
         AuthOtpCode::query()
             ->where('user_id', $userId)
             ->where('purpose', $purpose)
             ->whereNull('consumed_at')
             ->whereNull('revoked_at')
-            ->where('id', '!=', $exceptOtpId)
             ->update([
                 'revoked_at' => now(),
                 'updated_at' => now(),
             ]);
     }
+
 
 }
