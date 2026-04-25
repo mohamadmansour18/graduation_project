@@ -379,10 +379,12 @@ class OnboardingService
         $user = $this->onboardingRepository->findUserByEmail($email);
 
         $onboardingProfile = $this->onboardingRepository->findOnboardingProfileByUserId($user->id);
+        $userProfile = $this->onboardingRepository->findUserProfileByUserId($user->id);
 
         return [
             'discovery_source' => $onboardingProfile?->discovery_source,
             'education_level' => $onboardingProfile?->education_level,
+            'governorate' => $userProfile->governorate
         ];
     }
 }
