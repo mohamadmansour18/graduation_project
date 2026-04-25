@@ -4,6 +4,7 @@ use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
 use App\Http\Controllers\V1\Auth\PasswordResetController;
 use App\Http\Controllers\V1\TestDiscovery\HomeTestDiscoveryController;
+use App\Http\Controllers\V1\TestDiscovery\LabTestDiscoveryController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -60,6 +61,8 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             Route::prefix('home')->group(function () {
                 Route::get('/recommended-tests' , [HomeTestDiscoveryController::class , 'index']);
             });
+
+            Route::get('/lab/recommended-tests', [LabTestDiscoveryController::class, 'index']);
         });
 
         });

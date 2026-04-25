@@ -37,6 +37,7 @@ final class RecommendedTestDetailsRepository
                 'test.question_count',
                 'test.average_rating',
                 'test.price',
+                'test.published_at',
                 'users.name as owner_name',
                 DB::raw('COALESCE(user_profile_stats.published_tests_count, 0) as owner_published_tests_count'),
                 DB::raw('COALESCE(user_profile_stats.followers_count, 0) as owner_followers_count'),
@@ -90,6 +91,7 @@ final class RecommendedTestDetailsRepository
                 'question_count' => (int) ($row->question_count ?? 0),
                 'average_rating' => (float) ($row->average_rating ?? 0),
                 'price' => $row->price !== null ? (float) $row->price : "0 ليرة سورية",
+                'published_at' => (string) $row->published_at ,
             ];
         }
 
