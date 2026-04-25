@@ -1,15 +1,18 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\TestDiscovery;
 
-class test extends ApiFormRequest
+use App\Http\Requests\ApiFormRequest;
+
+class ListLabTestDiscoveryRequest extends ApiFormRequest
 {
+    protected $stopOnFirstFailure = true;
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
