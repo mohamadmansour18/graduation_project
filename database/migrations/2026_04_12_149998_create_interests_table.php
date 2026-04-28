@@ -12,6 +12,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('interest_category_id')->constrained('interest_categories')->cascadeOnDelete();
             $table->string('name' , 255)->unique();
+            $table->string('storage_disk' , 50)->default('public');
+            $table->string('icon_svg')->nullable();
+            $table->string('color', 7)->default('#5583FF');
             $table->timestamps();
         });
     }

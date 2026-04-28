@@ -22,18 +22,18 @@ class EnsureUserHasRole
         $user = $request->user();
         if(!$user)
         {
-            ApiErrorResponse::make(
+            return ApiErrorResponse::make(
                 title: '! غير موثق',
                 message: 'المصادقة مطلوبة للوصول الى المورد الذي تحاول استخدامه',
                 status: 401
             );
         }
 
-        $userRole = $user->role?->name;
+        $userRole = $user->role?->name->value;
 
         if(!$userRole || !in_array($userRole, $roles, true))
         {
-            ApiErrorResponse::make(
+            return ApiErrorResponse::make(
                 title: '! غير مصرح',
                 message: 'عزيزي المستخدم انت غير مصرح لك بالقيام بهذا الفعل المحدد',
                 status: 403

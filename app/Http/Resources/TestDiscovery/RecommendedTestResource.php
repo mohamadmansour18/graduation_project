@@ -17,6 +17,7 @@ class RecommendedTestResource extends JsonResource
         return [
             'owner' => [
                 'name' => $this['owner_name'],
+                'profile_picture' => $this['owner_profile_picture'],
                 'published_tests_count' => $this['owner_published_tests_count'],
                 'followers_count' => $this['owner_followers_count'],
                 'is_verified' => $this['is_owner_verified'],
@@ -27,7 +28,7 @@ class RecommendedTestResource extends JsonResource
                 'title' => $this['test_title'],
                 'description' => $this['test_description'],
                 'interest_names' => $this['interest_names'],
-                'target_level' => $this['target_level'],
+                'difficulty_level' => $this['difficulty_level'],
                 'question_count' => $this['question_count'],
                 'average_rating' => $this['average_rating'],
                 'price' => $this['price'],

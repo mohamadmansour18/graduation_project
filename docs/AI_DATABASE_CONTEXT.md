@@ -102,7 +102,7 @@ user_interest_selections(
 
 interest_categories(id, title)
 
-interests(id, interest_category_id, name)
+interests(id, interest_category_id, name, storage_disk, icon_svg, color)
 
 user_stats_summary(
   id, year, total_completed_mobile_users,

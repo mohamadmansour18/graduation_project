@@ -53,7 +53,7 @@ class Kernel extends HttpKernel
      * @var array<string, class-string|string>
      */
     protected $middlewareAliases = [
-        'auth' => \App\Http\Middleware\Authenticate::class,
+//        'auth' => \App\Http\Middleware\Authenticate::class,
         'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
         'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
         'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
@@ -67,5 +67,6 @@ class Kernel extends HttpKernel
         'force.json' => \App\Http\Middleware\ForceJsonResponse::class,
         'request.id' => \App\Http\Middleware\AssignRequestId::class,
         'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+        'jwt.auth.api' => \App\Http\Middleware\JwtAuthMiddleware::class,
     ];
 }

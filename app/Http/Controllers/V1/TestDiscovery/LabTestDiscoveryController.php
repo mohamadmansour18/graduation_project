@@ -22,7 +22,7 @@ class LabTestDiscoveryController extends Controller
     {
         $user = $request->user();
 
-        $result = $this->labRecommendedTestsService->listForUser($user->id, $request->validated('tab'), $request->validated('page'),);
+        $result = $this->labRecommendedTestsService->listForUser($user->id, $request->validated('tab'), $request->validated('page'));
 
         return $this->dataResponse([
             'current_tab' => $result['current_tab'],

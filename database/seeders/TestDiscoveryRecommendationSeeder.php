@@ -32,11 +32,11 @@ class TestDiscoveryRecommendationSeeder extends Seeder
 
     public function run(): void
     {
-        $this->call([
-            SystemRoleSeeder::class,
-            InterestCategorySeeder::class,
-            InterestSeeder::class,
-        ]);
+//        $this->call([
+//            SystemRoleSeeder::class,
+//            InterestCategorySeeder::class,
+//            InterestSeeder::class,
+//        ]);
 
         $mobileRoleId = Role::query()
             ->where('name', SystemRole::Mobile_User->value)

@@ -20,7 +20,7 @@ class LabRecommendedTestListItemResource extends JsonResource
                 'id' => $this['test_id'],
                 'title' => $this['test_title'],
                 'description' => $this['test_description'],
-                'target_level' => $this['target_level'],
+                'difficulty_level' => $this['difficulty_level'],
                 'interest_names' => $this['interest_names'],
                 'question_count' => $this['question_count'],
                 'published_at' => $this['published_at'],

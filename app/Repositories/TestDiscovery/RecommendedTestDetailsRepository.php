@@ -2,6 +2,7 @@
 
 namespace App\Repositories\TestDiscovery;
 
+use App\Helpers\ImageProcessor;
 use Illuminate\Support\Facades\DB;
 
 final class RecommendedTestDetailsRepository
@@ -28,17 +29,19 @@ final class RecommendedTestDetailsRepository
 
         $rows = DB::table('test')
             ->join('users', 'users.id', '=', 'test.creator_user_id')
+            ->leftJoin('user_profile', 'user_profile.user_id', '=', 'users.id')
             ->leftJoin('user_profile_stats', 'user_profile_stats.user_id', '=', 'users.id')
             ->select([
                 'test.id',
                 'test.title',
                 'test.description',
-                'test.target_level',
+                'test.difficulty_level',
                 'test.question_count',
                 'test.average_rating',
                 'test.price',
                 'test.published_at',
                 'users.name as owner_name',
+                'user_profile.avatar_path as owner_profile_picture',
                 DB::raw('COALESCE(user_profile_stats.published_tests_count, 0) as owner_published_tests_count'),
                 DB::raw('COALESCE(user_profile_stats.followers_count, 0) as owner_followers_count'),
                 DB::raw('COALESCE(users.is_academically_verified, 0) as is_owner_verified'),
@@ -80,6 +83,7 @@ final class RecommendedTestDetailsRepository
             $result[$testId] = [
                 'test_id' => (int) $row->id,
                 'owner_name' => (string) $row->owner_name,
+                'owner_profile_picture' => ImageProcessor::urlOrDefault( $row->owner_profile_picture ?? null ),
                 'owner_published_tests_count' => (int) $row->owner_published_tests_count,
                 'owner_followers_count' => (int) $row->owner_followers_count,
                 'is_owner_verified' => (bool) $row->is_owner_verified,
@@ -87,10 +91,10 @@ final class RecommendedTestDetailsRepository
                 'test_title' => (string) $row->title,
                 'test_description' => (string) $row->description,
                 'interest_names' => $interestMap[$testId] ?? [],
-                'target_level' => (string) $row->target_level,
+                'difficulty_level' => (string) $row->difficulty_level,
                 'question_count' => (int) ($row->question_count ?? 0),
                 'average_rating' => (float) ($row->average_rating ?? 0),
-                'price' => $row->price !== null ? (float) $row->price : "0 ليرة سورية",
+                'price' => $row->price !== null ? (float) $row->price : 0,
                 'published_at' => (string) $row->published_at ,
             ];
         }

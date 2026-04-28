@@ -3,9 +3,14 @@
 use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
 use App\Http\Controllers\V1\Auth\PasswordResetController;
+use App\Http\Controllers\V1\Home\HomeController;
 use App\Http\Controllers\V1\TestDiscovery\HomeTestDiscoveryController;
 use App\Http\Controllers\V1\TestDiscovery\LabTestDiscoveryController;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
+use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
+use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
+use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,27 +61,47 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
             });
 
-        Route::middleware(['auth:api', 'role:mobile_user'])->group(function () {
+        Route::middleware(['jwt.auth.api', 'role:mobile_user'])->group(function () {
 
+            //HOME
             Route::prefix('home')->group(function () {
                 Route::get('/recommended-tests' , [HomeTestDiscoveryController::class , 'index']);
+                Route::get('/recommended-interests' , [HomeController::class , 'getInterests'] );
+                Route::get('/recommended-users' , [HomeController::class , 'topTestCreators']);
+
+                Route::get('/all-interests' , [HomeController::class , 'scientificInterests'] );
             });
 
-            Route::get('/lab/recommended-tests', [LabTestDiscoveryController::class, 'index']);
-        });
+            //LABORATORY
+            Route::prefix('lab')->group(function () {
+                Route::get('/recommended-tests', [LabTestDiscoveryController::class, 'index']);
+            });
 
         });
 
+        });
 
 
-        Route::middleware(['auth:api' , 'role:owner'])->group(function () {
+
+        Route::middleware(['jwt.auth.api' , 'role:owner'])->group(function () {
 
         });
 
-        Route::middleware(['auth:api' , 'role:owner,supervisor'])->group(function () {
+        Route::middleware(['jwt.auth.api' , 'role:owner,supervisor'])->group(function () {
 
         });
 
     });
+
+Route::get('/test' , function (){
+    $interest = \App\Models\Interest::findOrFail(1);
+
+    $interest->update([
+        'name' => 'تيسستتتت',
+    ]);
+
+    return 'updated';
+});
+
 
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\V1\Auth;
 
+use App\Exceptions\Jwt\RefreshTokenExpiredException;
+use App\Exceptions\Jwt\TokenMissingException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
@@ -49,7 +51,29 @@ class AuthController extends Controller
 
     public function refresh()
     {
-        $newToken = JWTAuth::parseToken()->refresh();
+        $token = request()->bearerToken();
+
+        if (! $token) {
+            throw new TokenMissingException();
+        }
+
+        $payload = JWTAuth::setToken($token)->getPayload();
+
+        $issuedAt = $payload->get('iat');
+
+        $refreshTtlMinutes = config('jwt.refresh_ttl');
+
+        if ($refreshTtlMinutes === null) {
+            return;
+        }
+
+        $refreshExpiresAt = $issuedAt + ((int) $refreshTtlMinutes * 60);
+
+        if (now()->timestamp > $refreshExpiresAt) {
+            throw new RefreshTokenExpiredException();
+        }
+
+        $newToken = JWTAuth::setToken($token)->refresh();
 
         return $this->dataResponse([
             'newToken' => $newToken,

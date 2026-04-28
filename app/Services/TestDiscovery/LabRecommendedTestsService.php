@@ -127,7 +127,6 @@ final class LabRecommendedTestsService
             if (! isset($detailsByTestId[$testId])) {
                 continue;
             }
-
             /**
              * هنا ندمج:
              * - تفاصيل العرض
@@ -145,6 +144,7 @@ final class LabRecommendedTestsService
                 ],
             ];
         }
+
 
         $list = [];
         foreach ($listPageRanked as $rankedItem) {
