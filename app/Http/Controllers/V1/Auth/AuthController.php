@@ -57,8 +57,6 @@ class AuthController extends Controller
             throw new TokenMissingException();
         }
 
-        $this->ensureRefreshTtlStillValid($token);
-
         $newToken = JWTAuth::setToken($token)->refresh();
 
         return $this->dataResponse([
@@ -85,24 +83,5 @@ class AuthController extends Controller
             title: 'تمت العملية بنجاح',
             message: 'سيتم إرسال رمز تحقق جديد إليك'
         );
-    }
-
-    private function ensureRefreshTtlStillValid(string $token): void
-    {
-        $payload = JWTAuth::setToken($token)->getPayload();
-
-        $issuedAt = $payload->get('iat');
-
-        $refreshTtlMinutes = config('jwt.refresh_ttl');
-
-        if ($refreshTtlMinutes === null) {
-            return;
-        }
-
-        $refreshExpiresAt = $issuedAt + ((int) $refreshTtlMinutes * 60);
-
-        if (now()->timestamp > $refreshExpiresAt) {
-            throw new RefreshTokenExpiredException();
-        }
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Home\HomeService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class HomeController extends Controller
@@ -42,6 +43,18 @@ class HomeController extends Controller
         return $this->dataResponse(
             data:$categories,
             title: 'تم جلب التصنيفات العلمية بنجاح'
+        );
+    }
+
+    public function testsByInterest(int $interestId): JsonResponse
+    {
+        $userId = Auth::id();
+
+        $paginator = $this->homeService->getTestsByInterest($interestId , $userId);
+
+        return $this->paginatedResponse(
+            paginator: $paginator,
+            title: 'تم جلب اختبارات التصنيف العلمي بنجاح'
         );
     }
 }

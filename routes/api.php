@@ -6,6 +6,7 @@ use App\Http\Controllers\V1\Auth\PasswordResetController;
 use App\Http\Controllers\V1\Home\HomeController;
 use App\Http\Controllers\V1\TestDiscovery\HomeTestDiscoveryController;
 use App\Http\Controllers\V1\TestDiscovery\LabTestDiscoveryController;
+use App\Models\Test;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
@@ -66,10 +67,11 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             //HOME
             Route::prefix('home')->group(function () {
                 Route::get('/recommended-tests' , [HomeTestDiscoveryController::class , 'index']);
-                Route::get('/recommended-interests' , [HomeController::class , 'getInterests'] );
+                Route::get('/recommended-interests' , [HomeController::class , 'getInterests']);
                 Route::get('/recommended-users' , [HomeController::class , 'topTestCreators']);
 
-                Route::get('/all-interests' , [HomeController::class , 'scientificInterests'] );
+                Route::get('/all-interests' , [HomeController::class , 'scientificInterests']);
+                Route::get('/test-by-interest/{interestId}' , [HomeController::class , 'testsByInterest']);
             });
 
             //LABORATORY
@@ -93,14 +95,19 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
     });
 
-Route::get('/test' , function (){
-    $interest = \App\Models\Interest::findOrFail(1);
+Route::get('/test', function () {
 
-    $interest->update([
-        'name' => 'تيسستتتت',
+    $test = Test::findOrFail(1);
+
+    $test->title = 'Updated at ' . now();
+    $test->save();
+
+    return response()->json([
+        'message' => 'تم تعديل الاختبار عبر Eloquent Model، ويجب أن يعمل الـ Observer الآن',
+        'test_id' => $test->id,
+        'new_title' => $test->title,
     ]);
 
-    return 'updated';
 });
 
 

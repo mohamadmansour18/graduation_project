@@ -13,6 +13,7 @@ class InterestObserver
     public function created(Interest $interest): void
     {
         CacheKeys::clearScientificInterests();
+        CacheKeys::clearTestsByInterest();
     }
 
     /**
@@ -29,6 +30,7 @@ class InterestObserver
     public function deleted(Interest $interest): void
     {
         CacheKeys::clearScientificInterests();
+        CacheKeys::clearTestsByInterest();
     }
 
     /**

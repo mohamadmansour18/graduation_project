@@ -2,9 +2,12 @@
 
 namespace App\Services\Home;
 
+use App\Exceptions\Api\InterestException;
+use App\Helpers\DateProcessor;
 use App\Helpers\ImageProcessor;
 use App\Repositories\Home\HomeRepository;
 use App\Services\Cache\CacheKeys;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 
 class HomeService
@@ -71,5 +74,42 @@ class HomeService
             );
 
         return is_array($categories) ? $categories : [];
+    }
+
+    //////////////////////////////////////////////////////////////
+
+    public function getTestsByInterest(int $interestId, int $userId, int $perPage = 10): LengthAwarePaginator
+    {
+        if (! $this->homeRepository->interestExists($interestId)) {
+            throw InterestException::interestNotFound();
+        }
+
+        $page = LengthAwarePaginator::resolveCurrentPage();
+
+        /** @var LengthAwarePaginator $paginator */
+        $paginator = Cache::tags(CacheKeys::testsByInterestTags())
+            ->remember(
+                CacheKeys::testsByInterest($interestId, $page, $perPage),
+                now()->addMinutes(10),
+                fn () => $this->homeRepository->paginateTestsByInterest($interestId , $userId , $perPage)
+            );
+
+        $paginator->setCollection(
+            $paginator->getCollection()->map(function ($test) {
+                return [
+                    'id' => $test->id,
+                    'title' => $test->title,
+                    'description' => $test->description,
+                    'interests' => $test->interests ?? [],
+                    'question_count' => $test->question_count,
+                    'difficulty_level' => $test->difficulty_level,
+                    'price' => $test->price ?: 0,
+                    'average_rating' => $test->average_rating ,
+                    'published_ago' => DateProcessor::fromTimestamp($test->published_at),
+                ];
+            })
+        );
+
+        return $paginator;
     }
 }

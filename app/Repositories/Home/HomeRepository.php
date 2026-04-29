@@ -5,6 +5,7 @@ namespace App\Repositories\Home;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
 use App\Helpers\ImageProcessor;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -110,5 +111,68 @@ class HomeRepository
                 ];
             })
             ->values();
+    }
+
+    ////////////////////////////////////////////////////
+
+    public function interestExists(int $interestId): bool
+    {
+        return DB::table('interests')
+            ->where('id', $interestId)
+            ->exists();
+    }
+
+    public function paginateTestsByInterest(int $interestId, int $userId , int $perPage): LengthAwarePaginator
+    {
+        $paginator = DB::table('test as t')
+            ->join('test_interset_selections as tis', 'tis.test_id', '=', 't.id')
+            ->where('tis.interest_id', $interestId)
+            ->where('t.creator_user_id' , '!=' , $userId)
+            ->where('t.test_type', TestType::Public->value)
+            ->where('t.review_status', TestReviewStatus::Approved->value)
+            ->orderByDesc('t.published_at')
+            ->select([
+                't.id',
+                't.title',
+                't.description',
+                't.question_count',
+                't.difficulty_level',
+                't.price',
+                't.average_rating',
+                't.published_at',
+            ])
+            ->paginate($perPage);
+
+        $testIds = collect($paginator->items())
+            ->pluck('id')
+            ->toArray();
+
+        if (empty($testIds)) {
+            return $paginator;
+        }
+
+        $interestsByTestId = DB::table('test_interset_selections as tis')
+            ->join('interests as i', 'i.id', '=', 'tis.interest_id')
+            ->whereIn('tis.test_id', $testIds)
+            ->orderBy('tis.slot_no')
+            ->get([
+                'tis.test_id',
+                'i.id',
+                'i.name',
+            ])
+            ->groupBy('test_id')
+            ->map(fn ($items) => $items->map(fn ($item) => [
+                'id' => (int) $item->id,
+                'name' => $item->name,
+            ])->values()->toArray());
+
+        $paginator->setCollection(
+            collect($paginator->items())->map(function ($test) use ($interestsByTestId) {
+                $test->interests = $interestsByTestId[$test->id] ?? [];
+                return $test;
+            })
+        );
+
+        return $paginator;
     }
 }

@@ -103,17 +103,17 @@ class Handler extends ExceptionHandler
                 status: 401
             ),
 
-            $e instanceof TokenExpiredException => ApiErrorResponse::make(
-                title: '! انتهت صلاحية التوكن',
-                message: 'انتهت صلاحية رمز الوصول الحالي، يرجى طلب توكن جديد',
-                status: 401
-            ),
-
-            $e instanceof RefreshTokenExpiredException => ApiErrorResponse::make(
-                title: '! انتهت جلسة المصادقة',
-                message: 'انتهت مهلة تجديد التوكن، يرجى تسجيل الدخول من جديد',
-                status: 401
-            ),
+            $e instanceof TokenExpiredException => $request->is('api/v1/auth/refresh')
+                ? ApiErrorResponse::make(
+                    title: '! انتهت جلسة المصادقة',
+                    message: 'انتهت مهلة تجديد التوكن، يرجى تسجيل الدخول من جديد',
+                    status: 401
+                )
+                : ApiErrorResponse::make(
+                    title: '! انتهت صلاحية التوكن',
+                    message: 'انتهت صلاحية رمز الوصول الحالي، يرجى استخدام refresh للحصول على توكن جديد',
+                    status: 401
+                ),
 
             $e instanceof JWTException => ApiErrorResponse::make(
                 title: '! مشكلة في التوكن',
