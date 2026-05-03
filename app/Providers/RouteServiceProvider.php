@@ -62,5 +62,15 @@ class RouteServiceProvider extends ServiceProvider
             $key = 'reset-password:' . ($request->ip());
             return Limit::perMinutes(3,/*3*/100)->by($key);
         });
+
+        RateLimiter::for('api-search' , function (Request $request) {
+            $user = $request->user();
+
+            $key = $user
+                ? 'search-user:' . $user->id
+                : 'search-ip:' . $request->ip();
+
+            return Limit::perMinute(20)->by($key);
+        });
     }
 }

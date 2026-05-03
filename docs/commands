@@ -1,0 +1,14 @@
+[---------------------------<LARAVEL SCOUT>---------------------------]]
+
+import all data from test table in database to meilisearch index :
+sail artisan scout:import "App\Models\Test"
+
+rebuild index (delete all data in index and import again) "using after editing the toSearchableArray function in model" :
+sail artisan scout:import "App\Models\Test" --fresh
+
+delete all data in index without import it again :
+sail artisan scout:flush "App\Models\Test"
+
+Sync index setting from config/scout.php to meilisearch index :
+sail artisan scout:sync-index-settings
+

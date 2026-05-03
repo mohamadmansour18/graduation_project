@@ -40,7 +40,12 @@ class TestReview extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function testReviewFeedbacks(): HasMany
+    public function testReviewFeedback(): hasOne
+    {
+        return $this->hasOne(TestReviewFeedback::class, 'test_review_id');
+    }
+
+    public function feedbacks()
     {
         return $this->hasMany(TestReviewFeedback::class, 'test_review_id');
     }

@@ -57,8 +57,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: graduation_project
-      MYSQL_USER: sail
-      MYSQL_PASSWORD: password
+      MYSQL_USER: mansour
+      MYSQL_PASSWORD: mansour2003
     volumes:
       - 'sail-mysql:/var/lib/mysql'
     networks:

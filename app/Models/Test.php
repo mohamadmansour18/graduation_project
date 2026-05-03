@@ -7,6 +7,7 @@ use App\Enums\Language;
 use App\Enums\TargetLevel;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
+use App\Helpers\ArabicSearchNormalizer;
 use App\Models\AdminYearlyFinancialStat;
 use App\Models\AdminYearlyTestSalesStat;
 use App\Models\TestAttempt;
@@ -27,11 +28,15 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Laravel\Scout\Searchable;
 
 class Test extends Model
 {
+    use searchable ;    //Trait reflects model changes (insert - update - delete) to Meilisearch database index & it is depends on Laravel Observer so you should use eloquent ORM in (update - delete)
+
     protected $table = 'test';
 
     protected $fillable = [
@@ -93,6 +98,12 @@ class Test extends Model
     public function testQuestions(): HasMany
     {
         return $this->hasMany(TestQuestion::class, 'test_id');
+    }
+
+    public function previewQuestions()
+    {
+        return $this->hasMany(TestQuestion::class, 'test_id')
+            ->where('is_preview', true);
     }
 
     public function testPurchases(): HasMany
@@ -164,4 +175,47 @@ class Test extends Model
     {
         return $this->hasMany(AdminYearlyTestSalesStat::class, 'test_id');
     }
+
+    public function interests(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Interest::class,
+            'test_interset_selections',
+            'test_id',
+            'interest_id'
+        )->withPivot('slot_no')->orderByPivot('slot_no');
+    }
+
+    //This data it is store in to Meilisearch of each test
+    //title : because the search by title
+    //creator_user_id & test_type & review_status : because the filter by them
+    //published_at_timestamp & price : because sorting
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'title' => $this->title,
+            'normalized_title' => ArabicSearchNormalizer::normalize($this->title),
+            'creator_user_id' => $this->creator_user_id,
+            'test_type' => $this->test_type,
+            'review_status' => $this->review_status,
+            'published_at_timestamp' => $this->published_at
+                ? $this->published_at->timestamp
+                : null,
+            'price' => $this->price ?? 0,
+            'interest_ids' => $this->testIntersetSelections()
+                ->pluck('interest_id')
+                ->toArray(),
+        ];
+    }
+
+    //This function determent what of data should be entered into the index (all test or specific test ?)
+    /*
+    public function shouldBeSearchable(): bool
+    {
+        return $this->test_type === 'public'
+            && $this->review_status === 'approved'
+            && ! is_null($this->published_at);
+    }
+    */
 }

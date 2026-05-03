@@ -7,11 +7,14 @@
     "require": {
         "php": "^8.1",
         "guzzlehttp/guzzle": "^7.2",
+        "http-interop/http-factory-guzzle": "^1.2",
         "laravel/framework": "^10.10",
         "laravel/horizon": "^5.45",
         "laravel/pulse": "^1.7",
         "laravel/sanctum": "^3.3",
+        "laravel/scout": "^11.1",
         "laravel/tinker": "^2.8",
+        "meilisearch/meilisearch-php": "^1.16",
         "php-open-source-saver/jwt-auth": "^2.8",
         "predis/predis": "^3.4"
     },

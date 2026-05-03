@@ -12,8 +12,8 @@ use App\Enums\SystemRole;
 use App\Enums\TargetLevel;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
-use App\Enums\UniversityDepartment;
 use App\Enums\UniversityName;
+use App\Enums\Vote;
 use App\Models\Interest;
 use App\Models\Role;
 use Carbon\CarbonImmutable;
@@ -29,6 +29,12 @@ class TestDiscoveryRecommendationSeeder extends Seeder
     private const INSERT_CHUNK_SIZE = 200;
     private const USER_EMAIL_DOMAIN = 'seed.nerd.local';
     private const GENERATED_TEST_TITLE_PREFIX = 'اختبار توصية';
+    private const SAFE_UNIVERSITY_DEPARTMENTS = [
+        'علوم الحاسوب',
+        'تكنولوجيا المعلومات',
+        'هندسة البرمجيات',
+        'هندسة الحاسوب',
+    ];
 
     public function run(): void
     {
@@ -174,9 +180,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
 
                 $likesCount = 10 + (($index * 11) % 280);
                 $bookmarksCount = 5 + (($index * 7) % 190);
-                $reviewsCount = 2 + (($index * 5) % 90);
                 $participantsCount = 35 + (($index * 13) % 650);
-                $averageRating = number_format(2.5 + (($index % 25) * 0.1), 2, '.', '');
                 $questionCount = 10 + ($index % 26);
                 $previewQuestionCount = min(5, max(2, (int) floor($questionCount / 4)));
 
@@ -204,18 +208,16 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                     'likes_count' => $likesCount,
                     'bookmarks_count' => $bookmarksCount,
                     'downloads_count' => 3 + (($index * 4) % 120),
-                    'reviews_count' => $reviewsCount,
+                    'reviews_count' => 0,
                     'participants_count' => $participantsCount,
-                    'average_rating' => $averageRating,
+                    'average_rating' => number_format(0, 2, '.', ''),
                     'created_at' => $timestamps['created_at'],
                     'updated_at' => $timestamps['updated_at'],
                 ];
 
                 $creatorStats[$creator['id']]['published_tests_count'] = ($creatorStats[$creator['id']]['published_tests_count'] ?? 0) + 1;
                 $creatorStats[$creator['id']]['likes_sum'] = ($creatorStats[$creator['id']]['likes_sum'] ?? 0) + $likesCount;
-                $creatorStats[$creator['id']]['reviews_sum'] = ($creatorStats[$creator['id']]['reviews_sum'] ?? 0) + $reviewsCount;
                 $creatorStats[$creator['id']]['bookmarks_sum'] = ($creatorStats[$creator['id']]['bookmarks_sum'] ?? 0) + $bookmarksCount;
-                $creatorStats[$creator['id']]['ratings_sum'] = ($creatorStats[$creator['id']]['ratings_sum'] ?? 0) + (float) $averageRating;
             }
 
             $this->insertInChunks('user_onboarding_profiles', $userOnboardingRows);
@@ -224,9 +226,11 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             $this->insertInChunks('user_interest_selections', $userInterestRows);
             $this->insertInChunks('test', $testsRows);
 
+            $resolvedUserIds = array_column($resolvedUsers, 'id');
+
             $persistedTests = DB::table('test')
-                ->select(['id', 'title'])
-                ->where('title', 'like', self::GENERATED_TEST_TITLE_PREFIX . ' %')
+                ->select(['id', 'title', 'creator_user_id'])
+                ->whereIn('creator_user_id', $resolvedUserIds)
                 ->orderBy('id')
                 ->get();
 
@@ -247,29 +251,72 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                 ];
             }
 
+            [$reviewRows, $feedbackRows, $testReviewAggregates] = $this->buildReviewDataset(
+                tests: $persistedTests->all(),
+                users: $resolvedUsers,
+                now: $now,
+            );
+
             foreach ($userProfileStatsSeed as $userId => &$profileStats) {
                 $publishedTestsCount = $creatorStats[$userId]['published_tests_count'] ?? 0;
                 $ratingsSum = $creatorStats[$userId]['ratings_sum'] ?? 0;
+                $reviewsSum = $creatorStats[$userId]['reviews_sum'] ?? 0;
 
                 $profileStats['published_tests_count'] = $publishedTestsCount;
                 $profileStats['average_test_rating'] = $publishedTestsCount > 0
                     ? number_format($ratingsSum / $publishedTestsCount, 2, '.', '')
                     : number_format(0, 2, '.', '');
                 $profileStats['total_test_likes_received'] = (string) ($creatorStats[$userId]['likes_sum'] ?? 0);
-                $profileStats['total_test_reviews_received'] = (string) ($creatorStats[$userId]['reviews_sum'] ?? 0);
+                $profileStats['total_test_reviews_received'] = (string) $reviewsSum;
                 $profileStats['total_test_bookmarks_received'] = (string) ($creatorStats[$userId]['bookmarks_sum'] ?? 0);
             }
             unset($profileStats);
 
             $this->insertInChunks('test_interset_selections', $testInterestRows);
+            $this->insertInChunks('test_reviews', $reviewRows);
+            $this->insertInChunks('test_review_feedbacks', $feedbackRows);
+
+            foreach ($testReviewAggregates as $aggregate) {
+                DB::table('test')
+                    ->where('id', $aggregate['test_id'])
+                    ->update([
+                        'reviews_count' => $aggregate['reviews_count'],
+                        'average_rating' => $aggregate['average_rating'],
+                    ]);
+
+                $creatorStats[$aggregate['creator_user_id']]['reviews_sum'] =
+                    ($creatorStats[$aggregate['creator_user_id']]['reviews_sum'] ?? 0) + $aggregate['reviews_count'];
+
+                $creatorStats[$aggregate['creator_user_id']]['ratings_sum'] =
+                    ($creatorStats[$aggregate['creator_user_id']]['ratings_sum'] ?? 0) + (float) $aggregate['average_rating'];
+            }
+
+            foreach ($userProfileStatsSeed as $userId => &$profileStats) {
+                $publishedTestsCount = $creatorStats[$userId]['published_tests_count'] ?? 0;
+                $ratingsSum = $creatorStats[$userId]['ratings_sum'] ?? 0;
+
+                $profileStats['average_test_rating'] = $publishedTestsCount > 0
+                    ? number_format($ratingsSum / $publishedTestsCount, 2, '.', '')
+                    : number_format(0, 2, '.', '');
+                $profileStats['total_test_reviews_received'] = (string) ($creatorStats[$userId]['reviews_sum'] ?? 0);
+            }
+            unset($profileStats);
+
             $this->insertInChunks('user_profile_stats', array_values($userProfileStatsSeed));
         });
     }
 
     private function cleanupGeneratedDataset(): void
     {
+        $generatedUserIds = DB::table('users')
+            ->where('email', 'like', 'recommendation.user.%@' . self::USER_EMAIL_DOMAIN)
+            ->pluck('id');
+
         $generatedTestIds = DB::table('test')
-            ->where('title', 'like', self::GENERATED_TEST_TITLE_PREFIX . ' %')
+            ->where(function ($query) use ($generatedUserIds) {
+                $query->whereIn('creator_user_id', $generatedUserIds)
+                    ->orWhere('title', 'like', self::GENERATED_TEST_TITLE_PREFIX . ' %');
+            })
             ->pluck('id');
 
         if ($generatedTestIds->isNotEmpty()) {
@@ -281,10 +328,6 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                 ->whereIn('id', $generatedTestIds)
                 ->delete();
         }
-
-        $generatedUserIds = DB::table('users')
-            ->where('email', 'like', 'recommendation.user.%@' . self::USER_EMAIL_DOMAIN)
-            ->pluck('id');
 
         if ($generatedUserIds->isNotEmpty()) {
             DB::table('users')
@@ -306,7 +349,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             $educationLevel = $this->educationLevelForIndex($index);
             $timestamps = $this->timestampsForIndex($now, $index);
             $interest = $interests[($index * 2 + 3) % count($interests)];
-            $department = $this->pickValueByIndex(UniversityDepartment::cases(), $index);
+            $department = $this->pickFromArray(self::SAFE_UNIVERSITY_DEPARTMENTS, $index);
 
             $blueprints[] = [
                 'user' => [
@@ -369,6 +412,102 @@ class TestDiscoveryRecommendationSeeder extends Seeder
     private function buildArabicTestDescription(string $interestName, string $targetLevel, string $difficulty): string
     {
         return "اختبار تدريبي في {$interestName} موجه لفئة {$targetLevel} بدرجة صعوبة {$difficulty} مع أسئلة متنوعة تساعد على تقييم الفهم بشكل عملي.";
+    }
+
+    private function buildReviewDataset(array $tests, array $users, CarbonImmutable $now): array
+    {
+        $reviewRows = [];
+        $feedbackRows = [];
+        $testReviewAggregates = [];
+
+        foreach ($tests as $offset => $test) {
+            $testIndex = $offset + 1;
+            $testId = (int) $test->id;
+            $creatorUserId = $users[$offset % count($users)]['id'];
+            $reviewCount = 3 + ($testIndex % 4);
+
+            $ratingSum = 0;
+
+            for ($reviewOffset = 1; $reviewOffset <= $reviewCount; $reviewOffset++) {
+                $reviewer = $this->findDistinctUser(
+                    users: $users,
+                    excludedIds: [$creatorUserId],
+                    startIndex: $testIndex * 11 + $reviewOffset
+                );
+
+                $reviewId = count($reviewRows) + 1;
+                $rating = (($testIndex + $reviewOffset) % 5) + 1;
+                $feedbackCount = 1 + (($testIndex + $reviewOffset) % 3);
+                $helpfulYesCount = 0;
+                $helpfulNoCount = 0;
+                $reviewTimestamp = $now->subDays(($testIndex % 120) + $reviewOffset)->subHours($reviewOffset);
+                $usedFeedbackUserIds = [$creatorUserId, $reviewer['id']];
+
+                for ($feedbackOffset = 1; $feedbackOffset <= $feedbackCount; $feedbackOffset++) {
+                    $feedbackUser = $this->findDistinctUser(
+                        users: $users,
+                        excludedIds: $usedFeedbackUserIds,
+                        startIndex: ($testIndex * 17) + ($reviewOffset * 5) + $feedbackOffset
+                    );
+
+                    $usedFeedbackUserIds[] = $feedbackUser['id'];
+
+                    $vote = (($testIndex + $reviewOffset + $feedbackOffset) % 4 === 0)
+                        ? Vote::No->value
+                        : Vote::Yes->value;
+
+                    if ($vote === Vote::Yes->value) {
+                        $helpfulYesCount++;
+                    } else {
+                        $helpfulNoCount++;
+                    }
+
+                    $feedbackRows[] = [
+                        'test_review_id' => $reviewId,
+                        'user_id' => $feedbackUser['id'],
+                        'vote' => $vote,
+                        'created_at' => $reviewTimestamp->addHours($feedbackOffset),
+                        'updated_at' => $reviewTimestamp->addHours($feedbackOffset),
+                    ];
+                }
+
+                $reviewRows[] = [
+                    'id' => $reviewId,
+                    'test_id' => $testId,
+                    'user_id' => $reviewer['id'],
+                    'rating' => $rating,
+                    'review_text' => $this->buildArabicReviewText($rating, $testIndex, $reviewOffset),
+                    'helpful_yes_count' => $helpfulYesCount,
+                    'helpful_no_count' => $helpfulNoCount,
+                    'created_at' => $reviewTimestamp,
+                    'updated_at' => $reviewTimestamp,
+                ];
+
+                $ratingSum += $rating;
+            }
+
+            $testReviewAggregates[] = [
+                'test_id' => $testId,
+                'creator_user_id' => $creatorUserId,
+                'reviews_count' => $reviewCount,
+                'average_rating' => number_format($ratingSum / $reviewCount, 2, '.', ''),
+            ];
+        }
+
+        return [$reviewRows, $feedbackRows, $testReviewAggregates];
+    }
+
+    private function buildArabicReviewText(int $rating, int $testIndex, int $reviewOffset): string
+    {
+        $comments = [
+            5 => 'اختبار ممتاز ومنظم جداً، والأسئلة فيه واضحة وتغطي الفكرة الأساسية بدقة.',
+            4 => 'اختبار جيد جداً ومفيد للمراجعة السريعة، وفيه تنوع مناسب في الأسئلة.',
+            3 => 'الاختبار جيد بشكل عام، لكنه يحتاج بعض التوازن في مستوى الصعوبة بين الأسئلة.',
+            2 => 'الفكرة مفيدة لكن بعض الأسئلة غير دقيقة وتحتاج تحسيناً في الصياغة.',
+            1 => 'الاختبار يحتاج مراجعة أكبر من ناحية الصياغة وتسلسل الأسئلة والمحتوى.',
+        ];
+
+        return $comments[$rating] . " رقم المراجعة {$reviewOffset} للاختبار {$testIndex}.";
     }
 
     private function educationLevelForIndex(int $index): string
@@ -512,6 +651,21 @@ class TestDiscoveryRecommendationSeeder extends Seeder
     private function pickFromArray(array $values, int $index): string
     {
         return $values[($index - 1) % count($values)];
+    }
+
+    private function findDistinctUser(array $users, array $excludedIds, int $startIndex): array
+    {
+        $count = count($users);
+
+        for ($attempt = 0; $attempt < $count; $attempt++) {
+            $candidate = $users[($startIndex + $attempt) % $count];
+
+            if (! in_array($candidate['id'], $excludedIds, true)) {
+                return $candidate;
+            }
+        }
+
+        throw new RuntimeException('تعذر العثور على مستخدم مناسب لتوليد بيانات المراجعات.');
     }
 
     private function insertInChunks(string $table, array $rows): void

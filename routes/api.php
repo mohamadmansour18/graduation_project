@@ -6,6 +6,8 @@ use App\Http\Controllers\V1\Auth\PasswordResetController;
 use App\Http\Controllers\V1\Home\HomeController;
 use App\Http\Controllers\V1\TestDiscovery\HomeTestDiscoveryController;
 use App\Http\Controllers\V1\TestDiscovery\LabTestDiscoveryController;
+use App\Http\Controllers\V1\Tests\LabController;
+use App\Http\Controllers\V1\Tests\TestController;
 use App\Models\Test;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +36,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
         Route::prefix('auth')->group(function () {
 
+            //LOGIN && REGISTER
             Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:api-register');
             Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:api-login');
             Route::post('/verify-email' , [AuthController::class, 'verifyEmail'])->middleware('throttle:api-verify-email');
@@ -72,13 +75,23 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::get('/all-interests' , [HomeController::class , 'scientificInterests']);
                 Route::get('/test-by-interest/{interestId}' , [HomeController::class , 'testsByInterest']);
+                Route::post('/search-test-by-interest' , [HomeController::class , 'searchTests'])->middleware('throttle:api-search');
             });
 
             //LABORATORY
             Route::prefix('lab')->group(function () {
                 Route::get('/recommended-tests', [LabTestDiscoveryController::class, 'index']);
+                Route::post('/search' , [LabController::class, 'searchTests'])->middleware('throttle:api-search');
             });
 
+            //TESTS
+            Route::prefix('test')->group(function () {
+                Route::get('/tests-details/other/{testId}', [TestController::class , 'show']);
+                Route::get('/tests-details/other/sample/{testId}', [TestController::class , 'previewSampleQuestions']);
+                Route::get('/test-details/reviews/{testId}', [TestController::class , 'reviews']);
+                Route::get('/tests-details/my-private/{testId}', [TestController::class , 'showMyPrivateTestDetails']);
+                Route::get('/tests-details/my-public/{testId}', [TestController::class , 'showMyPublicTestDetails']);
+            });
         });
 
         });
@@ -95,20 +108,6 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
     });
 
-Route::get('/test', function () {
-
-    $test = Test::findOrFail(1);
-
-    $test->title = 'Updated at ' . now();
-    $test->save();
-
-    return response()->json([
-        'message' => 'تم تعديل الاختبار عبر Eloquent Model، ويجب أن يعمل الـ Observer الآن',
-        'test_id' => $test->id,
-        'new_title' => $test->title,
-    ]);
-
-});
 
 
 

@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\V1\Home;
 
+use App\Enums\TestSearchScope;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Search\SearchTestsByInterestRequest;
 use App\Services\Home\HomeService;
+use App\Services\Home\TestSearchService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -55,6 +58,22 @@ class HomeController extends Controller
         return $this->paginatedResponse(
             paginator: $paginator,
             title: 'تم جلب اختبارات التصنيف العلمي بنجاح'
+        );
+    }
+
+    public function searchTests(SearchTestsByInterestRequest $request , TestSearchService $service)
+    {
+        $filters = \App\DTOs\Search\TestSearchFilters::fromRequest(
+            $request->validated(),
+            $request->user()->id,
+            TestSearchScope::OTHERS->value
+        );
+
+        $paginator = $service->search($filters);
+
+        return $this->paginatedResponse(
+            paginator: $paginator,
+            title: 'تم البحث عن الاختبارات بنجاح'
         );
     }
 }
