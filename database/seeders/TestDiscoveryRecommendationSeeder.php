@@ -12,6 +12,7 @@ use App\Enums\SystemRole;
 use App\Enums\TargetLevel;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
+use App\Enums\UniversityDepartment;
 use App\Enums\UniversityName;
 use App\Enums\Vote;
 use App\Models\Interest;
@@ -29,12 +30,6 @@ class TestDiscoveryRecommendationSeeder extends Seeder
     private const INSERT_CHUNK_SIZE = 200;
     private const USER_EMAIL_DOMAIN = 'seed.nerd.local';
     private const GENERATED_TEST_TITLE_PREFIX = 'اختبار توصية';
-    private const SAFE_UNIVERSITY_DEPARTMENTS = [
-        'علوم الحاسوب',
-        'تكنولوجيا المعلومات',
-        'هندسة البرمجيات',
-        'هندسة الحاسوب',
-    ];
 
     public function run(): void
     {
@@ -349,7 +344,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             $educationLevel = $this->educationLevelForIndex($index);
             $timestamps = $this->timestampsForIndex($now, $index);
             $interest = $interests[($index * 2 + 3) % count($interests)];
-            $department = $this->pickFromArray(self::SAFE_UNIVERSITY_DEPARTMENTS, $index);
+            $department = $this->pickValueByIndex(UniversityDepartment::cases(), $index);
 
             $blueprints[] = [
                 'user' => [
