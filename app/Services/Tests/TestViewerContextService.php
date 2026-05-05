@@ -14,6 +14,8 @@ class TestViewerContextService
         $isOwner = (int) $test->creator_user_id === $viewerId;
         $isFree = is_null($test->price) || (float) $test->price <= 0;
         $hasPurchased = (bool) ($test->viewer_has_purchased ?? false);
+        $hasLiked = (bool) ($test->viewer_has_liked_it ?? false);
+        $hasBookmarked = (bool) ($test->viewer_has_bookmarked_it ?? false);
         $isFollowingCreator = (bool) ($test->viewer_is_following_creator ?? false);
         $canAccessPaidContent = $isOwner || $isFree || $hasPurchased;
 
@@ -22,6 +24,8 @@ class TestViewerContextService
             'is_free' => $isFree,
             'is_paid' => ! $isFree,
             'has_purchased' => $hasPurchased,
+            'has_liked' => $hasLiked,
+            'has_bookmarked' => $hasBookmarked,
             'is_following_creator' => $isFollowingCreator,
 
             'can_purchase' => ! $isOwner && ! $isFree && ! $hasPurchased,

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\V1\Tests;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tests\ListTestReviewsRequest;
+use App\Http\Resources\MyReviewResource;
 use App\Http\Resources\Tests\MyPrivateTestDetailsResource;
 use App\Http\Resources\Tests\MyPublicTestDetailsResource;
 use App\Http\Resources\Tests\TestDetailsResource;
@@ -75,7 +76,9 @@ class TestController extends Controller
         $result = $this->testService->listRatingForTest(
             testId: $testId,
             viewerId: Auth::id(),
-            rating: $request->ratingFilter()
+            rating: $request->ratingFilter(),
+            context: 'other',
+            excludeViewerReview: true
         );
 
         $paginator = $result['reviews'];
@@ -83,6 +86,7 @@ class TestController extends Controller
         return $this->dataResponse(
             data : [
                 'summary' => $result['summary'],
+                'my_review' => new MyReviewResource($result['my_review']),
                 'reviews' => TestReviewResource::collection($paginator->items()),
                 'meta' => [
                     'current_page' => $paginator->currentPage(),

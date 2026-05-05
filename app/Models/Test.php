@@ -35,7 +35,7 @@ use Laravel\Scout\Searchable;
 
 class Test extends Model
 {
-    use searchable ;    //Trait reflects model changes (insert - update - delete) to Meilisearch database index & it is depends on Laravel Observer so you should use eloquent ORM in (update - delete)
+    use Searchable ;    //Trait reflects model changes (insert - update - delete) to Meilisearch database index & it is depends on Laravel Observer so you should use eloquent ORM in (update - delete)
 
     protected $table = 'test';
 

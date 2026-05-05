@@ -7,7 +7,9 @@ use App\Http\Controllers\V1\Home\HomeController;
 use App\Http\Controllers\V1\TestDiscovery\HomeTestDiscoveryController;
 use App\Http\Controllers\V1\TestDiscovery\LabTestDiscoveryController;
 use App\Http\Controllers\V1\Tests\LabController;
+use App\Http\Controllers\V1\Tests\TestBookmarkController;
 use App\Http\Controllers\V1\Tests\TestController;
+use App\Http\Controllers\V1\Tests\TestLikeController;
 use App\Models\Test;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
@@ -89,8 +91,18 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/tests-details/other/{testId}', [TestController::class , 'show']);
                 Route::get('/tests-details/other/sample/{testId}', [TestController::class , 'previewSampleQuestions']);
                 Route::get('/test-details/reviews/{testId}', [TestController::class , 'reviews']);
+
                 Route::get('/tests-details/my-private/{testId}', [TestController::class , 'showMyPrivateTestDetails']);
                 Route::get('/tests-details/my-public/{testId}', [TestController::class , 'showMyPublicTestDetails']);
+
+                Route::middleware('throttle:8,1')->group(function () {
+                    Route::post('/like/{testId}' , [TestLikeController::class , 'like']);
+                    Route::delete('/unlike/{testId}' , [TestLikeController::class , 'unlike']);
+
+                    Route::post('/bookmark/{testId}' , [TestBookmarkController::class , 'bookmark']);
+                    Route::delete('/unbookmark/{testId}' , [TestBookmarkController::class , 'unbookmark']);
+                });
+
             });
         });
 

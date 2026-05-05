@@ -89,7 +89,7 @@ class TestService
         return $this->testRepository->getPreviewQuestionsByTestId($testId);
     }
 
-    public function listRatingForTest(int $testId, int $viewerId, ?int $rating): array
+    public function listRatingForTest(int $testId, int $viewerId, ?int $rating , string $context , bool $excludeViewerReview): array
     {
         $test = $this->testRepository->findVisiblePublicTest($testId);
 
@@ -106,10 +106,11 @@ class TestService
             testId: $testId,
             viewerId: $viewerId,
             rating: $rating,
-            perPage: 20
+            perPage: 20,
+            excludeViewerReview: $excludeViewerReview
         );
 
-        return [
+        $response = [
             'summary' => [
                 'average_rating' => round((float) $test->average_rating, 1) ?? 0.0,
                 'total_reviews_count' => CounterProcessor::compact($totalReviews),
@@ -124,6 +125,17 @@ class TestService
             ],
             'reviews' => $reviews,
         ];
+
+        if ($context === 'other') {
+            $myReview = $this->testRepository->findMyReviewForTest(
+                testId: $testId,
+                viewerId: $viewerId
+            );
+
+            $response['my_review'] = $myReview ?? [];
+        }
+
+        return $response;
     }
 
     ////////////////////////////////////////////////////////////////////////////

@@ -17,9 +17,9 @@ return new class extends Migration
             $table->unsignedInteger('library_materials_count')->default(0);
             $table->unsignedInteger('folders_count')->default(0);
             $table->decimal('average_test_rating', 4, 2)->default(0);
-            $table->string('total_test_likes_received');
-            $table->string('total_test_reviews_received');
-            $table->string('total_test_bookmarks_received');
+            $table->unsignedInteger('total_test_likes_received')->default(0);
+            $table->unsignedInteger('total_test_reviews_received')->default(0);
+            $table->unsignedInteger('total_test_bookmarks_received')->default(0);
             $table->timestamps();
         });
     }

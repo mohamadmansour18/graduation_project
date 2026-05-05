@@ -254,7 +254,7 @@ test_status_histories(
   changed_by_user_id, note
 )
 
-test_bookmarks(id, test_id, use_id)
+test_bookmarks(id, test_id, user_id)
 
 test_likes(id, test_id, user_id)
 

@@ -42,6 +42,14 @@ class TestRepository
                         ->where('buyer_user_id', $viewerId)
                         ->where('payment_status', PaymentStatus::Paid->value);
                 },
+                'testLikes as viewer_has_liked_it' => function (Builder $query) use ($viewerId , $testId) {
+                    $query
+                        ->where('user_id', $viewerId);
+                },
+                'testBookmarks as viewer_has_bookmarked_it' => function (Builder $query) use ($viewerId, $testId) {
+                    $query
+                        ->where('user_id', $viewerId);
+                }
             ])
             ->where('id', $testId)
             ->first();
@@ -166,7 +174,7 @@ class TestRepository
             ->count();
     }
 
-    public function paginateReviews(int $testId, int $viewerId, ?int $rating, int $perPage = 20): LengthAwarePaginator
+    public function paginateReviews(int $testId, int $viewerId, ?int $rating, int $perPage = 20 , $excludeViewerReview = false): LengthAwarePaginator
     {
         return TestReview::query()
             ->select([
@@ -190,7 +198,31 @@ class TestRepository
             ->when($rating !== null , function ($query) use ($rating) {
                 $query->where('rating', $rating);
             })
+            ->when($excludeViewerReview , function ($query) use ($viewerId) {
+                $query->where('user_id', '!=', $viewerId);
+            })
             ->latest('id')
             ->paginate($perPage);
     }
+    public function findMyReviewForTest(int $testId, int $viewerId): Builder|Model|null
+    {
+        return TestReview::query()
+            ->select([
+                'id',
+                'test_id',
+                'user_id',
+                'rating',
+                'review_text',
+                'helpful_yes_count',
+                'created_at',
+            ])
+            ->with([
+                'user:id,name,is_academically_verified',
+                'user.userProfile:user_id,avatar_path',
+            ])
+            ->where('test_id', $testId)
+            ->where('user_id', $viewerId)
+            ->first();
+    }
+
 }
