@@ -12,7 +12,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule
+            ->command('pdf-cache:cleanup-test-downloads --days=7')->dailyAt('03:00');
     }
 
     /**

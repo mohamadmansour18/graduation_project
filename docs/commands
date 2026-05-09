@@ -12,3 +12,13 @@ sail artisan scout:flush "App\Models\Test"
 Sync index setting from config/scout.php to meilisearch index :
 sail artisan scout:sync-index-settings
 
+------------------
+crontab :
+* * * * * cd /home/mansour/laravel_project/graduation_project_nerd && ./vendor/bin/sail artisan schedule:run --quiet >> storage/logs/scheduler.log 2>&1
+
+sudo systemctl status cron
+if not :
+sudo systemctl start cron
+run auto :
+sudo systemctl enable cron
+

@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Events\TestBookmarkStateChanged;
+use App\Events\TestDownloaded;
 use App\Events\TestLikeStateChanged;
 use App\Listeners\UpdateTestBookmarkSummaryTables;
+use App\Listeners\UpdateTestDownloadSummaryTables;
 use App\Listeners\UpdateTestLikeSummaryTables;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -29,6 +31,10 @@ class EventServiceProvider extends ServiceProvider
 
         TestBookmarkStateChanged::class => [
             UpdateTestBookmarkSummaryTables::class
+        ],
+
+        TestDownloaded::class => [
+            UpdateTestDownloadSummaryTables::class,
         ],
     ];
 

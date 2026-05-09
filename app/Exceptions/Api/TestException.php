@@ -59,4 +59,21 @@ class TestException extends ApiException
         );
     }
 
+    public static function purchaseRequiredForDownload(): self
+    {
+        return new self(
+            title: '! لا يمكن تنزيل الاختبار',
+            message: 'يجب شراء الاختبار قبل إمكانية تنزيله',
+            status: 403
+        );
+    }
+
+    public static function downloadFileTooLarge(): self
+    {
+        return new self(
+            title: '! لا يمكن تنزيل الاختبار',
+            message: 'حجم الاختبار غير مناسب للتنزيل حالياً',
+            status: 422
+        );
+    }
 }

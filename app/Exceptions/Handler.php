@@ -22,6 +22,7 @@ use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
 use App\Exceptions\Jwt\TokenMissingException;
 use App\Exceptions\Jwt\RefreshTokenExpiredException;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 
 class Handler extends ExceptionHandler
 {
@@ -143,6 +144,12 @@ class Handler extends ExceptionHandler
                 title: '! محاولات كثيرة',
                 message: 'لقد قمت بإرسال العديد من الطلبات في وقت قصير ، يرجى المحاولة لاحقا',
                 status: 429
+            ),
+
+            $e instanceof LockTimeoutException => ApiErrorResponse::make(
+                title: '! الطلب قيد المعالجة',
+                message: 'يتم تجهيز الطلب حاليا، يرجى إعادة المحاولة بعد لحظات',
+                status: 423
             ),
 
             $e instanceof ApiException => ApiErrorResponse::make(

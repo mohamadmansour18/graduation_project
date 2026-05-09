@@ -15,6 +15,7 @@
         "laravel/scout": "^11.1",
         "laravel/tinker": "^2.8",
         "meilisearch/meilisearch-php": "^1.16",
+        "mpdf/mpdf": "^8.3",
         "php-open-source-saver/jwt-auth": "^2.8",
         "predis/predis": "^3.4"
     },

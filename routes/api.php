@@ -4,11 +4,13 @@ use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
 use App\Http\Controllers\V1\Auth\PasswordResetController;
 use App\Http\Controllers\V1\Home\HomeController;
+use App\Http\Controllers\V1\Profile\FollowController;
 use App\Http\Controllers\V1\TestDiscovery\HomeTestDiscoveryController;
 use App\Http\Controllers\V1\TestDiscovery\LabTestDiscoveryController;
 use App\Http\Controllers\V1\Tests\LabController;
 use App\Http\Controllers\V1\Tests\TestBookmarkController;
 use App\Http\Controllers\V1\Tests\TestController;
+use App\Http\Controllers\V1\Tests\TestDownloadController;
 use App\Http\Controllers\V1\Tests\TestLikeController;
 use App\Models\Test;
 use Carbon\Carbon;
@@ -103,6 +105,16 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::delete('/unbookmark/{testId}' , [TestBookmarkController::class , 'unbookmark']);
                 });
 
+                Route::get('/download/{testId}' , [TestDownloadController::class , 'downloadPdf'])->middleware('throttle:10,3');
+
+            });
+
+            //USER PROFILE
+            Route::prefix('users-profile')->group(function () {
+                Route::middleware('throttle:4,2')->group(function () {
+                    Route::post('/follow/{userId}' , [FollowController::class , 'follow']);
+                    Route::delete('/unfollow/{userId}' , [FollowController::class , 'unfollow']);
+                });
             });
         });
 

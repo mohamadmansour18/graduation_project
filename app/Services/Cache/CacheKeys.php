@@ -17,9 +17,11 @@ class CacheKeys
     public const TAG_TESTS = 'tests';
     public const TAG_TEST_INTERESTS = 'test_interests';
 
+    public const TAG_TEST_PDF_DOWNLOADS = 'test_pdf_downloads';
+
     /*
     |--------------------------------------------------------------------------
-    | Home Cache Keys
+    | Cache Keys
     |--------------------------------------------------------------------------
     */
     public const HOME_SCIENTIFIC_INTERESTS_GROUPED = 'home:scientific_interests:grouped';
@@ -27,6 +29,12 @@ class CacheKeys
     public static function testsByInterest(int $interestId, int $page, int $perPage): string
     {
         return "home:interests:{$interestId}:tests:page:{$page}:per_page:{$perPage}";
+    }
+
+
+    public static function testPdfDownloadLock(int $testId): string
+    {
+        return "tests:{$testId}:pdf_download:lock";
     }
 
     /*

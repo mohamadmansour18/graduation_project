@@ -176,8 +176,8 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                 $likesCount = 10 + (($index * 11) % 280);
                 $bookmarksCount = 5 + (($index * 7) % 190);
                 $participantsCount = 35 + (($index * 13) % 650);
-                $questionCount = 10 + ($index % 26);
-                $previewQuestionCount = min(5, max(2, (int) floor($questionCount / 4)));
+                $questionCount = $this->questionCountForIndex($index);
+                $previewQuestionCount = $this->previewQuestionCountFor($questionCount, $index);
 
                 $testsRows[] = [
                     'creator_user_id' => $creator['id'],
@@ -232,6 +232,12 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             if ($persistedTests->count() !== self::TESTS_COUNT) {
                 throw new RuntimeException('عدد الاختبارات المولدة لا يطابق العدد المطلوب.');
             }
+
+            $this->seedTestQuestionsAndOptions(
+                tests: $persistedTests->all(),
+                testBlueprints: $testsRows,
+                now: $now,
+            );
 
             foreach ($persistedTests as $offset => $test) {
                 $interest = $interests[(($offset + 1) * 3 + 5) % $interests->count()];
@@ -409,6 +415,108 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         return "اختبار تدريبي في {$interestName} موجه لفئة {$targetLevel} بدرجة صعوبة {$difficulty} مع أسئلة متنوعة تساعد على تقييم الفهم بشكل عملي.";
     }
 
+    private function seedTestQuestionsAndOptions(array $tests, array $testBlueprints, CarbonImmutable $now): void
+    {
+        $nextQuestionId = ((int) DB::table('test_question')->max('id')) + 1;
+        $nextOptionId = ((int) DB::table('test_question_options')->max('id')) + 1;
+        $questionRows = [];
+        $optionRows = [];
+
+        foreach ($tests as $offset => $test) {
+            $testBlueprint = $testBlueprints[$offset] ?? null;
+
+            if ($testBlueprint === null) {
+                throw new RuntimeException('تعذر مطابقة بيانات الاختبار المحفوظة مع مخطط البيانات المولد.');
+            }
+
+            $testIndex = $offset + 1;
+            $testId = (int) $test->id;
+            $questionCount = (int) $testBlueprint['question_count'];
+            $previewQuestionCount = (int) $testBlueprint['preview_question_count'];
+            $language = (string) $testBlueprint['language'];
+            $interestName = $this->extractInterestNameFromTitle((string) $testBlueprint['title']);
+            $targetLevel = (string) $testBlueprint['target_level'];
+            $difficulty = (string) $testBlueprint['difficulty_level'];
+
+            for ($position = 1; $position <= $questionCount; $position++) {
+                $questionId = $nextQuestionId++;
+                $timestamps = $this->questionTimestampsFor(
+                    baseCreatedAt: $testBlueprint['created_at'],
+                    baseUpdatedAt: $testBlueprint['updated_at'],
+                    questionPosition: $position,
+                    questionCount: $questionCount,
+                    now: $now,
+                );
+                $options = $this->buildQuestionOptions(
+                    testIndex: $testIndex,
+                    questionPosition: $position,
+                    language: $language,
+                    interestName: $interestName,
+                    difficulty: $difficulty,
+                );
+
+                $questionRows[] = [
+                    'id' => $questionId,
+                    'test_id' => $testId,
+                    'position' => $position,
+                    'question_text' => $this->buildQuestionText(
+                        testIndex: $testIndex,
+                        questionPosition: $position,
+                        language: $language,
+                        interestName: $interestName,
+                        targetLevel: $targetLevel,
+                        difficulty: $difficulty,
+                    ),
+                    'hint_text' => $this->buildQuestionHint(
+                        testIndex: $testIndex,
+                        questionPosition: $position,
+                        language: $language,
+                        interestName: $interestName,
+                    ),
+                    'is_preview' => $position <= $previewQuestionCount,
+                    'options_count' => count($options),
+                    'created_at' => $timestamps['created_at'],
+                    'updated_at' => $timestamps['updated_at'],
+                ];
+
+                foreach ($options as $optionIndex => $option) {
+                    $optionRows[] = [
+                        'id' => $nextOptionId++,
+                        'test_question_id' => $questionId,
+                        'position' => $optionIndex + 1,
+                        'option_text' => $option['text'],
+                        'is_correct' => $option['is_correct'],
+                        'created_at' => $timestamps['created_at'],
+                        'updated_at' => $timestamps['updated_at'],
+                    ];
+                }
+
+                if (count($optionRows) >= self::INSERT_CHUNK_SIZE * 4) {
+                    if ($questionRows !== []) {
+                        $this->insertInChunks('test_question', $questionRows);
+                        $questionRows = [];
+                    }
+
+                    $this->insertInChunks('test_question_options', $optionRows);
+                    $optionRows = [];
+                }
+
+                if (count($questionRows) >= self::INSERT_CHUNK_SIZE) {
+                    $this->insertInChunks('test_question', $questionRows);
+                    $questionRows = [];
+                }
+            }
+        }
+
+        if ($questionRows !== []) {
+            $this->insertInChunks('test_question', $questionRows);
+        }
+
+        if ($optionRows !== []) {
+            $this->insertInChunks('test_question_options', $optionRows);
+        }
+    }
+
     private function buildReviewDataset(array $tests, array $users, CarbonImmutable $now): array
     {
         $reviewRows = [];
@@ -503,6 +611,188 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         ];
 
         return $comments[$rating] . " رقم المراجعة {$reviewOffset} للاختبار {$testIndex}.";
+    }
+
+    private function questionCountForIndex(int $index): int
+    {
+        return 5 + (($index * 7) % 96);
+    }
+
+    private function previewQuestionCountFor(int $questionCount, int $index): int
+    {
+        return min(5, max(2, min($questionCount, 2 + ($index % 4))));
+    }
+
+    private function extractInterestNameFromTitle(string $title): string
+    {
+        $parts = explode(' - ', $title, 2);
+
+        return trim($parts[1] ?? $title);
+    }
+
+    private function questionTimestampsFor(
+        mixed $baseCreatedAt,
+        mixed $baseUpdatedAt,
+        int $questionPosition,
+        int $questionCount,
+        CarbonImmutable $now
+    ): array {
+        $createdAt = CarbonImmutable::parse((string) $baseCreatedAt)->addMinutes($questionPosition);
+        $maxUpdatedAt = CarbonImmutable::parse((string) $baseUpdatedAt);
+        $calculatedUpdatedAt = $createdAt->addMinutes(max(1, (int) floor($questionCount / 3)));
+        $updatedAt = $calculatedUpdatedAt->greaterThan($maxUpdatedAt) ? $maxUpdatedAt : $calculatedUpdatedAt;
+
+        if ($updatedAt->greaterThan($now)) {
+            $updatedAt = $now;
+        }
+
+        return [
+            'created_at' => $createdAt,
+            'updated_at' => $updatedAt,
+        ];
+    }
+
+    private function buildQuestionText(
+        int $testIndex,
+        int $questionPosition,
+        string $language,
+        string $interestName,
+        string $targetLevel,
+        string $difficulty
+    ): string {
+        $variant = ($testIndex + $questionPosition) % 4;
+
+        return match ($language) {
+            Language::ENGLISH->value => match ($variant) {
+                0 => "Which statement best describes the core objective of {$interestName} for {$targetLevel} at {$difficulty} level?",
+                1 => "In a realistic {$interestName} scenario, what should the learner do first to meet the {$difficulty} objective?",
+                2 => "Which option reflects the most accurate best practice for {$interestName} when the audience is {$targetLevel}?",
+                default => "What is the most suitable next step when applying {$interestName} concepts in an {$difficulty} assessment for {$targetLevel}?",
+            },
+            Language::Mixed->value => match ($variant) {
+                0 => "أي option يشرح best practice في {$interestName} لفئة {$targetLevel} بمستوى {$difficulty}؟",
+                1 => "في هذا السؤال عن {$interestName}، ما هو next step الأنسب حتى نحقق learning objective الخاص بـ {$targetLevel}؟",
+                2 => "أي statement أدق عند تطبيق {$interestName} داخل scenario موجه إلى {$targetLevel} وبصعوبة {$difficulty}؟",
+                default => "ما هو most appropriate action عند تحليل {$interestName} ضمن اختبار {$difficulty} لفئة {$targetLevel}؟",
+            },
+            default => match ($variant) {
+                0 => "ما الهدف الأساسي من توظيف {$interestName} في سؤال موجه إلى {$targetLevel} وبدرجة {$difficulty}؟",
+                1 => "في سياق {$interestName}، ما الخطوة الأولى الأكثر منطقية للوصول إلى فهم صحيح للمفهوم؟",
+                2 => "أي عبارة تعبّر بدقة أكبر عن best practice المرتبطة بـ {$interestName} لهذه الفئة الدراسية؟",
+                default => "عند حل مسألة ضمن {$interestName}، ما التصرف الأنسب الذي يعكس فهماً عملياً للمحتوى؟",
+            },
+        };
+    }
+
+    private function buildQuestionHint(
+        int $testIndex,
+        int $questionPosition,
+        string $language,
+        string $interestName
+    ): ?string {
+        if ((($testIndex * 2) + $questionPosition) % 3 !== 0) {
+            return null;
+        }
+
+        return match ($language) {
+            Language::ENGLISH->value => "Hint: focus on the core concept of {$interestName} before checking the detailed wording.",
+            Language::Mixed->value => "Hint: ركّز على core concept في {$interestName} ولا تنخدع بالتفاصيل الثانوية.",
+            default => "ابدأ بالفكرة الأساسية في {$interestName} ثم استبعد الخيارات التي تركز على تفاصيل جانبية.",
+        };
+    }
+
+    private function buildQuestionOptions(
+        int $testIndex,
+        int $questionPosition,
+        string $language,
+        string $interestName,
+        string $difficulty
+    ): array {
+        $optionsCount = 2 + (($testIndex + $questionPosition) % 4);
+        $correctPosition = ($testIndex + ($questionPosition * 2)) % $optionsCount;
+        $options = [];
+
+        for ($optionIndex = 0; $optionIndex < $optionsCount; $optionIndex++) {
+            $isCorrect = $optionIndex === $correctPosition;
+
+            $options[] = [
+                'text' => $this->buildOptionText(
+                    language: $language,
+                    interestName: $interestName,
+                    difficulty: $difficulty,
+                    variantIndex: $optionIndex,
+                    isCorrect: $isCorrect,
+                ),
+                'is_correct' => $isCorrect,
+            ];
+        }
+
+        return $options;
+    }
+
+    private function buildOptionText(
+        string $language,
+        string $interestName,
+        string $difficulty,
+        int $variantIndex,
+        bool $isCorrect
+    ): string {
+        $correctArabic = [
+            "البدء بفهم الفكرة المركزية في {$interestName} ثم تطبيقها على مثال واضح.",
+            "تحليل المعطيات أولاً ثم اختيار الإجراء الذي يحقق الهدف التعليمي بدقة.",
+            "التركيز على المفهوم الأساسي واستبعاد التفاصيل التي لا تغيّر القرار النهائي.",
+            "مقارنة الخيارات وفق المعنى العملي للمفهوم وليس وفق الكلمات المتشابهة فقط.",
+            "ربط {$interestName} بالسياق الصحيح قبل الانتقال إلى الحل النهائي.",
+        ];
+        $wrongArabic = [
+            "اختيار أول إجابة تبدو مألوفة حتى لو لم ترتبط بسياق السؤال.",
+            "الاعتماد على حفظ المصطلح فقط دون فهم طريقة استخدامه.",
+            "تجاهل المعطيات الأساسية والتركيز على كلمة واحدة داخل السؤال.",
+            "اختيار الإجابة الأطول على افتراض أنها الأدق دائماً.",
+            "تبديل الخطوات المنطقية والاكتفاء بتخمين سريع.",
+        ];
+        $correctEnglish = [
+            "Identify the core idea of {$interestName}, then apply it to the given context.",
+            "Start from the learning objective and choose the option that fits the scenario logically.",
+            "Filter out distracting details and focus on the concept that drives the decision.",
+            "Match the concept to a practical use case before selecting the final answer.",
+            "Evaluate the options by meaning, not by surface wording alone.",
+        ];
+        $wrongEnglish = [
+            "Pick the first familiar term even if it does not match the scenario.",
+            "Ignore the context and rely only on a memorized keyword.",
+            "Assume the longest answer is always the best answer.",
+            "Choose the option that sounds advanced without checking the objective.",
+            "Skip the concept and guess based on wording similarity only.",
+        ];
+        $correctMixed = [
+            "ابدأ من core concept في {$interestName} ثم طبّقه على scenario واضح.",
+            "راجع learning objective أولاً ثم اختر option ينسجم مع المعنى.",
+            "استبعد distractors وركّز على الفكرة التي تغيّر decision فعلاً.",
+            "اربط المصطلح بالسياق العملي قبل اختيار final answer.",
+            "قيّم الخيارات حسب meaning وليس حسب الكلمات المتشابهة فقط.",
+        ];
+        $wrongMixed = [
+            "اختر أي option يحتوي على keyword مألوفة حتى لو كان خارج context.",
+            "تجاهل scenario واعتمد على memorization فقط.",
+            "افترض أن most detailed answer هي الصحيحة دائماً.",
+            "ابدأ من guess سريع من دون مراجعة learning objective.",
+            "ركّز على wording واترك المعنى الأساسي للمفهوم.",
+        ];
+
+        $index = $variantIndex % 5;
+
+        return match ($language) {
+            Language::ENGLISH->value => $isCorrect
+                ? $correctEnglish[$index]
+                : $wrongEnglish[$index] . " This is weak for a {$difficulty} {$interestName} question.",
+            Language::Mixed->value => $isCorrect
+                ? $correctMixed[$index]
+                : $wrongMixed[$index] . " وهذا لا يناسب {$interestName}.",
+            default => $isCorrect
+                ? $correctArabic[$index]
+                : $wrongArabic[$index] . " وهذا لا يحقق مستوى {$difficulty} في {$interestName}.",
+        };
     }
 
     private function educationLevelForIndex(int $index): string
