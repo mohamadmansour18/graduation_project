@@ -76,4 +76,58 @@ class TestException extends ApiException
             status: 422
         );
     }
+
+    public static function testNotAvailableForReview(): self
+    {
+        return new self(
+            title: '! لا يمكن تقييم الاختبار',
+            message: 'هذا الاختبار غير متاح للتقييم حالياً',
+            status: 403
+        );
+    }
+
+    public static function cannotReviewOwnTest(): self
+    {
+        return new self(
+            title: '! لا يمكن تقييم الاختبار',
+            message: 'لا يمكنك تقييم اختبار قمت بإنشائه',
+            status: 403
+        );
+    }
+
+    public static function purchaseRequiredForReview(): self
+    {
+        return new self(
+            title: '! لا يمكن تقييم الاختبار',
+            message: 'يجب شراء الاختبار قبل إمكانية تقييمه',
+            status: 403
+        );
+    }
+
+    public static function alreadyReviewed(): self
+    {
+        return new self(
+            title: '! لا يمكن إضافة التقييم',
+            message: 'لقد قمت بتقييم هذا الاختبار مسبقاً',
+            status: 409
+        );
+    }
+
+    public static function reviewNotFound(): self
+    {
+        return new self(
+            title: '! التقييم غير موجود',
+            message: 'لم يتم العثور على تقييم خاص بك لهذا الاختبار',
+            status: 404
+        );
+    }
+
+    public static function nothingToUpdate(): self
+    {
+        return new self(
+            title: '! لم يتم تعديل التقييم',
+            message: 'لم يتم إرسال أي تغيير جديد على التقييم',
+            status: 422
+        );
+    }
 }

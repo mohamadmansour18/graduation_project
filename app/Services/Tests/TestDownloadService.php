@@ -19,16 +19,6 @@ use Mpdf\Mpdf;
 
 class TestDownloadService
 {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Flow of working :
-    | 1- get the test details from repository : (test - test question - test question options)
-    | 2- Access privileges are checked for testing (if not owner or not free or both we check if viewer buy it)
-    | 3- search for PDF in cache "search on path of file in cache if exists return it from local storage" or generate it and take lock and store path of file in cache
-    | 4- increment  the counter of summary table
-    |--------------------------------------------------------------------------
-    */
     private const MAX_DOWNLOAD_QUESTIONS = 100;
     private const PDF_TEMPLATE_VERSION = 'v1';
     private const PDF_CACHE_DIR = 'pdf-cache/test-downloads';

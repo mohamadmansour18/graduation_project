@@ -201,7 +201,8 @@ class TestRepository
             ->when($excludeViewerReview , function ($query) use ($viewerId) {
                 $query->where('user_id', '!=', $viewerId);
             })
-            ->latest('id')
+            ->orderByDesc('helpful_yes_count')
+            ->orderByDesc('id')
             ->paginate($perPage);
     }
     public function findMyReviewForTest(int $testId, int $viewerId): Builder|Model|null

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('test_id')->constrained('test')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->unsignedTinyInteger('rating');
-            $table->text('review_text')->nullable();
+            $table->text('review_text');
             $table->unsignedInteger('helpful_yes_count')->default(0);
             $table->unsignedInteger('helpful_no_count')->default(0);
             $table->timestamps();

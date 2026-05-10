@@ -21,7 +21,7 @@ class TestReviewResource extends JsonResource
         return [
             'id' => $this->id,
             'rating' => (int) $this->rating,
-            'review_text' => $this->review_text ?? null,
+            'review_text' => $this->review_text ,
             'created_at' => DateProcessor::fromTimestamp($this->created_at),
             'yes_count' => (int) $this->helpful_yes_count ?? 0,
 
