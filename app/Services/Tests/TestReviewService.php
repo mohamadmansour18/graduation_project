@@ -183,4 +183,98 @@ class TestReviewService
             throw TestException::purchaseRequiredForReview();
         }
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    public function storeFeedback(int $reviewId, int $userId, string $vote): void
+    {
+        DB::transaction(function () use ($reviewId, $userId, $vote) {
+
+            $review = $this->repository->findReviewForFeedback($reviewId);
+
+            if (! $review) {
+                throw TestException::reviewNotAvailable();
+            }
+
+            if ((int) $review->reviewer_user_id === $userId) {
+                throw TestException::cannotVoteOnOwnReview();
+            }
+
+            $currentFeedback = $this->repository->findUserFeedbackForUpdate(
+                reviewId: $reviewId,
+                userId: $userId
+            );
+
+            if ($currentFeedback) {
+                if ($currentFeedback->vote === $vote) {
+                    throw TestException::alreadyVoted();
+                }
+
+                $this->repository->updateUserFeedbackVote(
+                    feedbackId: (int) $currentFeedback->id,
+                    newVote: $vote
+                );
+
+                $this->repository->decrementHelpfulCounter(
+                    reviewId: $reviewId,
+                    vote: $currentFeedback->vote
+                );
+
+                $this->repository->incrementHelpfulCounter(
+                    reviewId: $reviewId,
+                    vote: $vote
+                );
+
+                return;
+            }
+
+            $created = $this->repository->createFeedbackIfMissing(
+                reviewId: $reviewId,
+                userId: $userId,
+                vote: $vote
+            );
+
+            if (! $created) {
+                throw TestException::alreadyVoted();
+            }
+
+            $this->repository->incrementHelpfulCounter(
+                reviewId: $reviewId,
+                vote: $vote
+            );
+
+        });
+    }
+
+    public function deleteFeedback(int $reviewId, int $userId): void
+    {
+        DB::transaction(function () use ($reviewId, $userId) {
+            $review = $this->repository->findReviewForFeedback($reviewId);
+
+            if (! $review) {
+                throw TestException::reviewNotAvailable();
+            }
+
+            $feedback = $this->repository->findUserFeedback(
+                reviewId: $reviewId,
+                userId: $userId
+            );
+
+            if (! $feedback) {
+                throw TestException::feedbackNotFound();
+            }
+
+            $deleted = $this->repository->deleteUserFeedback(
+                reviewId: $reviewId,
+                userId: $userId
+            );
+
+            if ($deleted) {
+                $this->repository->decrementHelpfulCounter(
+                    reviewId: $reviewId,
+                    vote: $feedback->vote
+                );
+            }
+        });
+    }
 }

@@ -175,4 +175,99 @@ class TestReviewRepository
             ]);
     }
 
+    //////////////////////////////////////////////////////////////////////
+
+    public function findReviewForFeedback(int $reviewId): ?object
+    {
+        return DB::table('test_reviews')
+            ->select([
+                'id',
+                'user_id as reviewer_user_id',
+                'test_id',
+                'helpful_yes_count',
+                'helpful_no_count',
+            ])
+            ->where('test_reviews.id', $reviewId)
+            ->first();
+    }
+
+    public function createFeedbackIfMissing(int $reviewId, int $userId, string $vote): bool
+    {
+        $now = now();
+
+        $inserted = DB::table('test_review_feedbacks')->insertOrIgnore([
+            'test_review_id' => $reviewId,
+            'user_id' => $userId,
+            'vote' => $vote,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        return $inserted === 1;
+    }
+
+    public function findUserFeedback(int $reviewId, int $userId): ?object
+    {
+        return DB::table('test_review_feedbacks')
+            ->where('test_review_id', $reviewId)
+            ->where('user_id', $userId)
+            ->first();
+    }
+
+    public function deleteUserFeedback(int $reviewId, int $userId): bool
+    {
+        $deleted = DB::table('test_review_feedbacks')
+            ->where('test_review_id', $reviewId)
+            ->where('user_id', $userId)
+            ->delete();
+
+        return $deleted === 1;
+    }
+
+    public function incrementHelpfulCounter(int $reviewId, string $vote): void
+    {
+        $column = $vote === 'yes'
+            ? 'helpful_yes_count'
+            : 'helpful_no_count';
+
+        DB::table('test_reviews')
+            ->where('id', $reviewId)
+            ->increment($column, 1, [
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function decrementHelpfulCounter(int $reviewId, string $vote): void
+    {
+        $column = $vote === 'yes'
+            ? 'helpful_yes_count'
+            : 'helpful_no_count';
+
+        DB::table('test_reviews')
+            ->where('id', $reviewId)
+            ->where($column, '>', 0)
+            ->decrement($column, 1, [
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function findUserFeedbackForUpdate(int $reviewId, int $userId): ?object
+    {
+        return DB::table('test_review_feedbacks')
+            ->where('test_review_id', $reviewId)
+            ->where('user_id', $userId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function updateUserFeedbackVote(int $feedbackId, string $newVote): void
+    {
+        DB::table('test_review_feedbacks')
+            ->where('id', $feedbackId)
+            ->update([
+                'vote' => $newVote,
+                'updated_at' => now(),
+            ]);
+    }
+
 }

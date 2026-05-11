@@ -108,6 +108,9 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::post('/add/review/{testId}' , [TestReviewController::class , 'store']);
                     Route::post('/update/review/{testId}' , [TestReviewController::class , 'update']);
                     Route::delete('/delete/review/{testId}' , [TestReviewController::class , 'destroy']);
+
+                    Route::post('/add/feedback-on-review/{reviewId}' , [TestReviewController::class ,'storeFeedback']);
+                    Route::delete('/delete/feedback-on-review/{reviewId}' , [TestReviewController::class ,'deleteFeedback']);
                 });
 
                 Route::get('/download/{testId}' , [TestDownloadController::class , 'downloadPdf'])->middleware('throttle:8,3');

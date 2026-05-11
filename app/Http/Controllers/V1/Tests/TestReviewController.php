@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\V1\Tests;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tests\StoreTestReviewFeedbackRequest;
 use App\Http\Requests\Tests\StoreTestReviewRequest;
 use App\Http\Requests\Tests\UpdateTestReviewRequest;
 use App\Services\Tests\TestReviewService;
@@ -57,6 +58,33 @@ class TestReviewController extends Controller
 
         return $this->successResponse(
             message: 'تم حذف التقييم بنجاح'
+        );
+    }
+
+    ///////////////////////////////////////////////////////////////
+    ///
+    public function storeFeedback(StoreTestReviewFeedbackRequest $request, int $reviewId): JsonResponse
+    {
+        $this->testReviewInteractionService->storeFeedback(
+            reviewId: $reviewId,
+            userId: Auth::id(),
+            vote: $request->validated('vote')
+        );
+
+        return $this->successResponse(
+            message: 'تم تسجيل رأيك بنجاح'
+        );
+    }
+
+    public function deleteFeedback(int $reviewId): JsonResponse
+    {
+        $this->testReviewInteractionService->deleteFeedback(
+            reviewId: $reviewId,
+            userId: Auth::id()
+        );
+
+        return $this->successResponse(
+            message: 'تم إزالة رأيك بنجاح'
         );
     }
 }

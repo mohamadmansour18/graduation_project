@@ -130,4 +130,40 @@ class TestException extends ApiException
             status: 422
         );
     }
+
+    public static function reviewNotAvailable(): self
+    {
+        return new self(
+            title: '! لا يمكن تنفيذ العملية',
+            message: 'التقييم غير متاح للتصويت حالياً',
+            status: 404
+        );
+    }
+
+    public static function cannotVoteOnOwnReview(): self
+    {
+        return new self(
+            title: '! لا يمكن تنفيذ العملية',
+            message: 'لا يمكنك التصويت على تقييمك الخاص',
+            status: 403
+        );
+    }
+
+    public static function alreadyVoted(): self
+    {
+        return new self(
+            title: '! لا يمكن تكرار التصويت',
+            message: 'لقد قمت بإبداء رأيك على هذا التقييم مسبقاً',
+            status: 409
+        );
+    }
+
+    public static function feedbackNotFound(): self
+    {
+        return new self(
+            title: '! لا يوجد رأي سابق',
+            message: 'لا يوجد رأي سابق لك على هذا التقييم لإزالته',
+            status: 404
+        );
+    }
 }
