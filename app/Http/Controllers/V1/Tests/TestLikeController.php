@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\V1\Tests;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tests\ListTestLikedUsersRequest;
+use App\Http\Resources\TestLikedUserResource;
 use App\Services\Tests\TestLikeService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +41,22 @@ class TestLikeController extends Controller
         return $this->dataResponse(
             data: $result,
             title: '! تم إزالة الإعجاب بنجاح'
+        );
+    }
+
+    public function likedUsers(ListTestLikedUsersRequest $request, int $testId): JsonResponse
+    {
+        $paginator = $this->testLikeService->listLikedUsers(
+            testId: $testId,
+            viewerId: Auth::id(),
+            search: $request->searchTerm(),
+            perPage: $request->perPage()
+        );
+
+        return $this->cursorPaginatedResponse(
+            paginator: $paginator,
+            data: TestLikedUserResource::collection($paginator->items()),
+            title: '! تم جلب المستخدمين بنجاح'
         );
     }
 }

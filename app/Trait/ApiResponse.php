@@ -2,6 +2,7 @@
 
 namespace App\Trait;
 
+use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -27,16 +28,32 @@ trait ApiResponse
         ], $statusCode);
     }
 
-    protected function paginatedResponse(LengthAwarePaginator $paginator , string $title = '! تم جلب البيانات بنجاح', int $statusCode = 200): JsonResponse {
+    protected function paginatedResponse(LengthAwarePaginator $paginator , mixed $data = null , string $title = '! تم جلب البيانات بنجاح', int $statusCode = 200): JsonResponse {
         return response()->json([
             'success' => true,
             'message' => $title,
-            'data' => $paginator->items(),
+            'data' => $data ?? $paginator->items(),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
                 'last_page' => $paginator->lastPage(),
+                'has_more_pages' => $paginator->hasMorePages(),
+            ],
+            'status_code' => $statusCode,
+        ], $statusCode);
+    }
+
+    protected function cursorPaginatedResponse(CursorPaginator $paginator, mixed $data = null , string $title = '! تم جلب البيانات بنجاح', int $statusCode = 200): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => $title,
+            'data' => $data ?? $paginator->items(),
+            'meta' => [
+                'per_page' => $paginator->perPage(),
+                'next_cursor' => optional($paginator->nextCursor())->encode(),
+                'prev_cursor' => optional($paginator->previousCursor())->encode(),
                 'has_more_pages' => $paginator->hasMorePages(),
             ],
             'status_code' => $statusCode,

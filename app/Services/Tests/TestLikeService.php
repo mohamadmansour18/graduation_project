@@ -5,6 +5,7 @@ namespace App\Services\Tests;
 use App\Events\TestLikeStateChanged;
 use App\Exceptions\Api\TestException;
 use App\Repositories\Tests\TestLikeRepository;
+use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 
 class TestLikeService
@@ -20,7 +21,7 @@ class TestLikeService
         $test = $this->testLikeRepository->findTest($testId);
 
         if(! $test){
-            throw TestException::notFound();
+            throw TestException::notAvailable();
         }
 
         if($test->creator_user_id === $userId)
@@ -109,5 +110,21 @@ class TestLikeService
         }
 
         return $result;
+    }
+
+    public function listLikedUsers(int $testId, int $viewerId, ?string $search, int $perPage): CursorPaginator
+    {
+        $canSee = $this->testLikeRepository->canViewerSeeTestLikes($testId);
+
+        if (! $canSee) {
+            throw TestException::notAvailable();
+        }
+
+        return $this->testLikeRepository->cursorPaginateLikedUsers(
+            testId: $testId,
+            viewerId: $viewerId,
+            search: $search,
+            perPage: $perPage
+        );
     }
 }

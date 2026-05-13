@@ -13,6 +13,15 @@ class TestException extends ApiException
         );
     }
 
+    public static function notAvailable(): self
+    {
+        return new self(
+            title: '! لا يمكن عرض الاختبار',
+            message: 'هذا الاختبار غير متاح للعرض حالياً',
+            status: 403
+        );
+    }
+
     public static function previewIsForOtherUsersOnly(): self
     {
         return new self(
@@ -164,6 +173,69 @@ class TestException extends ApiException
             title: '! لا يوجد رأي سابق',
             message: 'لا يوجد رأي سابق لك على هذا التقييم لإزالته',
             status: 404
+        );
+    }
+
+    public static function testNotAvailableForReport(): self
+    {
+        return new self(
+            title: '! لا يمكن إرسال البلاغ',
+            message: 'هذا الاختبار غير متاح للإبلاغ حالياً',
+            status: 403
+        );
+    }
+
+    public static function privateTestCannotBeReported(): self
+    {
+        return new self(
+            title: '! لا يمكن إرسال البلاغ',
+            message: 'لا يمكن الإبلاغ عن اختبار خاص',
+            status: 403
+        );
+    }
+
+    public static function cannotReportOwnTest(): self
+    {
+        return new self(
+            title: '! لا يمكن إرسال البلاغ',
+            message: 'لا يمكنك الإبلاغ عن اختبار قمت بإنشائه',
+            status: 403
+        );
+    }
+
+    public static function purchaseRequiredForReport(): self
+    {
+        return new self(
+            title: '! لا يمكن إرسال البلاغ',
+            message: 'يجب شراء الاختبار قبل إمكانية الإبلاغ عنه',
+            status: 403
+        );
+    }
+
+    public static function alreadyReportedForSameReasonAndVersion(): self
+    {
+        return new self(
+            title: '! لا يمكن إرسال البلاغ',
+            message: 'لقد قمت بالإبلاغ عن هذا الاختبار لنفس السبب ضمن نفس النسخة مسبقاً',
+            status: 409
+        );
+    }
+
+    public static function testVersionChanged(): self
+    {
+        return new self(
+            title: '! لا يمكن إرسال البلاغ',
+            message: 'تم تحديث نسخة الاختبار أثناء تنفيذ الطلب، يرجى إعادة المحاولة',
+            status: 409
+        );
+    }
+
+    public static function cannotReportOwnReview(): self
+    {
+        return new self(
+            title: '! لا يمكن إرسال البلاغ',
+            message: 'لا يمكنك الإبلاغ عن تقييم قمت بإنشائه',
+            status: 403
         );
     }
 }

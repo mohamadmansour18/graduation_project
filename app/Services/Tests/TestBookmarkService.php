@@ -5,6 +5,7 @@ namespace App\Services\Tests;
 use App\Events\TestBookmarkStateChanged;
 use App\Exceptions\Api\TestException;
 use App\Repositories\Tests\TestBookmarkRepository;
+use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 
 class TestBookmarkService
@@ -20,7 +21,7 @@ class TestBookmarkService
         $test = $this->testBookmarkRepository->findTest($testId);
 
         if (! $test) {
-            throw TestException::notFound();
+            throw TestException::notAvailable();
         }
 
         if($test->creator_user_id === $userId)
@@ -108,5 +109,21 @@ class TestBookmarkService
         }
 
         return $result;
+    }
+
+    public function listBookmarkedUsers(int $testId, int $viewerId, ?string $search, int $perPage): CursorPaginator
+    {
+        $canSee = $this->testBookmarkRepository->canViewerSeeTestBookmarks($testId);
+
+        if (! $canSee) {
+            throw TestException::notAvailable();
+        }
+
+        return $this->testBookmarkRepository->cursorPaginateBookmarkedUsers(
+            testId: $testId,
+            viewerId: $viewerId,
+            search: $search,
+            perPage: $perPage
+        );
     }
 }

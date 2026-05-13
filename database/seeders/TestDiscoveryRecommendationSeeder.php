@@ -173,8 +173,8 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                 $timestamps = $this->timestampsForIndex($now, $index);
                 $targetLevel = $this->resolveTargetLevelForUser($creator, $index);
 
-                $likesCount = 10 + (($index * 11) % 280);
-                $bookmarksCount = 5 + (($index * 7) % 190);
+                $likesCount = $this->engagementCountForIndex($index, 11);
+                $bookmarksCount = $this->engagementCountForIndex($index, 17);
                 $participantsCount = 35 + (($index * 13) % 650);
                 $questionCount = $this->questionCountForIndex($index);
                 $previewQuestionCount = $this->previewQuestionCountFor($questionCount, $index);
@@ -236,6 +236,13 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             $this->seedTestQuestionsAndOptions(
                 tests: $persistedTests->all(),
                 testBlueprints: $testsRows,
+                now: $now,
+            );
+
+            $this->seedTestEngagements(
+                tests: $persistedTests->all(),
+                testBlueprints: $testsRows,
+                users: $resolvedUsers,
                 now: $now,
             );
 
@@ -413,6 +420,64 @@ class TestDiscoveryRecommendationSeeder extends Seeder
     private function buildArabicTestDescription(string $interestName, string $targetLevel, string $difficulty): string
     {
         return "اختبار تدريبي في {$interestName} موجه لفئة {$targetLevel} بدرجة صعوبة {$difficulty} مع أسئلة متنوعة تساعد على تقييم الفهم بشكل عملي.";
+    }
+
+    private function seedTestEngagements(array $tests, array $testBlueprints, array $users, CarbonImmutable $now): void
+    {
+        $bookmarkRows = [];
+        $likeRows = [];
+
+        foreach ($tests as $offset => $test) {
+            $testBlueprint = $testBlueprints[$offset] ?? null;
+
+            if ($testBlueprint === null) {
+                throw new RuntimeException('تعذر مطابقة بيانات التفاعل مع الاختبار المحفوظ.');
+            }
+
+            $testIndex = $offset + 1;
+            $testId = (int) $test->id;
+            $creatorUserId = (int) $test->creator_user_id;
+            $baseTimestamps = $this->timestampsForIndex($now, $testIndex);
+
+            $bookmarkUsers = $this->pickDistinctUsers(
+                users: $users,
+                count: (int) $testBlueprint['bookmarks_count'],
+                excludedIds: [$creatorUserId],
+                startIndex: $testIndex * 13
+            );
+
+            foreach ($bookmarkUsers as $bookmarkOffset => $user) {
+                $bookmarkTimestamp = $baseTimestamps['published_at']->addDays(1)->addMinutes($bookmarkOffset + 1);
+
+                $bookmarkRows[] = [
+                    'test_id' => $testId,
+                    'user_id' => $user['id'],
+                    'created_at' => $bookmarkTimestamp,
+                    'updated_at' => $bookmarkTimestamp,
+                ];
+            }
+
+            $likeUsers = $this->pickDistinctUsers(
+                users: $users,
+                count: (int) $testBlueprint['likes_count'],
+                excludedIds: [$creatorUserId],
+                startIndex: ($testIndex * 17) + 5
+            );
+
+            foreach ($likeUsers as $likeOffset => $user) {
+                $likeTimestamp = $baseTimestamps['published_at']->addDays(2)->addMinutes($likeOffset + 1);
+
+                $likeRows[] = [
+                    'test_id' => $testId,
+                    'user_id' => $user['id'],
+                    'created_at' => $likeTimestamp,
+                    'updated_at' => $likeTimestamp,
+                ];
+            }
+        }
+
+        $this->insertInChunks('test_bookmarks', $bookmarkRows);
+        $this->insertInChunks('test_likes', $likeRows);
     }
 
     private function seedTestQuestionsAndOptions(array $tests, array $testBlueprints, CarbonImmutable $now): void
@@ -616,6 +681,11 @@ class TestDiscoveryRecommendationSeeder extends Seeder
     private function questionCountForIndex(int $index): int
     {
         return 5 + (($index * 7) % 96);
+    }
+
+    private function engagementCountForIndex(int $index, int $multiplier): int
+    {
+        return 21 + (($index * $multiplier) % 10);
     }
 
     private function previewQuestionCountFor(int $questionCount, int $index): int
@@ -951,6 +1021,25 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         }
 
         throw new RuntimeException('تعذر العثور على مستخدم مناسب لتوليد بيانات المراجعات.');
+    }
+
+    private function pickDistinctUsers(array $users, int $count, array $excludedIds, int $startIndex): array
+    {
+        $selectedUsers = [];
+        $usedIds = $excludedIds;
+
+        for ($offset = 0; $offset < $count; $offset++) {
+            $user = $this->findDistinctUser(
+                users: $users,
+                excludedIds: $usedIds,
+                startIndex: $startIndex + ($offset * 3)
+            );
+
+            $selectedUsers[] = $user;
+            $usedIds[] = $user['id'];
+        }
+
+        return $selectedUsers;
     }
 
     private function insertInChunks(string $table, array $rows): void

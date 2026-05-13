@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\V1\Tests;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ListTestBookmarkedUsersRequest;
+use App\Http\Resources\TestBookmarkedUserResource;
 use App\Services\Tests\TestBookmarkService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +41,22 @@ class TestBookmarkController extends Controller
         return $this->dataResponse(
             data: $result,
             title: '! تم إزالة الاختبار من المحفوظات بنجاح'
+        );
+    }
+
+    public function bookmarkedUsers(ListTestBookmarkedUsersRequest $request, int $testId): JsonResponse
+    {
+        $paginator = $this->testBookmarkService->listBookmarkedUsers(
+            testId: $testId,
+            viewerId: Auth::id(),
+            search: $request->searchTerm(),
+            perPage: $request->perPage()
+        );
+
+        return $this->cursorPaginatedResponse(
+            paginator: $paginator,
+            data: TestBookmarkedUserResource::collection($paginator->items()),
+            title: '! تم جلب المستخدمين بنجاح'
         );
     }
 }

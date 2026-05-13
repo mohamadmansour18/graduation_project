@@ -12,6 +12,8 @@ use App\Http\Controllers\V1\Tests\TestBookmarkController;
 use App\Http\Controllers\V1\Tests\TestController;
 use App\Http\Controllers\V1\Tests\TestDownloadController;
 use App\Http\Controllers\V1\Tests\TestLikeController;
+use App\Http\Controllers\V1\Tests\TestReportController;
+use App\Http\Controllers\V1\Tests\TestReportReviewController;
 use App\Http\Controllers\V1\Tests\TestReviewController;
 use App\Models\Test;
 use Carbon\Carbon;
@@ -111,10 +113,17 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                     Route::post('/add/feedback-on-review/{reviewId}' , [TestReviewController::class ,'storeFeedback']);
                     Route::delete('/delete/feedback-on-review/{reviewId}' , [TestReviewController::class ,'deleteFeedback']);
+
+                    Route::middleware('idempotency')->group(function () {
+                        Route::post('/reports/{testId}' , [TestReportController::class , 'store']);
+                        Route::post('/reports/review/{reviewId}' , [TestReportReviewController::class , 'store']);
+                    });
+
                 });
 
                 Route::get('/download/{testId}' , [TestDownloadController::class , 'downloadPdf'])->middleware('throttle:8,3');
-
+                Route::get('/like-list/{testId}' , [TestLikeController::class , 'likedUsers']);
+                Route::get('/bookmark-list/{testId}' , [TestBookmarkController::class , 'bookmarkedUsers']);
             });
 
             //USER PROFILE

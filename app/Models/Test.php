@@ -186,6 +186,11 @@ class Test extends Model
         )->withPivot('slot_no')->orderByPivot('slot_no');
     }
 
+    public function testReportReasonCounters(): HasMany
+    {
+        return $this->hasMany(TestReportReasonCounter::class, 'test_id');
+    }
+
     //This data it is store in to Meilisearch of each test
     //title : because the search by title
     //creator_user_id & test_type & review_status : because the filter by them
