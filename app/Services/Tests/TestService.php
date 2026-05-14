@@ -7,24 +7,26 @@ use App\Exceptions\Api\TestException;
 use App\Helpers\CounterProcessor;
 use App\Repositories\Tests\TestRepository;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Str;
 
 class TestService
 {
     public function __construct(
-        private readonly TestRepository $testRepository,
+        private readonly TestRepository           $testRepository,
         private readonly TestViewerContextService $viewerContextService
-    ) {}
+    )
+    {
+    }
 
     public function getDetailsForUser(int $testId, int $viewerId): array
     {
-        $test = $this->testRepository->findDetailsById($testId , $viewerId);
+        $test = $this->testRepository->findDetailsById($testId, $viewerId);
 
-        if(!$test)
-        {
+        if (!$test) {
             throw TestException::notFound();
         }
 
-        $viewerContext = $this->viewerContextService->build($test , $viewerId);
+        $viewerContext = $this->viewerContextService->build($test, $viewerId);
 
         return [
             'test' => $test,
@@ -41,7 +43,7 @@ class TestService
             withPreviewQuestions: false
         );
 
-        if (! $test) {
+        if (!$test) {
             throw TestException::notFound();
         }
 
@@ -62,7 +64,7 @@ class TestService
             withPreviewQuestions: true
         );
 
-        if (! $test) {
+        if (!$test) {
             throw TestException::notFound();
         }
 
@@ -74,32 +76,32 @@ class TestService
         ];
     }
 
-    public function getPreviewQuestionsForViewer(int $testId , int $viewerId): Collection|array
+    public function getPreviewQuestionsForViewer(int $testId, int $viewerId): Collection|array
     {
         $test = $this->testRepository->findVisiblePublicTest($testId);
 
-        if (! $test) {
+        if (!$test) {
             throw TestException::notFound();
         }
 
-        if ((int) $test->creator_user_id === $viewerId) {
+        if ((int)$test->creator_user_id === $viewerId) {
             throw TestException::previewIsForOtherUsersOnly();
         }
 
         return $this->testRepository->getPreviewQuestionsByTestId($testId);
     }
 
-    public function listRatingForTest(int $testId, int $viewerId, ?int $rating , string $context , bool $excludeViewerReview): array
+    public function listRatingForTest(int $testId, int $viewerId, ?int $rating, string $context, bool $excludeViewerReview): array
     {
         $test = $this->testRepository->findVisiblePublicTest($testId);
 
-        if (! $test) {
+        if (!$test) {
             throw TestException::notFound();
         }
 
         $distribution = $this->testRepository->getRatingDistribution($testId);
 
-        $totalReviews = (int) $test->reviews_count;
+        $totalReviews = (int)$test->reviews_count;
         $commentsCount = $this->testRepository->countTextComments($testId);
 
         $reviews = $this->testRepository->paginateReviews(
@@ -112,7 +114,7 @@ class TestService
 
         $response = [
             'summary' => [
-                'average_rating' => round((float) $test->average_rating, 1) ?? 0.0,
+                'average_rating' => round((float)$test->average_rating, 1) ?? 0.0,
                 'total_reviews_count' => CounterProcessor::compact($totalReviews),
                 'comments_count' => CounterProcessor::compact($commentsCount),
                 'rating_distribution' => [
@@ -138,8 +140,6 @@ class TestService
         return $response;
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-
     private function buildRatingDistributionItem(int $count, int $totalReviews): array
     {
         $percentage = $totalReviews > 0
@@ -149,6 +149,58 @@ class TestService
         return [
             'count' => $count,
             'percentage' => $percentage,
+        ];
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    public function getShareLink(int $testId): array
+    {
+        $test = $this->testRepository->findShareableTest($testId);
+
+        if (!$test) {
+            throw TestException::notAvailableToShare();
+        }
+
+        $slug = $test->share_slug;
+
+        if (!$slug) {
+            $slug = $this->generateUniqueSlug();
+
+            $this->testRepository->updateShareSlug(
+                testId: $testId,
+                slug: $slug
+            );
+        }
+
+        return [
+            'share_slug' => $slug,
+            'share_url' => url('/share/tests/' . $slug)  ,
+        ];
+    }
+
+    private function generateUniqueSlug(): string
+    {
+        do {
+            $slug = Str::lower(Str::random(15));
+        } while ($this->testRepository->shareSlugExists($slug));
+
+        return $slug;
+    }
+
+    public function getTestDetailsBySlug(string $slug , int $userId): array
+    {
+        $test = $this->testRepository->findByShareSlug($slug);
+
+        if (! $test) {
+            throw TestException::notAvailable();
+        }
+
+        $isOwner = (int) $test->creator_user_id === (int) $userId;
+
+        return [
+            'test_id' => $test->id,
+            'is_owner' => $isOwner,
         ];
     }
 }

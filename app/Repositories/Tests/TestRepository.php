@@ -226,4 +226,52 @@ class TestRepository
             ->first();
     }
 
+    /////////////////////////////////////////////////////////////////
+
+    public function findShareableTest(int $testId): ?object
+    {
+        return DB::table('test')
+            ->select([
+                'id',
+                'creator_user_id',
+                'title',
+                'test_type',
+                'review_status',
+                'share_slug',
+            ])
+            ->where('id', $testId)
+            ->where('test_type', TestType::Public->value)
+            ->where('review_status', TestReviewStatus::Approved->value)
+            ->first();
+    }
+
+    public function updateShareSlug(int $testId, string $slug): void
+    {
+        DB::table('test')
+            ->where('id', $testId)
+            ->whereNull('share_slug')
+            ->update([
+                'share_slug' => $slug,
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function shareSlugExists(string $slug): bool
+    {
+        return DB::table('test')
+            ->where('share_slug', $slug)
+            ->exists();
+    }
+
+    public function findByShareSlug(string $slug): ?object
+    {
+        return DB::table('test')
+            ->select(['id', 'share_slug', 'creator_user_id'])
+            ->where('share_slug', $slug)
+            ->where('test_type', TestType::Public->value)
+            ->where('review_status', TestReviewStatus::Approved->value)
+            ->first();
+    }
+
+
 }

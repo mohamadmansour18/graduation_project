@@ -62,6 +62,7 @@ class Test extends Model
         'reviews_count',
         'participants_count',
         'average_rating',
+        'share_slug'
     ];
 
     protected $casts = [

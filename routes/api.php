@@ -124,6 +124,8 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/download/{testId}' , [TestDownloadController::class , 'downloadPdf'])->middleware('throttle:8,3');
                 Route::get('/like-list/{testId}' , [TestLikeController::class , 'likedUsers']);
                 Route::get('/bookmark-list/{testId}' , [TestBookmarkController::class , 'bookmarkedUsers']);
+                Route::get('/share-link/{testId}' , [TestController::class , 'shareLink']);
+                Route::get('/shared/{slug}' , [TestController::class , 'showByShareSlug']);
             });
 
             //USER PROFILE

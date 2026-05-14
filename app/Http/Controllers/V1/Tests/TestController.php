@@ -99,4 +99,23 @@ class TestController extends Controller
             title: '! تم جلب تقييمات الاختبار بنجاح'
         );
     }
+
+    public function shareLink(int $testId): JsonResponse
+    {
+        $data = $this->testService->getShareLink($testId);
+
+        return $this->dataResponse(
+            data: $data,
+            title: '! تم جلب رابط المشاركة بنجاح'
+        );
+    }
+
+    public function showByShareSlug(string $slug): JsonResponse
+    {
+        $userId = Auth::id();
+
+        $data = $this->testService->getTestDetailsBySlug($slug , $userId);
+
+        return $this->dataResponse($data);
+    }
 }

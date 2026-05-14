@@ -37,6 +37,7 @@ return new class extends Migration
             $table->unsignedInteger('reviews_count')->default(0);
             $table->unsignedInteger('participants_count')->default(0);
             $table->decimal('average_rating', 4, 2)->default(0);
+            $table->string('share_slug', 80)->nullable()->unique();
             $table->timestamps();
         });
     }

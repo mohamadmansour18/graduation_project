@@ -238,4 +238,13 @@ class TestException extends ApiException
             status: 403
         );
     }
+
+    public static function notAvailableToShare(): self
+    {
+        return new self(
+            title: '! لا يمكن مشاركة الاختبار',
+            message: 'هذا الاختبار غير متاح للمشاركة حالياً بسبب حالته',
+            status: 403
+        );
+    }
 }
