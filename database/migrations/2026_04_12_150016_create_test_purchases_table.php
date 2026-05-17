@@ -19,7 +19,7 @@ return new class extends Migration
             $table->decimal('seller_net_amount', 12, 2);
             $table->string('currency', 10)->default('ليرة سورية');
             $table->string('payment_provider')->default('stripe');
-            $table->string('payment_reference')->unique();
+            $table->string('payment_reference')->unique()->nullable();
             $table->enum('payment_status' , array_column(PaymentStatus::cases() , 'value'))->default(PaymentStatus::Pending->value);
             $table->timestamp('purchased_at')->nullable();
             $table->timestamps();

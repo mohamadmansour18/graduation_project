@@ -4,6 +4,7 @@ use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
 use App\Http\Controllers\V1\Auth\PasswordResetController;
 use App\Http\Controllers\V1\Home\HomeController;
+use App\Http\Controllers\V1\Payments\TestPaymentController;
 use App\Http\Controllers\V1\Profile\FollowController;
 use App\Http\Controllers\V1\TestDiscovery\HomeTestDiscoveryController;
 use App\Http\Controllers\V1\TestDiscovery\LabTestDiscoveryController;
@@ -117,6 +118,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::middleware('idempotency')->group(function () {
                         Route::post('/reports/{testId}' , [TestReportController::class , 'store']);
                         Route::post('/reports/review/{reviewId}' , [TestReportReviewController::class , 'store']);
+                        Route::post('/payments/stripe/{testId}' , [TestPaymentController::class , 'createStripeCheckoutSession']);
                     });
 
                 });
@@ -126,6 +128,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/bookmark-list/{testId}' , [TestBookmarkController::class , 'bookmarkedUsers']);
                 Route::get('/share-link/{testId}' , [TestController::class , 'shareLink']);
                 Route::get('/shared/{slug}' , [TestController::class , 'showByShareSlug']);
+                Route::get('/content/{testId}' , [TestController::class , 'content']);
             });
 
             //USER PROFILE

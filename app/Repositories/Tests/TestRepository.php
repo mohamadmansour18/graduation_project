@@ -49,6 +49,10 @@ class TestRepository
                 'testBookmarks as viewer_has_bookmarked_it' => function (Builder $query) use ($viewerId, $testId) {
                     $query
                         ->where('user_id', $viewerId);
+                },
+                'testAttempts as viewer_has_attempted_it' => function (Builder $query) use ($viewerId, $testId) {
+                    $query
+                        ->where('user_id', $viewerId);
                 }
             ])
             ->where('id', $testId)
@@ -273,5 +277,72 @@ class TestRepository
             ->first();
     }
 
+    /////////////////////////////////////////////////////////////////
+
+    public function findTestWithContent(int $testId): Model|Builder|null
+    {
+        return Test::query()
+            ->select([
+                'id',
+                'creator_user_id',
+                'title',
+                'question_count',
+                'duration_seconds',
+                'pass_mark_percentage',
+                'test_type',
+                'review_status',
+                'price',
+            ])
+            ->with([
+                'testQuestions' => function ($query) {
+                    $query
+                        ->select([
+                            'id',
+                            'test_id',
+                            'position',
+                            'question_text',
+                            'hint_text',
+                        ])
+                        ->orderBy('position')
+                        ->with([
+                            'testQuestionOptions' => function ($optionQuery) {
+                                $optionQuery
+                                    ->select([
+                                        'id',
+                                        'test_question_id',
+                                        'position',
+                                        'option_text',
+                                        'is_correct',
+                                    ])
+                                    ->orderBy('position');
+                            },
+                        ]);
+                },
+            ])
+            ->where('id', $testId)
+            ->first();
+    }
+
+    public function getViewerInfo(int $viewerId): ?object
+    {
+        return DB::table('users')
+            ->leftJoin('user_profile', 'user_profile.user_id', '=', 'users.id')
+            ->select([
+                'users.id',
+                'users.name',
+                'user_profile.avatar_path',
+            ])
+            ->where('users.id', $viewerId)
+            ->first();
+    }
+
+    public function hasUserPurchasedTest(int $testId, int $userId): bool
+    {
+        return DB::table('test_purchases')
+            ->where('test_id', $testId)
+            ->where('buyer_user_id', $userId)
+            ->where('payment_status', PaymentStatus::Paid->value)
+            ->exists();
+    }
 
 }

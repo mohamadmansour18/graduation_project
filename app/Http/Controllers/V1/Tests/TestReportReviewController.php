@@ -18,15 +18,16 @@ class TestReportReviewController
 
     public function store(StoreTestReviewReportRequest $request, int $reviewId): JsonResponse
     {
-        $this->testReviewReportService->store(
+        $data = $this->testReviewReportService->store(
             reviewId: $reviewId,
             reporterUserId: Auth::id(),
             reason: $request->validated('reason'),
             description: $request->validated('description') ?? null
         );
 
-        return $this->successResponse(
-            message: 'تم إرسال البلاغ بنجاح'
+        return $this->dataResponse(
+            data: $data,
+            title: '! تم إرسال البلاغ بنجاح'
         );
     }
 }

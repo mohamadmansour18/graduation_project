@@ -16,11 +16,11 @@ class TestReportReviewService
         private readonly TestReviewReportThresholdPolicy $thresholdPolicy
     ) {}
 
-    public function store(int $reviewId, int $reporterUserId, string $reason, ?string $description): void
+    public function store(int $reviewId, int $reporterUserId, string $reason, ?string $description): array
     {
         $eventPayload = null;
 
-        DB::transaction(function () use ($reviewId, $reporterUserId, $reason, $description , &$eventPayload) {
+        $isStatusChanged = DB::transaction(function () use ($reviewId, $reporterUserId, $reason, $description , &$eventPayload) {
             $lockedReview = $this->repository->lockReviewForReport($reviewId);
 
             if (! $lockedReview) {
@@ -83,11 +83,17 @@ class TestReportReviewService
                 'helpful_yes_count' => (int) $lockedReview->helpful_yes_count,
                 'helpful_no_count' => (int) $lockedReview->helpful_no_count,
             ]);
+
+            return true ;
         });
 
         if ($eventPayload !== null) {
             event(new TestReviewStateChanged(...$eventPayload));
         }
+
+        return [
+            'is_status_changed' => $isStatusChanged ?? false,
+        ];
     }
 
 }

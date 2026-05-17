@@ -247,4 +247,31 @@ class TestException extends ApiException
             status: 403
         );
     }
+
+    public static function viewerNotFound(): self
+    {
+        return new self(
+            title: '! المستخدم غير موجود',
+            message: 'لم يتم العثور على بيانات المستخدم الحالي',
+            status: 404
+        );
+    }
+
+    public static function contentNotAvailable(): self
+    {
+        return new self(
+            title: '! لا يمكن جلب محتوى الاختبار',
+            message: 'محتوى هذا الاختبار غير متاح للعرض حاليا ولايمكنك التفاعل معهً',
+            status: 403
+        );
+    }
+
+    public static function purchaseRequiredForContent(): self
+    {
+        return new self(
+            title: '! لا يمكن جلب محتوى الاختبار',
+            message: 'يجب شراء الاختبار قبل إمكانية التفاعل مع محتواه',
+            status: 403
+        );
+    }
 }

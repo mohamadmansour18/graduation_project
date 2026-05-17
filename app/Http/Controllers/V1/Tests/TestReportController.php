@@ -19,15 +19,16 @@ class TestReportController extends Controller
 
     public function store(StoreTestReportRequest $request, int $testId): JsonResponse
     {
-        $this->testReportService->store(
+        $data  = $this->testReportService->store(
             testId: $testId,
             reporterUserId: Auth::id(),
             reason: $request->validated('reason'),
             description: $request->validated('description') ?? null
         );
 
-        return $this->successResponse(
-            message: 'تم إرسال البلاغ بنجاح'
+        return $this->dataResponse(
+            data: $data,
+            title: '! تم إرسال البلاغ بنجاح'
         );
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Resources;
+namespace App\Http\Resources\Tests;
 
 use App\Helpers\ImageProcessor;
 use Illuminate\Http\Request;

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\V1\Tests;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tests\ListTestLikedUsersRequest;
-use App\Http\Resources\TestLikedUserResource;
+use App\Http\Resources\Tests\TestLikedUserResource;
 use App\Services\Tests\TestLikeService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;

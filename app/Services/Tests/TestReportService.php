@@ -17,7 +17,7 @@ class TestReportService
         private readonly TestReportThresholdPolicy $thresholdPolicy
     ) {}
 
-    public function store(int $testId, int $reporterUserId, string $reason, ?string $description) : void
+    public function store(int $testId, int $reporterUserId, string $reason, ?string $description) : array
     {
         $test = $this->testReportRepository->findReportableTestSnapshot($testId);
 
@@ -57,7 +57,7 @@ class TestReportService
             throw TestException::alreadyReportedForSameReasonAndVersion();
         }
 
-        DB::transaction(function () use (
+        $isStatusChanged = DB::transaction(function () use (
             $testId,
             $reporterUserId,
             $reason,
@@ -136,7 +136,13 @@ class TestReportService
                 'total_distinct_reporters_count' => $totalDistinctReportersCount,
                 'participants_count' => (int) $lockedTest->participants_count,
             ]);
+
+            return true;
         });
+
+        return [
+            'is_status_changed' => $isStatusChanged ?? false,
+        ];
     }
 
     private function ensureTestCanBeReported(object $test, int $reporterUserId): void

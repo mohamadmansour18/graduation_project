@@ -2,6 +2,7 @@
 
 namespace App\Services\Tests;
 
+use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
 use App\Exceptions\Api\TestException;
 use App\Helpers\CounterProcessor;
@@ -202,5 +203,60 @@ class TestService
             'test_id' => $test->id,
             'is_owner' => $isOwner,
         ];
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    public function getContent(int $testId, int $viewerId): array
+    {
+        $test = $this->testRepository->findTestWithContent($testId);
+
+        if (! $test) {
+            throw TestException::notFound();
+        }
+
+        $viewer = $this->testRepository->getViewerInfo($viewerId);
+
+        if (! $viewer) {
+            throw TestException::viewerNotFound();
+        }
+
+        $isOwner = (int) $test->creator_user_id === $viewerId;
+
+        if (! $isOwner) {
+            $this->ensureViewerCanAccessTestContent($test, $viewerId);
+        }
+
+        return [
+            'test' => $test,
+            'viewer' => $viewer,
+        ];
+    }
+
+    private function ensureViewerCanAccessTestContent($test, int $viewerId): void
+    {
+
+        if ($test->test_type->value !== TestType::Public->value) {
+            throw TestException::contentNotAvailable();
+        }
+
+        if ($test->review_status->value !== TestReviewStatus::Approved->value) {
+            throw TestException::contentNotAvailable();
+        }
+
+        $isFree = is_null($test->price) || (float) $test->price <= 0;
+
+        if ($isFree) {
+            return;
+        }
+
+        $hasPurchased = $this->testRepository->hasUserPurchasedTest(
+            testId: (int) $test->id,
+            userId: $viewerId
+        );
+
+        if (! $hasPurchased) {
+            throw TestException::purchaseRequiredForContent();
+        }
     }
 }

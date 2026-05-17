@@ -4,9 +4,10 @@ namespace App\Http\Controllers\V1\Tests;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tests\ListTestReviewsRequest;
-use App\Http\Resources\MyReviewResource;
 use App\Http\Resources\Tests\MyPrivateTestDetailsResource;
 use App\Http\Resources\Tests\MyPublicTestDetailsResource;
+use App\Http\Resources\Tests\MyReviewResource;
+use App\Http\Resources\Tests\TestContentResource;
 use App\Http\Resources\Tests\TestDetailsResource;
 use App\Http\Resources\Tests\TestReviewResource;
 use App\Services\Tests\TestService;
@@ -118,4 +119,17 @@ class TestController extends Controller
 
         return $this->dataResponse($data);
     }
+    public function content(int $testId): JsonResponse
+    {
+        $data = $this->testService->getContent(
+            testId: $testId,
+            viewerId: Auth::id()
+        );
+
+        return $this->dataResponse(
+            data: new TestContentResource($data),
+            title: '! تم جلب محتوى الاختبار بنجاح'
+        );
+    }
+
 }

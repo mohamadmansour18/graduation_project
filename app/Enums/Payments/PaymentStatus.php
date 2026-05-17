@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Enums;
+namespace App\Enums\Payments;
 
-enum PaymentStatus:string
+enum PaymentStatus: string
 {
     case Pending = 'معلقة';
     case Paid = 'مدفوعة';
