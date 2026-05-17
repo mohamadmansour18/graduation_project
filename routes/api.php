@@ -16,6 +16,7 @@ use App\Http\Controllers\V1\Tests\TestLikeController;
 use App\Http\Controllers\V1\Tests\TestReportController;
 use App\Http\Controllers\V1\Tests\TestReportReviewController;
 use App\Http\Controllers\V1\Tests\TestReviewController;
+use App\Http\Controllers\V1\Webhooks\StripeWebhookController;
 use App\Models\Test;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +40,7 @@ use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
 Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function () {
 
     Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::post('/webhooks/stripe' , StripeWebhookController::class);
 
     Route::prefix('user-mobile')->group(function () {
 
@@ -118,8 +120,9 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::middleware('idempotency')->group(function () {
                         Route::post('/reports/{testId}' , [TestReportController::class , 'store']);
                         Route::post('/reports/review/{reviewId}' , [TestReportReviewController::class , 'store']);
-                        Route::post('/payments/stripe/{testId}' , [TestPaymentController::class , 'createStripeCheckoutSession']);
                     });
+
+                    Route::post('/payments/stripe/{testId}' , [TestPaymentController::class , 'createStripeCheckoutSession'])->middleware('idempotency.payment');
 
                 });
 

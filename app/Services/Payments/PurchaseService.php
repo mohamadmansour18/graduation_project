@@ -4,6 +4,7 @@ namespace App\Services\Payments;
 
 use App\DTOs\Payments\CreateCheckoutSessionData;
 use App\Enums\Payments\PaymentProvider;
+use App\Enums\Payments\PaymentStatus;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
 use App\Exceptions\Api\PaymentException;
@@ -43,7 +44,7 @@ class PurchaseService
             config('payments.default_provider', PaymentProvider::Stripe->value)
         );
 
-        $purchaseId = $this->testPurchaseRepository->createPendingPurchase([
+        $purchase = $this->testPurchaseRepository->createPendingPurchase([
             'test_id' => $test->id,
             'buyer_user_id' => $buyerUserId,
             'seller_user_id' => $test->creator_user_id,
@@ -53,6 +54,12 @@ class PurchaseService
             'currency' => $money->currency,
             'payment_provider' => $provider->value,
         ]);
+
+        if ($purchase->payment_status === PaymentStatus::Paid->value) {
+            throw PaymentException::testAlreadyPurchased();
+        }
+
+        $purchaseId = $purchase->id;
 
         try {
             $checkoutSession = $this->paymentManager->driver($provider)->createCheckoutSession(

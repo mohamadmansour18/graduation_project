@@ -22,3 +22,7 @@ sudo systemctl start cron
 run auto :
 sudo systemctl enable cron
 
+-------------------
+stripe :
+stripe login
+stripe listen --forward-to http://localhost/api/v1/webhooks/stripe
