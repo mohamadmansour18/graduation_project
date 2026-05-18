@@ -316,7 +316,7 @@ class PurchaseService
         | يجب أن يكون الاختبار عامًا
         |--------------------------------------------------------------------------
         */
-        if ($test->test_type !== config('payments.tests.public_type_value')) {
+        if ($test->test_type !== TestType::Public->value) {
             throw PaymentException::testIsNotPublic();
         }
 
@@ -325,7 +325,7 @@ class PurchaseService
         | يجب أن يكون الاختبار معتمدًا
         |--------------------------------------------------------------------------
         */
-        if ($test->review_status !== config('payments.tests.approved_review_status_value')) {
+        if ($test->review_status !== TestReviewStatus::Approved->value) {
             throw PaymentException::testIsNotApproved();
         }
 
