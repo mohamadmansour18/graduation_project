@@ -8,6 +8,7 @@ use App\Enums\Payments\PaymentStatus;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
 use App\Exceptions\Api\PaymentException;
+use App\Repositories\Payments\PaymentAttemptRepository;
 use App\Repositories\Payments\TestPaymentRepository;
 use App\Repositories\Payments\TestPurchaseRepository;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,7 @@ class PurchaseService
         private readonly TestPurchaseRepository $testPurchaseRepository,
         private readonly PurchaseMoneyCalculator $moneyCalculator,
         private readonly PaymentManager $paymentManager,
+        private readonly PaymentAttemptRepository $paymentAttemptRepository,
     )
     {}
 
@@ -44,7 +46,7 @@ class PurchaseService
             config('payments.default_provider', PaymentProvider::Stripe->value)
         );
 
-        $purchase = $this->testPurchaseRepository->createPendingPurchase([
+        $purchase = $this->testPurchaseRepository->preparePurchaseRecord([
             'test_id' => $test->id,
             'buyer_user_id' => $buyerUserId,
             'seller_user_id' => $test->creator_user_id,
@@ -59,12 +61,28 @@ class PurchaseService
             throw PaymentException::testAlreadyPurchased();
         }
 
-        $purchaseId = $purchase->id;
+        $expiresAt = now()
+            ->addMinutes((int) config('payments.checkout_session_expires_after_minutes', 30))
+            ->timestamp;
+
+        $attempt = $this->paymentAttemptRepository->createPendingAttempt([
+            'test_purchase_id' => $purchase->id,
+            'payment_provider' => $provider->value,
+            'amount' => $money->grossAmount,
+            'currency' => $money->currency,
+            'expires_at' => now()->setTimestamp($expiresAt),
+            'metadata' => [
+                'source' => 'mobile_app',
+                'purchase_type' => 'test',
+            ],
+        ]);
 
         try {
-            $checkoutSession = $this->paymentManager->driver($provider)->createCheckoutSession(
-                new CreateCheckoutSessionData (
-                    purchaseId: $purchaseId,
+            $checkoutSession = $this->paymentManager
+                ->driver($provider)
+                ->createCheckoutSession(new CreateCheckoutSessionData(
+                    purchaseId: $purchase->id,
+                    attemptId: $attempt->id,
                     testId: $test->id,
                     buyerUserId: $buyerUserId,
                     sellerUserId: $test->creator_user_id,
@@ -72,23 +90,28 @@ class PurchaseService
                     money: $money,
                     successUrl: config('payments.success_url'),
                     cancelUrl: config('payments.cancel_url'),
+                    expiresAt: $expiresAt,
                     metadata: [
                         'source' => 'mobile_app',
                         'purchase_type' => 'test',
                     ],
-                )
-            );
+                ));
 
-            $this->testPurchaseRepository->updatePaymentReference(
-                purchaseId: $purchaseId,
-                paymentReference: $checkoutSession->checkoutSessionId,
+            $this->paymentAttemptRepository->attachStripeCheckoutSession(
+                attemptId: $attempt->id,
+                checkoutSessionId: $checkoutSession->checkoutSessionId,
+                checkoutUrl: $checkoutSession->checkoutUrl,
+                paymentIntentId: $checkoutSession->paymentIntentId,
+                expiresAt: $checkoutSession->expiresAt,
             );
 
             return [
-                'purchase_id' => $purchaseId,
+                'purchase_id' => $purchase->id,
+                'payment_attempt_id' => $attempt->id,
                 'provider' => $checkoutSession->provider,
                 'checkout_session_id' => $checkoutSession->checkoutSessionId,
                 'checkout_url' => $checkoutSession->checkoutUrl,
+                'expires_at' => $checkoutSession->expiresAt,
                 'amount' => [
                     'gross_amount' => $money->grossAmount,
                     'platform_fee_amount' => $money->platformFeeAmount,
@@ -97,11 +120,15 @@ class PurchaseService
                 ],
             ];
         } catch (Throwable $exception) {
-
-            $this->testPurchaseRepository->markAsFailed($purchaseId);
+            $this->paymentAttemptRepository->markAsFailed(
+                attemptId: $attempt->id,
+                failureCode: 'checkout_session_creation_failed',
+                failureMessage: $exception->getMessage(),
+            );
 
             Log::channel('errors')->error('Stripe checkout session creation failed', [
-                'purchase_id' => $purchaseId,
+                'purchase_id' => $purchase->id,
+                'payment_attempt_id' => $attempt->id,
                 'test_id' => $test->id,
                 'buyer_user_id' => $buyerUserId,
                 'provider' => $provider->value,

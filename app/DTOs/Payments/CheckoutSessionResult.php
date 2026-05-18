@@ -9,6 +9,7 @@ class CheckoutSessionResult
         public string $checkoutSessionId,
         public string $checkoutUrl,
         public ?string $paymentIntentId = null,
+        public ?int $expiresAt = null,
     ) {
     }
 }

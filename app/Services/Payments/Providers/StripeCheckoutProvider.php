@@ -14,8 +14,18 @@ class StripeCheckoutProvider implements PaymentProviderInterface
     {
         $stripe = new StripeClient(config('payments.stripe.secret'));
 
+        $metadata = array_merge($data->metadata, [
+            'purchase_id' => (string) $data->purchaseId,
+            'payment_attempt_id' => (string) $data->attemptId,
+            'test_id' => (string) $data->testId,
+            'buyer_user_id' => (string) $data->buyerUserId,
+            'seller_user_id' => (string) $data->sellerUserId,
+        ]);
+
+
         $session = $stripe->checkout->sessions->create([
             'mode' => 'payment', // one time , not subscription because user buy test once time
+            'locale' => 'en',
 
             'line_items' => [
                 [
@@ -31,22 +41,27 @@ class StripeCheckoutProvider implements PaymentProviderInterface
                 ],
             ],
 
+            'expires_at' => $data->expiresAt,
+
             'success_url' => $data->successUrl,
             'cancel_url' => $data->cancelUrl,
 
-            'metadata' => array_merge($data->metadata, [
-                'purchase_id' => (string) $data->purchaseId,
-                'test_id' => (string) $data->testId,
-                'buyer_user_id' => (string) $data->buyerUserId,
-                'seller_user_id' => (string) $data->sellerUserId,
-            ]),
+            'metadata' => $metadata,
+            'payment_intent_data' => [
+                'metadata' => $metadata,
+            ],
+
+        ], [
+            'idempotency_key' => 'payment-attempt-' . $data->attemptId,
         ]);
+
 
         return new CheckoutSessionResult(
             provider: PaymentProvider::Stripe->value,
             checkoutSessionId: $session->id,
             checkoutUrl: $session->url,
             paymentIntentId: is_string($session->payment_intent) ? $session->payment_intent : null,
+            expiresAt: $session->expires_at,
         );
     }
 

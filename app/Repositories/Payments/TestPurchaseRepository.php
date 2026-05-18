@@ -16,7 +16,7 @@ class TestPurchaseRepository
             ->exists();
     }
 
-    public function createPendingPurchase(array $data): object
+    public function preparePurchaseRecord(array $data): object
     {
         return DB::transaction(function () use ($data) {
             $existingPurchase = DB::table('test_purchases')
@@ -58,15 +58,11 @@ class TestPurchaseRepository
                 ->where('id', $existingPurchase->id)
                 ->update([
                     'seller_user_id' => $data['seller_user_id'],
-
                     'gross_amount' => $data['gross_amount'],
                     'platform_fee_amount' => $data['platform_fee_amount'],
                     'seller_net_amount' => $data['seller_net_amount'],
                     'currency' => $data['currency'],
-
                     'payment_provider' => $data['payment_provider'],
-                    'payment_reference' => null,
-
                     'payment_status' => PaymentStatus::Pending->value,
                     'purchased_at' => null,
                     'updated_at' => now(),
@@ -161,4 +157,59 @@ class TestPurchaseRepository
                 'updated_at' => now(),
             ]);
     }
+
+    public function markAsPaidFromAttempt(object $purchase, object $attempt): object
+    {
+        return DB::transaction(function () use ($purchase, $attempt) {
+            $lockedPurchase = DB::table('test_purchases')
+                ->where('id', $purchase->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $lockedPurchase) {
+                return $purchase;
+            }
+
+            if ($lockedPurchase->payment_status === \App\Enums\Payments\PaymentStatus::Paid->value) {
+                return $lockedPurchase;
+            }
+
+            DB::table('test_purchases')
+                ->where('id', $lockedPurchase->id)
+                ->update([
+                    'payment_provider' => $attempt->payment_provider,
+                    'payment_reference' => $attempt->provider_reference,
+                    'payment_status' => \App\Enums\Payments\PaymentStatus::Paid->value,
+                    'purchased_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            return DB::table('test_purchases')
+                ->where('id', $lockedPurchase->id)
+                ->first();
+        });
+    }
+
+    public function markAsCancelledIfNoActiveAttempts(int $purchaseId, bool $hasActiveAttempt): void
+    {
+        if ($hasActiveAttempt) {
+            return;
+        }
+
+        DB::table('test_purchases')
+            ->where('id', $purchaseId)
+            ->where('payment_status', PaymentStatus::Pending->value)
+            ->update([
+                'payment_status' => PaymentStatus::Cancelled->value,
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function findById(int $purchaseId): ?object
+    {
+        return DB::table('test_purchases')
+            ->where('id', $purchaseId)
+            ->first();
+    }
+
 }

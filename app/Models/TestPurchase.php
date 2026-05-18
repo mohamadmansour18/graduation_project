@@ -52,4 +52,10 @@ class TestPurchase extends Model
     {
         return $this->belongsTo(User::class, 'seller_user_id');
     }
+
+    public function attempts(): HasMany
+    {
+        return $this->hasMany(PaymentAttempt::class, 'test_purchase_id');
+    }
 }
+

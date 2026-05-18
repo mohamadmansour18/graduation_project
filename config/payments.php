@@ -9,6 +9,10 @@ return [
 
     'platform_fee_percent' => (float) env('PAYMENT_PLATFORM_FEE_PERCENT', 10),
 
+    'checkout_session_expires_after_minutes' => (int) env(
+        'PAYMENT_CHECKOUT_SESSION_EXPIRES_AFTER_MINUTES',
+        30
+    ),
 
     'success_url' => env(
         'PAYMENT_SUCCESS_URL',
