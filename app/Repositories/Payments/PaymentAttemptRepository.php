@@ -171,4 +171,81 @@ class PaymentAttemptRepository
             ->where('id', $attemptId)
             ->update($updates);
     }
+
+    public function findReusablePendingAttemptForPurchase(int $testPurchaseId): ?object
+    {
+        return DB::table('payment_attempts')
+            ->where('test_purchase_id', $testPurchaseId)
+            ->where('status', PaymentAttemptStatus::Pending->value)
+            ->whereNotNull('provider_reference')
+            ->whereNotNull('checkout_url')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now()->addMinute());
+            })
+            ->latest('id')
+            ->first();
+    }
+
+    public function expireLocalPendingAttemptsForPurchase(int $testPurchaseId): int
+    {
+        return DB::table('payment_attempts')
+            ->where('test_purchase_id', $testPurchaseId)
+            ->where('status', PaymentAttemptStatus::Pending->value)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now())
+            ->update([
+                'status' => PaymentAttemptStatus::Expired->value,
+                'expired_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function getPurchaseIdsWithExpiredPendingAttempts(int $limit = 500): array
+    {
+        return DB::table('payment_attempts')
+            ->where('status', PaymentAttemptStatus::Pending->value)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now())
+            ->select('test_purchase_id')
+            ->distinct()
+            ->limit($limit)
+            ->pluck('test_purchase_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    public function markExpiredPendingAttemptsForPurchases(array $purchaseIds): int
+    {
+        if (empty($purchaseIds)) {
+            return 0;
+        }
+
+        return DB::table('payment_attempts')
+            ->whereIn('test_purchase_id', $purchaseIds)
+            ->where('status', PaymentAttemptStatus::Pending->value)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now())
+            ->update([
+                'status' => PaymentAttemptStatus::Expired->value,
+                'expired_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function recordFailureWithoutClosingAttempt(
+        int $attemptId,
+        ?string $failureCode = null,
+        ?string $failureMessage = null
+    ): void {
+        DB::table('payment_attempts')
+            ->where('id', $attemptId)
+            ->where('status', PaymentAttemptStatus::Pending->value)
+            ->update([
+                'failure_code' => $failureCode,
+                'failure_message' => $failureMessage,
+                'failed_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
 }

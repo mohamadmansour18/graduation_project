@@ -204,7 +204,7 @@ class StripeWebhookService
             paymentIntentId: $paymentIntent->id,
         );
 
-        $this->paymentAttemptRepository->markAsFailed(
+        $this->paymentAttemptRepository->recordFailureWithoutClosingAttempt(
             attemptId: $attempt->id,
             failureCode: $failureCode,
             failureMessage: $failureMessage,
