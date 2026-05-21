@@ -733,7 +733,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         $variant = ($testIndex + $questionPosition) % 4;
 
         return match ($language) {
-            Language::ENGLISH->value => match ($variant) {
+            Language::English->value => match ($variant) {
                 0 => "Which statement best describes the core objective of {$interestName} for {$targetLevel} at {$difficulty} level?",
                 1 => "In a realistic {$interestName} scenario, what should the learner do first to meet the {$difficulty} objective?",
                 2 => "Which option reflects the most accurate best practice for {$interestName} when the audience is {$targetLevel}?",
@@ -765,7 +765,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         }
 
         return match ($language) {
-            Language::ENGLISH->value => "Hint: focus on the core concept of {$interestName} before checking the detailed wording.",
+            Language::English->value => "Hint: focus on the core concept of {$interestName} before checking the detailed wording.",
             Language::Mixed->value => "Hint: ركّز على core concept في {$interestName} ولا تنخدع بالتفاصيل الثانوية.",
             default => "ابدأ بالفكرة الأساسية في {$interestName} ثم استبعد الخيارات التي تركز على تفاصيل جانبية.",
         };
@@ -853,7 +853,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         $index = $variantIndex % 5;
 
         return match ($language) {
-            Language::ENGLISH->value => $isCorrect
+            Language::English->value => $isCorrect
                 ? $correctEnglish[$index]
                 : $wrongEnglish[$index] . " This is weak for a {$difficulty} {$interestName} question.",
             Language::Mixed->value => $isCorrect

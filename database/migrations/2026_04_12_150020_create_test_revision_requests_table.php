@@ -14,7 +14,6 @@ return new class extends Migration
             $table->foreignId('test_id')->constrained('test')->cascadeOnDelete();
             $table->enum('revision_type' , array_column(\App\Enums\RevisionType::cases(), 'value'));
             $table->foreignId('target_question_id')->nullable()->constrained('test_question')->nullOnDelete();
-            $table->enum('decision' , array_column(\App\Enums\Decision::cases(), 'value'));
             $table->foreignId('created_by_user_id')->constrained('users')->cascadeOnDelete();
             $table->timestamp('resolved_at')->nullable();
             $table->text('problem_note');

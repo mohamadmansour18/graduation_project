@@ -239,7 +239,7 @@ test_review_rounds(
 
 test_revision_requests(
   id, test_review_round_id, test_id, revision_type,
-  target_question_id, decision enum,
+  target_question_id,
   created_by_user_id, resolved_at, problem_note
 )
 
@@ -251,7 +251,7 @@ test_revision_change_logs(
 
 test_status_histories(
   id, test_id, from_status enum, to_status enum,
-  changed_by_user_id, note
+  changed_by_user_id, note, test_review_round_id
 )
 
 test_bookmarks(id, test_id, user_id)

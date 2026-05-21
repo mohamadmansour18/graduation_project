@@ -4,7 +4,7 @@ namespace App\Enums;
 
 enum Language:string
 {
-    case ENGLISH = 'الإنكليزية';
-    case ARABIC = 'العربية';
+    case English = 'الإنكليزية';
+    case Arabic = 'العربية';
     case Mixed = 'مختلطة' ;
 }

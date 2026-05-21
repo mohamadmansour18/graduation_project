@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('round_no');
             $table->foreignId('reviewer_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->enum('trigger_type' , array_column(TestReviewRoundsTriggerType::cases(), 'value'))->nullable();
-            $table->enum('decision' , array_column(Decision::cases(), 'value'))->default(Decision::Pending);
+            $table->enum('decision' , array_column(\App\Enums\Decision::cases(), 'value'));
             $table->unsignedTinyInteger('based_on_approval_version')->default(0);
             $table->timestamp('started_at');
             $table->timestamp('decided_at')->nullable();

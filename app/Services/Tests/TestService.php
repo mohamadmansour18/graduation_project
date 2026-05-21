@@ -79,7 +79,7 @@ class TestService
 
     public function getPreviewQuestionsForViewer(int $testId, int $viewerId): Collection|array
     {
-        $test = $this->testRepository->findVisiblePublicTest($testId);
+        $test = $this->testRepository->findVisiblePublicTest($testId , $viewerId);
 
         if (!$test) {
             throw TestException::notFound();
@@ -92,9 +92,9 @@ class TestService
         return $this->testRepository->getPreviewQuestionsByTestId($testId);
     }
 
-    public function listRatingForTest(int $testId, int $viewerId, ?int $rating, string $context, bool $excludeViewerReview): array
+    public function listRatingForTest(int $testId, int $viewerId, ?int $rating, string $context, bool $excludeViewerReview , bool $mustBeApproved): array
     {
-        $test = $this->testRepository->findVisiblePublicTest($testId);
+        $test = $this->testRepository->findVisiblePublicTest($testId , $viewerId , $mustBeApproved);
 
         if (!$test) {
             throw TestException::notFound();
@@ -258,5 +258,21 @@ class TestService
         if (! $hasPurchased) {
             throw TestException::purchaseRequiredForContent();
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    public function getTestStatusHistoryForOwner(int $testId, int $ownerId): \Illuminate\Support\Collection
+    {
+        $test = $this->testRepository->findOwnedPublicTest(
+            testId: $testId,
+            ownerId: $ownerId
+        );
+
+        if (! $test) {
+            throw TestException::statusHistoryNotAvailable();
+        }
+
+        return $this->testRepository->getStatusHistories($testId);
     }
 }

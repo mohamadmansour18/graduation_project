@@ -152,12 +152,13 @@ class TestReportRepository
         ]);
     }
 
-    public function createStatusHistory(int $testId, string $fromStatus, string $toStatus, ?int $changedByUserId, string $note): void
+    public function createStatusHistory(int $testId, ?int $reviewRoundId , string $fromStatus, string $toStatus, ?int $changedByUserId, string $note): void
     {
         $now = now();
 
         DB::table('test_status_histories')->insert([
             'test_id' => $testId,
+            'test_review_round_id' => $reviewRoundId ,
             'from_status' => $fromStatus,
             'to_status' => $toStatus,
             'changed_by_user_id' => $changedByUserId,

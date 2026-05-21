@@ -12,11 +12,14 @@ return new class extends Migration
         Schema::create('test_status_histories', function (Blueprint $table) {
             $table->id();
             $table->foreignId('test_id')->constrained('test')->cascadeOnDelete();
-            $table->enum('from_status', array_column(TestReviewStatus::cases(), 'value'));
-            $table->enum('to_status', array_column(TestReviewStatus::cases(), 'value'))->nullable();
+            $table->foreignId('test_review_round_id')->nullable()->constrained('test_review_rounds')->nullOnDelete();
+            $table->enum('from_status', array_column(TestReviewStatus::cases(), 'value'))->nullable();
+            $table->enum('to_status', array_column(TestReviewStatus::cases(), 'value'));
             $table->foreignId('changed_by_user_id')->nullable()->constrained('users')->cascadeOnDelete()->nul;
             $table->text('note')->nullable();
             $table->timestamps();
+
+
         });
     }
 

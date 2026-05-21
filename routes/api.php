@@ -16,6 +16,7 @@ use App\Http\Controllers\V1\Tests\TestLikeController;
 use App\Http\Controllers\V1\Tests\TestReportController;
 use App\Http\Controllers\V1\Tests\TestReportReviewController;
 use App\Http\Controllers\V1\Tests\TestReviewController;
+use App\Http\Controllers\V1\Tests\TestRevisionRequestController;
 use App\Http\Controllers\V1\Webhooks\StripeWebhookController;
 use App\Models\Test;
 use Carbon\Carbon;
@@ -101,7 +102,11 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/test-details/reviews/{testId}', [TestController::class , 'reviews']);
 
                 Route::get('/tests-details/my-private/{testId}', [TestController::class , 'showMyPrivateTestDetails']);
+
                 Route::get('/tests-details/my-public/{testId}', [TestController::class , 'showMyPublicTestDetails']);
+                Route::get('/tests-details/my-public/status-history/{testId}' , [TestController::class , 'statusHistory']);
+                Route::get('/tests-details/my-public/status-history/{testId}/revision-request/{roundId}' , [TestRevisionRequestController::class , 'revisionRequestsByRound']);
+                Route::get('/tests-details/my-public/reviews/{testId}' , [TestController::class , 'showMyTestReviews']);
 
                 Route::middleware('throttle:5,2')->group(function () {
                     Route::post('/like/{testId}' , [TestLikeController::class , 'like']);

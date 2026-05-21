@@ -274,4 +274,31 @@ class TestException extends ApiException
             status: 403
         );
     }
+
+    public static function statusHistoryNotAvailable(): self
+    {
+        return new self(
+            title: '! لا يمكن جلب سجل الحالة',
+            message: 'سجل الحالة غير متاح لهذا الاختبار أو أنك لا تملك صلاحية الوصول إليه',
+            status: 403
+        );
+    }
+
+    public static function revisionRequestsNotAvailable(): self
+    {
+        return new self(
+            title: '! لا يمكن جلب التعديلات المطلوبة',
+            message: 'التعديلات المطلوبة غير متاحة لهذا الاختبار أو أنك لا تملك صلاحية الوصول إليها',
+            status: 403
+        );
+    }
+
+    public static function testDoesNotNeedRevision(): self
+    {
+        return new self(
+            title: '! لا توجد تعديلات مطلوبة',
+            message: 'هذا الاختبار لا يحتاج إلى تعديلات حالياً',
+            status: 409
+        );
+    }
 }

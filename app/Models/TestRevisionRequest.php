@@ -25,7 +25,6 @@ class TestRevisionRequest extends Model
         'test_id',
         'revision_type',
         'target_question_id',
-        'decision',
         'created_by_user_id',
         'resolved_at',
         'problem_note',
@@ -34,7 +33,6 @@ class TestRevisionRequest extends Model
     protected $casts = [
         'resolved_at' => 'datetime',
         'revision_type' => RevisionType::class,
-        'decision' => Decision::class,
     ];
 
     public function testReviewRound(): BelongsTo

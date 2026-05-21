@@ -10,6 +10,7 @@ use App\Http\Resources\Tests\MyReviewResource;
 use App\Http\Resources\Tests\TestContentResource;
 use App\Http\Resources\Tests\TestDetailsResource;
 use App\Http\Resources\Tests\TestReviewResource;
+use App\Http\Resources\TestStatusHistoryResource;
 use App\Services\Tests\TestService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -79,7 +80,8 @@ class TestController extends Controller
             viewerId: Auth::id(),
             rating: $request->ratingFilter(),
             context: 'other',
-            excludeViewerReview: true
+            excludeViewerReview: true,
+            mustBeApproved: true
         );
 
         $paginator = $result['reviews'];
@@ -129,6 +131,51 @@ class TestController extends Controller
         return $this->dataResponse(
             data: new TestContentResource($data),
             title: '! تم جلب محتوى الاختبار بنجاح'
+        );
+    }
+
+    //////////////////////////////////////////////////////////////
+    public function showMyTestReviews(ListTestReviewsRequest $request, int $testId): JsonResponse
+    {
+        $result = $this->testService->listRatingForTest(
+            testId: $testId,
+            viewerId: Auth::id(),
+            rating: $request->ratingFilter(),
+            context: 'my',
+            excludeViewerReview: true,
+            mustBeApproved: false
+        );
+
+        $paginator = $result['reviews'];
+
+        return $this->dataResponse(
+            data : [
+                'summary' => $result['summary'],
+                'reviews' => TestReviewResource::collection($paginator->items()),
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'last_page' => $paginator->lastPage(),
+                    'has_more_pages' => $paginator->hasMorePages(),
+                ],
+            ],
+            title: '! تم جلب تقييمات الاختبار بنجاح'
+        );
+    }
+
+    //////////////////////////////////////////////////////////////
+
+    public function statusHistory(int $testId): JsonResponse
+    {
+        $histories = $this->testService->getTestStatusHistoryForOwner(
+            testId: $testId,
+            ownerId: Auth::id()
+        );
+
+        return $this->dataResponse(
+            data: TestStatusHistoryResource::collection($histories),
+            title: '! تم جلب سجل حالة الاختبار بنجاح'
         );
     }
 

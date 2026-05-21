@@ -4,7 +4,7 @@ namespace App\Enums;
 
 enum TestReviewStatus: string
 {
-    case New = 'جديد';
+    case New = 'مسودة';
     case NeedsRevision = 'يحتاج تعديل';
     case UnderReview = 'قيد المراجعة';
     case Approved = 'تم الموافقة عليه';

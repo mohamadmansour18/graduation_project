@@ -21,6 +21,7 @@ class TestReport extends Model
         'reason',
         'description',
         'reported_at',
+        'approval_version'
     ];
 
     protected $casts = [

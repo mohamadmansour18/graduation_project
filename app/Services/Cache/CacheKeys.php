@@ -17,7 +17,6 @@ class CacheKeys
     public const TAG_TESTS = 'tests';
     public const TAG_TEST_INTERESTS = 'test_interests';
 
-    public const TAG_TEST_PDF_DOWNLOADS = 'test_pdf_downloads';
 
     /*
     |--------------------------------------------------------------------------

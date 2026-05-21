@@ -4,7 +4,15 @@ namespace App\Enums;
 
 enum RevisionType:string
 {
-    case Question = 'لسؤال';
-    case Description = 'الوصف';
-    case Answer = 'الجواب';
+    case QuestionText = 'نص السؤال';
+
+    case AnswerText = 'نص الاجابة';
+
+    case Hint = 'التلميح';
+
+    case TestDescription = 'وصف الاختبار';
+
+    case QuestionAnswer = 'إجابة السؤال';
+
+    case TestTitle = 'عنوان الاختبار';
 }

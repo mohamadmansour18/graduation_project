@@ -57,4 +57,9 @@ class TestReviewRound extends Model
     {
         return $this->hasMany(TestRevisionChangeLog::class, 'test_review_round_id');
     }
+
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(TestStatusHistory::class, 'test_review_round_id');
+    }
 }

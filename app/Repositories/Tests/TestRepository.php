@@ -107,7 +107,7 @@ class TestRepository
 
     }
 
-    public function findVisiblePublicTest(int $testId): Builder|Model|null
+    public function findVisiblePublicTest(int $testId , int $viewerId , bool $mustBeApproved = true): Builder|Model|null
     {
         return Test::query()
             ->select([
@@ -120,7 +120,7 @@ class TestRepository
             ])
             ->where('id', $testId)
             ->where('test_type', TestType::Public->value)
-            ->where('review_status', TestReviewStatus::Approved->value)
+            ->when($mustBeApproved , fn($query) => $query->where('review_status', TestReviewStatus::Approved->value) , fn($query) => $query->where('creator_user_id' , $viewerId))
             ->first();
     }
 
@@ -345,4 +345,36 @@ class TestRepository
             ->exists();
     }
 
+    /////////////////////////////////////////////////////////////////
+
+    public function findOwnedPublicTest(int $testId, int $ownerId): ?object
+    {
+        return DB::table('test')
+            ->select([
+                'id',
+                'creator_user_id',
+                'test_type',
+            ])
+            ->where('id', $testId)
+            ->where('creator_user_id', $ownerId)
+            ->where('test_type', TestType::Public->value)
+            ->first();
+    }
+
+    public function getStatusHistories(int $testId): \Illuminate\Support\Collection
+    {
+        return DB::table('test_status_histories')
+            ->select([
+                'id',
+                'test_review_round_id',
+                'from_status',
+                'to_status',
+                'note',
+                'created_at',
+            ])
+            ->where('test_id', $testId)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get();
+    }
 }

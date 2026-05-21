@@ -18,6 +18,7 @@ class TestStatusHistory extends Model
 
     protected $fillable = [
         'test_id',
+        'test_review_round_id',
         'from_status',
         'to_status',
         'changed_by_user_id',
@@ -32,6 +33,11 @@ class TestStatusHistory extends Model
     public function test(): BelongsTo
     {
         return $this->belongsTo(Test::class, 'test_id');
+    }
+
+    public function reviewRound(): BelongsTo
+    {
+        return $this->belongsTo(TestReviewRound::class, 'test_review_round_id');
     }
 
     public function changedByUser(): BelongsTo

@@ -116,6 +116,7 @@ class TestReportService
 
             $this->testReportRepository->createStatusHistory(
                 testId: $testId,
+                reviewRoundId: null,
                 fromStatus: TestReviewStatus::Approved->value,
                 toStatus: TestReviewStatus::Reported->value,
                 changedByUserId: null,
