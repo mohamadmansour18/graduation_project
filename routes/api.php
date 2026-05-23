@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\V1\AiQuestionGeneration\AiQuestionGenerationController;
 use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
 use App\Http\Controllers\V1\Auth\PasswordResetController;
@@ -93,6 +94,11 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             Route::prefix('lab')->group(function () {
                 Route::get('/recommended-tests', [LabTestDiscoveryController::class, 'index']);
                 Route::post('/search' , [LabController::class, 'searchTests'])->middleware('throttle:api-search');
+                Route::middleware('idempotency')->group(function () {
+                    Route::post('/create-test' , [LabController::class , 'store']);
+                    Route::post('/ai-question-generations', [AiQuestionGenerationController::class, 'store']);
+                });
+                Route::get('/ai-question-generations/{id}', [AiQuestionGenerationController::class, 'show']);
             });
 
             //TESTS
@@ -127,7 +133,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                         Route::post('/reports/review/{reviewId}' , [TestReportReviewController::class , 'store']);
                     });
 
-                    Route::post('/payments/stripe/{testId}' , [TestPaymentController::class , 'createStripeCheckoutSession'])->middleware('idempotency.payment');
+                    Route::post('/payments/stripe/{testId}' , [TestPaymentController::class , 'createStripeCheckoutSession'])->middleware('idempotency');
 
                 });
 

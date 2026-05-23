@@ -293,12 +293,66 @@ class TestException extends ApiException
         );
     }
 
-    public static function testDoesNotNeedRevision(): self
+    public static function tooManyPendingPublicTestsForVerifiedUser(): self
     {
         return new self(
-            title: '! لا توجد تعديلات مطلوبة',
-            message: 'هذا الاختبار لا يحتاج إلى تعديلات حالياً',
-            status: 409
+            title: '! لا يمكن إنشاء الاختبار',
+            message: 'لا يمكن إنشاء اختبار عام جديد لأن لديك ثلاثة اختبارات عامة قيد المراجعة أو بانتظار التعديل',
+            status: 422
+        );
+    }
+
+    public static function tooManyPendingPublicTestsForUnverifiedUser(): self
+    {
+        return new self(
+            title: '! لا يمكن إنشاء الاختبار',
+            message: 'لا يمكن إنشاء اختبار عام جديد لأن المستخدم غير موثق أكاديمياً ولديه اختبار عام قيد المراجعة أو بانتظار التعديل',
+            status: 422
+        );
+    }
+
+    public static function tooManyPrivateTestsToday(): self
+    {
+        return new self(
+            title: '! لا يمكن إنشاء الاختبار',
+            message: 'لا يمكن إنشاء أكثر من خمسة اختبارات خاصة في اليوم الواحد',
+            status: 422
+        );
+    }
+
+    public static function privateTestCannotHavePrice(): self
+    {
+        return new self(
+            title: '! بيانات الاختبار غير صحيحة',
+            message: 'لا يمكن إضافة سعر للاختبار الخاص',
+            status: 422
+        );
+    }
+
+    public static function privateTestCannotHavePreviewQuestions(): self
+    {
+        return new self(
+            title: '! بيانات الاختبار غير صحيحة',
+            message: 'لا يمكن اختيار أسئلة كعينة للاختبار الخاص',
+            status: 422
+        );
+    }
+
+    public static function publicTestMustHaveExactPreviewQuestionsCount(int $requiredCount): self
+    {
+        return new self(
+            title: '! عينة الأسئلة غير صحيحة',
+            message: "يجب اختيار {$requiredCount} سؤال/أسئلة كعينة ظاهرة للاختبار العام",
+            status: 422
+        );
+    }
+
+    public static function questionMustHaveExactlyOneCorrectOption(int $questionNumber): self
+    {
+        return new self(
+            title: '! بيانات السؤال غير صحيحة',
+            message: "السؤال رقم {$questionNumber} يجب أن يحتوي على إجابة صحيحة واحدة فقط",
+            status: 422
         );
     }
 }

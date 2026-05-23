@@ -310,4 +310,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasOne(FailedLogin::class , 'user_id' );
     }
+
+    public function aiQuestionGenerationRequests(): HasMany
+    {
+        return $this->hasMany(AiQuestionGenerationRequest::class , 'user_id');
+    }
 }

@@ -69,6 +69,5 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\EnsureUserHasRole::class,
         'jwt.auth.api' => \App\Http\Middleware\JwtAuthMiddleware::class,
         'idempotency' => \App\Http\Middleware\IdempotencyMiddleware::class,
-        'idempotency.payment' => \App\Http\Middleware\IdempotencyPaymentMiddleware::class,
     ];
 }

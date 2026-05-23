@@ -30,12 +30,24 @@ class IdempotencyMiddleware
         }
 
         $userId = optional($request->user())->id ?? 'guest';
-        $routeName = optional($request->route())->getName() ?? $request->path();
+        $routeNameOrPath = optional($request->route())->getName() ?? $request->path();
+
+        $routeParametersHash = sha1(json_encode(
+            optional($request->route())->parameters() ?? [],
+            JSON_UNESCAPED_UNICODE
+        ));
+
+        $requestBodyHash = sha1(json_encode(
+            $request->except([]),
+            JSON_UNESCAPED_UNICODE
+        ));
 
         $fingerprint = sha1(
             $userId . '|' .
             $request->method() . '|' .
-            $routeName . '|' .
+            $routeNameOrPath . '|' .
+            $routeParametersHash . '|' .
+            $requestBodyHash . '|' .
             $idempotencyKey
         );
 
@@ -44,18 +56,16 @@ class IdempotencyMiddleware
 
         $cachedResponse = Cache::get($responseCacheKey);
 
-        if($cachedResponse)
-        {
-            return $this->dataResponse(
-                data: $cachedResponse['content'],
-                statusCode: $cachedResponse['status']
+        if ($cachedResponse) {
+            return response(
+                $cachedResponse['content'],
+                $cachedResponse['status']
             )->withHeaders($cachedResponse['headers']);
         }
 
         $lock = Cache::lock($lockKey, 30);
 
-        if(! $lock->get())
-        {
+        if (! $lock->get()) {
             $cachedResponse = Cache::get($responseCacheKey);
 
             if ($cachedResponse) {
@@ -76,7 +86,11 @@ class IdempotencyMiddleware
         try {
             $response = $next($request);
 
-            if ($response instanceof JsonResponse && $response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
+            if (
+                $response instanceof JsonResponse &&
+                $response->getStatusCode() >= 200 &&
+                $response->getStatusCode() < 300
+            ) {
                 Cache::put($responseCacheKey, [
                     'content' => $response->getContent(),
                     'status' => $response->getStatusCode(),

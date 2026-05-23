@@ -36,7 +36,7 @@ class StoreTestReportRequest extends ApiFormRequest
     {
         return [
             'reason.required' => 'سبب البلاغ مطلوب',
-            'reason.enum' => 'سبب البلاغ غير صحيح',
+            'reason.Illuminate\Validation\Rules\Enum' => 'سبب البلاغ غير صحيح',
 
             'description.string' => 'وصف البلاغ يجب أن يكون نصاً',
             'description.max' => 'وصف البلاغ طويل جداً',
