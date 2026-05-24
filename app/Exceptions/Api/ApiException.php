@@ -19,6 +19,11 @@ class ApiException extends Exception
         return $this->title;
     }
 
+    public function getMessages(): string
+    {
+        return $this->message;
+    }
+
     public function getStatus(): int
     {
         return $this->status;

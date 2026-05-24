@@ -69,6 +69,72 @@ class AiQuestionGenerationRepository
             ->first();
     }
 
+    public function findReusableRequestById(int $id, int $userId): Builder|AiQuestionGenerationRequest|null
+    {
+        return AiQuestionGenerationRequest::query()
+            ->with('assets')
+            ->where('id', $id)
+            ->where('user_id', $userId)
+            ->whereIn('status', [
+                self::STATUS_PENDING,
+                self::STATUS_PROCESSING,
+                self::STATUS_COMPLETED,
+            ])
+            ->first();
+    }
+
+    public function findReusableRequestBySignature(int $userId, string $sourceType, int $questionCount, string $difficultyLevel, string $language, array $fileSignatures): ?AiQuestionGenerationRequest
+    {
+        $fileHashes = array_column($fileSignatures, 'sha256_hash');
+
+        $candidateRequests = AiQuestionGenerationRequest::query()
+            ->with('assets')
+            ->withCount('assets')     //add column assets count to the result
+            ->where('user_id', $userId)
+            ->where('source_type', $sourceType)
+            ->where('requested_question_count', $questionCount)
+            ->where('difficulty_level', $difficultyLevel)
+            ->where('language', $language)
+            ->whereIn('status', [
+                self::STATUS_PENDING,
+                self::STATUS_PROCESSING,
+                self::STATUS_COMPLETED,
+            ])
+            ->whereHas('assets', function (Builder $query) use ($fileHashes) {
+                $query->whereIn('sha256_hash', $fileHashes);
+            })
+            ->having('assets_count', '=', count($fileSignatures))   //"having" not "where" because 'assets_count' not a real column in the database but a calculated one by "withCount"
+            ->latest('id')
+            ->get();
+
+        foreach ($candidateRequests as $candidateRequest) {
+            if ($this->assetsMatchSignature($candidateRequest, $fileSignatures)) {
+                return $candidateRequest;
+            }
+        }
+
+        return null;
+    }
+
+    private function assetsMatchSignature(AiQuestionGenerationRequest $generationRequest, array $fileSignatures): bool
+    {
+        if ($generationRequest->assets->count() !== count($fileSignatures)) {
+            return false;
+        }
+
+        $existingHashes = $generationRequest->assets
+            ->pluck('sha256_hash')
+            ->sort()
+            ->values();
+
+        $incomingHashes = collect($fileSignatures)
+            ->pluck('sha256_hash')
+            ->sort()
+            ->values();
+
+        return $existingHashes->all() === $incomingHashes->all();
+    }
+
     public function markAsProcessing(AiQuestionGenerationRequest $generationRequest): void
     {
         $generationRequest->update([

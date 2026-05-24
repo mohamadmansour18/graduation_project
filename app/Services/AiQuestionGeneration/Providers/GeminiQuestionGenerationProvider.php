@@ -15,7 +15,7 @@ use RuntimeException;
 
 class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderInterface
 {
-    private const int|float MAX_INLINE_IMAGE_BYTES = 14 * 1024 * 1024; //14 MB : Byte -> KB -> MB
+    private const int|float MAX_INLINE_IMAGE_BYTES = 15 * 1024 * 1024; //14 MB : Byte -> KB -> MB
 
     private string $providerName = 'Gemini';
 
@@ -96,8 +96,7 @@ class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderIn
             ]);
 
         if (! $startUploadResponse->successful()) {
-            throw new RuntimeException(
-                'Failed to start Gemini file upload.');
+            throw AiQuestionGenerationException::connectionFailed((int) $startUploadResponse->status());
         }
 
         $uploadUrl = $startUploadResponse->header('X-Goog-Upload-URL');
@@ -109,7 +108,7 @@ class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderIn
         $fileBytes = file_get_contents($filePath);
 
         if ($fileBytes === false) {
-            throw new RuntimeException('Failed to read temporary file');
+            throw AiQuestionGenerationException::TemporaryFileReadFailed();
         }
 
         $uploadResponse = Http::timeout($timeout)
@@ -261,6 +260,15 @@ class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderIn
 
         return <<<PROMPT
 أنت مساعد متخصص في إنشاء أسئلة اختيار من متعدد MCQ من محتوى تعليمي.
+
+قبل توليد الأسئلة:
+- قيّم أولاً هل الملفات المرفقة تحتوي على محتوى علمي أو تعليمي مناسب لتوليد أسئلة منه.
+- إذا كانت الملفات عبارة عن صورة شخصية، صورة عشوائية، محتوى غير واضح، ملف فارغ، أو لا تحتوي على مادة تعليمية كافية، أرجع:
+  content_type = NotEducational
+  questions = []
+- إذا كان المحتوى تعليمياً أو علمياً، أرجع:
+  content_type = Educational
+  questions = قائمة الأسئلة
 
 المطلوب:
 - أنشئ {$generationRequest->requested_question_count} سؤالاً بالضبط.

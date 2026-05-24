@@ -62,10 +62,46 @@ class AiQuestionGenerationException extends ApiException
     {
         return new self(
             title: '! إعدادات الذكاء الاصطناعي غير مكتملة',
-            message: 'مفتاح Gemini API غير مضبوط داخل إعدادات النظام',
-            status: 500
+            message: 'خدمة توليد الأسئلة غير مهيأة حاليا يرجى المحاولة لاحقا',
+            status: 500,
+            extraContext: [
+                'failure_code' => 'PROVIDER_API_KEY_MISSING',
+            ]
         );
     }
+
+    public static function connectionFailed(int $status): self
+    {
+        $failureCode = $status === 429
+            ? 'AI_PROVIDER_RATE_LIMITED'
+            : 'AI_PROVIDER_REQUEST_FAILED';
+
+        $failureMessage = $status === 429
+            ? 'خدمة الذكاء الاصطناعي مشغولة حالياً، يرجى المحاولة بعد قليل'
+            : 'فشل الاتصال بخدمة الذكاء الاصطناعي لرفع طلب ارفاق المستندات';
+
+        return new self(
+            title: '! حدث خطأ غير متوقع',
+            message: $failureMessage,
+            status: 500,
+            extraContext: [
+                'failure_code' => $failureCode,
+            ]
+        );
+    }
+
+    public static function TemporaryFileReadFailed(): self
+    {
+        return new self(
+            title: '! إعدادات الذكاء الاصطناعي غير مكتملة',
+            message: 'فشلت قراءة المستندات المرفقة يرجى المحاولة لاحقا',
+            status: 500,
+            extraContext: [
+                'failure_code' => 'TEMPORARY_FILE_READ_FAILED',
+            ]
+        );
+    }
+
 
     public static function providerRequestFailed(): self
     {
@@ -99,6 +135,60 @@ class AiQuestionGenerationException extends ApiException
         return new self(
             title: '! لا يمكن توليد الأسئلة',
             message: 'المحتوى المرفوع لا يبدو محتوى علمياً أو تعليمياً مناسباً لتوليد أسئلة منه',
+            status: 422
+        );
+    }
+
+    public static function imageTooSmall(int $fileIndex, int $minWidth, int $minHeight): self
+    {
+        return new self(
+            title: '! الصورة المرفوعة غير صالحة',
+            message: "الصورة رقم {$fileIndex} صغيرة جداً. الحد الأدنى المقبول هو {$minWidth}x{$minHeight} بكسل",
+            status: 422
+        );
+    }
+
+    public static function imageTooLargeToProcess(int $fileIndex): self
+    {
+        return new self(
+            title: '! الصورة المرفوعة غير صالحة',
+            message: "الصورة رقم {$fileIndex} كبيرة جداً ولا يمكن فحصها بكفاءة",
+            status: 422
+        );
+    }
+
+    public static function imageIsBlankOrUniform(int $fileIndex): self
+    {
+        return new self(
+            title: '! الصورة المرفوعة فارغة',
+            message: "الصورة رقم {$fileIndex} تبدو فارغة أو بلون واحد تقريباً، يرجى رفع صورة تحتوي على محتوى واضح",
+            status: 422
+        );
+    }
+
+    public static function imageCannotBeProcessed(int $fileIndex): self
+    {
+        return new self(
+            title: '! الصورة المرفوعة غير صالحة',
+            message: "تعذر قراءة الصورة رقم {$fileIndex}، يرجى رفع صورة صالحة",
+            status: 422
+        );
+    }
+
+    public static function invalidPdfFile(): self
+    {
+        return new self(
+            title: '! ملف PDF غير صالح',
+            message: 'تعذر فتح ملف PDF أو قراءة بنيته، يرجى رفع ملف PDF صالح',
+            status: 422
+        );
+    }
+
+    public static function emptyPdfFile(): self
+    {
+        return new self(
+            title: '! ملف PDF فارغ',
+            message: 'ملف PDF لا يحتوي على صفحات صالحة',
             status: 422
         );
     }

@@ -6,20 +6,50 @@ use App\Exceptions\Api\AiQuestionGenerationException;
 use App\Jobs\ProcessAiQuestionGenerationJob;
 use App\Models\User;
 use App\Repositories\AiQuestionGeneration\AiQuestionGenerationRepository;
+use App\Services\AiQuestionGeneration\Validation\AiQuestionGenerationLocalFileValidationService;
 use Illuminate\Support\Facades\DB;
+use JsonException;
 
 class AiQuestionGenerationService
 {
     public function __construct(
         private readonly AiQuestionGenerationRepository $repository,
-        private readonly AiQuestionGenerationFileStorageService $fileStorageService
+        private readonly AiQuestionGenerationFileStorageService $fileStorageService,
+        private readonly AiQuestionGenerationReuseService $reuseService,
+        private readonly AiQuestionGenerationLocalFileValidationService $localFileValidationService
     ) {}
 
     /**
      * @throws AiQuestionGenerationException
+     * @throws JsonException
      */
     public function create(User $user, array $data, array $files): array
     {
+        $this->localFileValidationService->validate(
+            sourceType: $data['source_type'],
+            files: $files
+        );
+
+        $signature = $this->reuseService->buildSignature(
+            user: $user,
+            data: $data,
+            files: $files
+        );
+
+        $reusableRequest = $this->reuseService->findReusableRequest(
+            user: $user,
+            data: $data,
+            signature: $signature
+        );
+
+        if ($reusableRequest) {
+            return [
+                'generation_request_id' => $reusableRequest->id,
+                'status' => $reusableRequest->status,
+                'reused' => true,
+            ];
+        }
+
         $this->assertUserWithinDailyLimit($user);
 
         $generationRequest = null;
@@ -32,7 +62,13 @@ class AiQuestionGenerationService
 
             $this->fileStorageService->storeUploadedFiles(
                 generationRequest: $generationRequest,
-                files: $files
+                files: $files,
+                fileSignatures: $signature['files']
+            );
+
+            $this->reuseService->rememberRequest(
+                fingerprint: $signature['fingerprint'],
+                generationRequestId: $generationRequest->id
             );
 
             ProcessAiQuestionGenerationJob::dispatch($generationRequest->id)
@@ -42,6 +78,7 @@ class AiQuestionGenerationService
             return [
                 'generation_request_id' => $generationRequest->id,
                 'status' => $generationRequest->status,
+                'reused' => false,
             ];
 
         } catch (\Throwable $exception){

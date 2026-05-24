@@ -16,13 +16,17 @@ class AiQuestionGenerationFileStorageService
     )
     {}
 
-    public function storeUploadedFiles(AiQuestionGenerationRequest $generationRequest, array $files): void
+    public function storeUploadedFiles(AiQuestionGenerationRequest $generationRequest, array $files, array $fileSignatures = []): void
     {
         $disk = config('ai_question_generation.storage_disk');
         $baseDirectory = $this->getRequestDirectory($generationRequest->id);
 
+        $fileSignaturesByPosition = collect($fileSignatures)->keyBy('position');
+
         foreach (array_values($files) as $index => $file) {
             /** @var UploadedFile $file */
+            $position = $index + 1;
+            $fileSignature = $fileSignaturesByPosition->get($position, []);
 
             $extension = $file->getClientOriginalExtension();
 
@@ -40,8 +44,8 @@ class AiQuestionGenerationFileStorageService
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type' => $file->getMimeType(),
                 'size_bytes' => $file->getSize(),
-                'sha256_hash' => hash_file('sha256', $file->getRealPath()),
-                'position' => $index + 1,
+                'sha256_hash' => $fileSignature['sha256_hash'] ?? hash_file('sha256', $file->getRealPath()),
+                'position' => $position,
             ]);
         }
     }

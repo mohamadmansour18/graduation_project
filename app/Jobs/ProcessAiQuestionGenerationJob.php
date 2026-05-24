@@ -2,9 +2,10 @@
 
 namespace App\Jobs;
 
-use App\Contracts\AiQuestionGeneration\AiQuestionGenerationProviderInterface;
+use App\Exceptions\Api\ApiException;
 use App\Repositories\AiQuestionGeneration\AiQuestionGenerationRepository;
 use App\Services\AiQuestionGeneration\AiQuestionGenerationFileStorageService;
+use App\Services\AiQuestionGeneration\AiQuestionGenerationProviderManager;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -18,7 +19,7 @@ class ProcessAiQuestionGenerationJob implements ShouldQueue
 
     public int $tries = 2;
 
-    public int $timeout = 300;
+    public int $timeout = 120;
     /**
      * Create a new job instance.
      */
@@ -33,7 +34,7 @@ class ProcessAiQuestionGenerationJob implements ShouldQueue
     public function handle(
         AiQuestionGenerationRepository $repository,
         AiQuestionGenerationFileStorageService $fileStorageService,
-        AiQuestionGenerationProviderInterface $provider
+        AiQuestionGenerationProviderManager $providerManager
     ): void
     {
         $generationRequest = $repository->findWithAssetsById($this->generationRequestId);
@@ -49,17 +50,10 @@ class ProcessAiQuestionGenerationJob implements ShouldQueue
         $repository->markAsProcessing($generationRequest);
 
         try {
-            Log::info('AI_JOB_BEFORE_PROVIDER', [
-                'generation_request_id' => $generationRequest->id,
-                'assets_count' => $generationRequest->assets->count(),
-            ]);
+            $provider = $providerManager->default();
+
             $result = $provider->generate($generationRequest);
-            Log::info('AI_JOB_AFTER_PROVIDER', [
-                'generation_request_id' => $generationRequest->id,
-                'questions_count' => count($result['questions'] ?? []),
-                'provider' => $result['provider'] ?? null,
-                'model' => $result['model'] ?? null,
-            ]);
+
             $repository->markAsCompleted(
                 generationRequest: $generationRequest,
                 questions: $result['questions'],
@@ -72,6 +66,7 @@ class ProcessAiQuestionGenerationJob implements ShouldQueue
             );
 
         } catch (\Throwable $exception) {
+
             Log::channel('errors')->error('AI question generation job failed.', [
                 'generation_request_id' => $this->generationRequestId,
                 'error' => $exception->getMessage(),
@@ -80,10 +75,21 @@ class ProcessAiQuestionGenerationJob implements ShouldQueue
             $generationRequest = $repository->findWithAssetsById($this->generationRequestId);
 
             if ($generationRequest) {
+                $failureCode = 'AI_GENERATION_FAILED';
+                $failureMessage = 'فشل توليد الأسئلة، يرجى المحاولة لاحقاً';
+
+                if ($exception instanceof ApiException) {
+
+                    $failureCode = $exception->getContext()['failure_code']
+                        ?? 'AI_GENERATION_FAILED';
+
+                    $failureMessage = $exception->getMessages();
+                }
+
                 $repository->markAsFailed(
                     generationRequest: $generationRequest,
-                    failureCode: 'AI_GENERATION_FAILED',
-                    failureMessage: 'فشل توليد الأسئلة، يرجى المحاولة لاحقاً'
+                    failureCode: $failureCode,
+                    failureMessage: $failureMessage
                 );
             }
 
