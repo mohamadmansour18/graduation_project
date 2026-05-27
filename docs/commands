@@ -26,3 +26,96 @@ sudo systemctl enable cron
 stripe :
 stripe login
 stripe listen --forward-to http://localhost/api/v1/webhooks/stripe
+
+-------------------
+1- تنزير الداة والتاكد من انها تعمل
+sail up -d ollama
+curl http://localhost:11434/api/tags
+
+2- تنزيل النموذج والتاكد انه يعمل
+./vendor/bin/sail exec ollama ollama pull qwen3.5:9b
+docker compose exec ollama ollama list
+
+3- نطفي الحاويات لاننا سنقوم باعطاء دوكر مساحة RAM اكثر وايضا نطفئ دوكر
+sail down
+
+4- ننشئ الملف في المسار
+C:\Users\YourName\.wslconfig
+من خلال التعليمة التالية التي سنضعها في ال Powershell :
+notepad $env:USERPROFILE\.wslconfig
+
+5- ونضع الكود الاتي داخل الكود الذي تم انشائه:
+[wsl2]
+memory=12GB
+processors=6
+swap=8GB
+
+6- نحفظ ونغلق المذكرة ومن ثم في power shell نكتب الامر :
+wsl --shutdown
+
+7- نشغل دوكر من جديد يجب ان نرى تحديث الذاكرة ونشغل الحاويات ونشغل النموذج من خلال الامر :
+docker compose exec ollama ollama run qwen3.5:9b
+
+في حال اردنا اطفائ النموذج نكتب الامر :
+ctrl + c او bye
+
+-------------------
+&& apt-get install -y gnupg gosu curl ca-certificates zip unzip git supervisor sqlite3 libcap2-bin libpng-dev python3 dnsutils librsvg2-bin fswatch ffmpeg nano poppler-utils \
+
+او :
+
+RUN apt-get update && apt-get install -y poppler-utils \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+sail build
+
+pdftotext -v
+pdfinfo -v
+
+------------------
+مراقبة log لحاوية ما :
+docker logs --tail 0 -f graduation_project_nerd-ollama-1
+
+حذف نموذج ما :
+./vendor/bin/sail exec ollama ollama rm qwen3.5:9b
+
+تعليمة لتجربة الاتصال من داخل sail shell :
+curl -N http://ollama:11434/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "qwen3.5:4b",
+    "stream": false,
+    "format": "json",
+    "keep_alive": "720h",
+    "messages": [
+      {
+        "role": "user",
+        "content": "قل مرحبا فقط"
+      }
+    ],
+    "options": {
+      "temperature": 0.3,
+      "num_thread": 5,
+      "num_ctx": 4096
+    }
+  }'
+
+فحص مدة تفريغ الذاكرة :
+sail exec ollama ollama ps
+
+////////////////////////////////////////////////////
+ببساطة Ollama هو برنامج يشغّل نماذج ذكاء اصطناعي على جهازك أنت، بدل أن ترسل الطلب إلى سيرفر خارجي مثل Gemini أو OpenAI
+مخصص لتشغيل نماذج LLM محلياً مثل Llama و Mistral و Qwen وغيرها، ويهتم بتنزيل النموذج وتشغيله وتوفير API محلي للتعامل معه
+
+
+متى تستخدم install ومتى update ؟
+install
+يستخدم:
+عند سحب المشروع من Git
+لتثبيت النسخ الموجودة في composer.lock
+
+update
+يستخدم:
+بعد تعديل composer.json
+لتحديث composer.lock

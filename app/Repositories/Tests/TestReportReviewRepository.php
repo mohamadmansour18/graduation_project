@@ -27,6 +27,7 @@ class TestReportReviewRepository
             ])
             ->where('test_reviews.id', $reviewId)
             ->where('test.test_type', TestType::Public->value)
+            ->where('test.reviews_count' , '!=' , TestReviewStatus::Deleted->value)
             ->lockForUpdate()
             ->first();
     }

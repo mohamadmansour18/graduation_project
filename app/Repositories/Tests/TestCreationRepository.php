@@ -95,13 +95,13 @@ class TestCreationRepository
         ]);
     }
 
-    public function createInitialStatusHistory(Test $test,): void
+    public function createInitialStatusHistory(Test $test, int $userId): void
     {
         $test->testStatusHistories()->create([
             'test_review_round_id' => null,
             'from_status' => null,
             'to_status' => TestReviewStatus::New->value,
-            'changed_by_user_id' => null,
+            'changed_by_user_id' => $userId,
         ]);
     }
 }

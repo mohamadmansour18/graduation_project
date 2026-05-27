@@ -21,6 +21,7 @@ use App\Http\Controllers\V1\Tests\TestRevisionRequestController;
 use App\Http\Controllers\V1\Webhooks\StripeWebhookController;
 use App\Models\Test;
 use Carbon\Carbon;
+use Cloudstudio\Ollama\Facades\Ollama;
 use Illuminate\Support\Facades\Route;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
@@ -131,9 +132,9 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::middleware('idempotency')->group(function () {
                         Route::post('/reports/{testId}' , [TestReportController::class , 'store']);
                         Route::post('/reports/review/{reviewId}' , [TestReportReviewController::class , 'store']);
+                        Route::post('/payments/stripe/{testId}' , [TestPaymentController::class , 'createStripeCheckoutSession']);
+                        Route::delete('/delete/test/{testId}', [TestController::class, 'destroy']);
                     });
-
-                    Route::post('/payments/stripe/{testId}' , [TestPaymentController::class , 'createStripeCheckoutSession'])->middleware('idempotency');
 
                 });
 
@@ -168,6 +169,9 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
     });
 
+/*
+ * TODO :
+ * في الـ APIs التي تعرض الاختبارات العامة لا تستخدم withTrashed() أبدا
+ أما API مشتريات المستخدم لاحقاً، نستخدم withTrashed() فقط حتى يرى المشتري الاختبار المدفوع المحذوف Soft Delete
 
-
-
+ * */

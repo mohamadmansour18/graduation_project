@@ -112,6 +112,17 @@ services:
     depends_on:
       - redis
 
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - '${FORWARD_OLLAMA_PORT:-11434}:11434'
+    volumes:
+      - 'sail-ollama:/root/.ollama'
+    networks:
+      - sail
+    restart: unless-stopped
+
+
 networks:
   sail:
     driver: bridge
@@ -124,4 +135,6 @@ volumes:
   sail-meilisearch:
     driver: local
   sail-redisinsight:
+    driver: local
+  sail-ollama:
     driver: local

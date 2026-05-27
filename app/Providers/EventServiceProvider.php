@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Events\TestBookmarkStateChanged;
+use App\Events\TestDeleted;
 use App\Events\TestDownloaded;
 use App\Events\TestLikeStateChanged;
 use App\Events\TestReviewStateChanged;
@@ -10,6 +11,7 @@ use App\Listeners\UpdateTestBookmarkSummaryTables;
 use App\Listeners\UpdateTestDownloadSummaryTables;
 use App\Listeners\UpdateTestLikeSummaryTables;
 use App\Listeners\UpdateTestReviewSummaryTables;
+use App\Listeners\UpdateTestSummariesAfterDeletion;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -41,6 +43,10 @@ class EventServiceProvider extends ServiceProvider
 
         TestReviewStateChanged::class => [
             UpdateTestReviewSummaryTables::class,
+        ],
+
+        TestDeleted::class => [
+            UpdateTestSummariesAfterDeletion::class,
         ],
     ];
 

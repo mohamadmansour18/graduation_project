@@ -4,9 +4,7 @@ namespace App\Services\AiQuestionGeneration\Validation;
 
 use App\Exceptions\Api\AiQuestionGenerationException;
 use Illuminate\Http\UploadedFile;
-use setasign\Fpdi\PdfParser\PdfParser;
-use setasign\Fpdi\PdfParser\StreamReader;
-use setasign\Fpdi\PdfReader\PdfReader;
+use Symfony\Component\Process\Process;
 use Throwable;
 
 class PdfStructureValidator
@@ -20,12 +18,24 @@ class PdfStructureValidator
         }
 
         try {
-            $reader = new PdfReader(
-                new PdfParser(StreamReader::createByFile($filePath))
-            );
+            $process = new Process(['pdfinfo', $filePath]);
+            $process->setTimeout(10);
+            $process->run();
 
-            $pageCount = $reader->getPageCount();
-        } catch (Throwable) {
+            if (! $process->isSuccessful()) {
+                throw AiQuestionGenerationException::invalidPdfFile();
+            }
+
+            $output = $process->getOutput();
+
+            if (! preg_match('/Pages:\s+(\d+)/i', $output, $matches)) {
+                throw AiQuestionGenerationException::invalidPdfFile();
+            }
+
+            $pageCount = (int) $matches[1];
+
+        } catch (Throwable $exception) {
+
             throw AiQuestionGenerationException::invalidPdfFile();
         }
 

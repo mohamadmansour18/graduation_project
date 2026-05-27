@@ -31,11 +31,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
 
 class Test extends Model
 {
-    use Searchable ;    //Trait reflects model changes (insert - update - delete) to Meilisearch database index & it is depends on Laravel Observer so you should use eloquent ORM in (update - delete)
+    use Searchable , SoftDeletes ;    //Trait reflects model changes (insert - update - delete) to Meilisearch database index & it is depends on Laravel Observer so you should use eloquent ORM in (update - delete)
 
     protected $table = 'test';
 
@@ -218,12 +219,9 @@ class Test extends Model
     }
 
     //This function determent what of data should be entered into the index (all test or specific test ?)
-    /*
     public function shouldBeSearchable(): bool
     {
-        return $this->test_type === 'public'
-            && $this->review_status === 'approved'
-            && ! is_null($this->published_at);
+        return ! $this->trashed();
     }
-    */
+
 }

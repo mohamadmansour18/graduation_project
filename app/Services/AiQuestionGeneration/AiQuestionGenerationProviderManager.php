@@ -30,4 +30,37 @@ class AiQuestionGenerationProviderManager
 
         return $provider;
     }
+
+    /**
+     * Resolve an ordered list of provider names into named provider entries.
+     *
+     * @param array<int, string> $providerNames
+     * @return array<int, array{
+     *     name: string,
+     *     provider: \App\Contracts\AiQuestionGeneration\AiQuestionGenerationProviderInterface
+     * }>
+     */
+    public function namedChain(array $providerNames): array
+    {
+        $providers = [];
+
+        foreach ($providerNames as $providerName) {
+            $providerName = trim((string) $providerName);
+
+            if ($providerName === '') {
+                continue;
+            }
+
+            $providers[] = [
+                'name' => $providerName,
+                'provider' => $this->provider($providerName),
+            ];
+        }
+
+        if ($providers === []) {
+            throw new RuntimeException('AI question generation provider chain is empty.');
+        }
+
+        return $providers;
+    }
 }

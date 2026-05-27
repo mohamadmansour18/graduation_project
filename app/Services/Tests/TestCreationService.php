@@ -112,6 +112,7 @@ class TestCreationService
 
                 $this->repository->createInitialStatusHistory(
                     test: $test,
+                    userId: $user->id
                 );
             }
         });

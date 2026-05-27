@@ -355,4 +355,22 @@ class TestException extends ApiException
             status: 422
         );
     }
+
+    public static function notOwner(): self
+    {
+        return new self(
+            title: '! لا تملك الصلاحية',
+            message: 'لا يمكنك حذف اختبار لا تملكه',
+            status: 403
+        );
+    }
+
+    public static function alreadyDeleted(): self
+    {
+        return new self(
+            title: '! فشل حذف الاختبار',
+            message: 'لا يمكن حذف اختبار محذوف مسبقاً',
+            status: 409
+        );
+    }
 }

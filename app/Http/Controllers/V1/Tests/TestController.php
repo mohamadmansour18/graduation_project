@@ -179,4 +179,18 @@ class TestController extends Controller
         );
     }
 
+    //////////////////////////////////////////////////////////////
+
+    public function destroy(int $testId, TestService $testService): JsonResponse
+    {
+        $testService->deleteTest(
+            testId: $testId,
+            userId: Auth::id()
+        );
+
+        return $this->successResponse(
+            title: '! تم حذف الاختبار بنجاح',
+            message: 'تم حذف الاختبار المحدد بنجاح ولن تسطيع الوصول اليه بعدد الان'
+        );
+    }
 }

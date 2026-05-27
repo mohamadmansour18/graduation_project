@@ -11,7 +11,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use RuntimeException;
+
 
 class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderInterface
 {
@@ -29,7 +29,7 @@ class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderIn
         $model = config('ai_question_generation.gemini.model');
 
         if (! $apiKey) {
-            throw AiQuestionGenerationException::providerApiKeyMissing();
+            throw AiQuestionGenerationException::providerApiKeyMissing(provider: $this->providerName);
         }
 
         $contentParts = [];
@@ -80,62 +80,95 @@ class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderIn
         $baseUrl = rtrim(config('ai_question_generation.gemini.base_url'), '/');
         $timeout = (int) config('ai_question_generation.gemini.timeout_seconds');
 
-        $startUploadResponse = Http::timeout($timeout)
-            ->retry(3, 1000, fn ($exception) => $exception instanceof ConnectionException)
-            ->withHeaders([
-                'X-Goog-Upload-Protocol' => 'resumable',
-                'X-Goog-Upload-Command' => 'start',
-                'X-Goog-Upload-Header-Content-Length' => (string) $asset->size_bytes,
-                'X-Goog-Upload-Header-Content-Type' => $asset->mime_type,
-                'Content-Type' => 'application/json',
-            ])
-            ->post($this->buildGeminiApiUrl("{$baseUrl}/upload/v1beta/files", $apiKey), [
-                'file' => [
-                    'display_name' => $asset->original_name,
-                ],
-            ]);
+        try {
+            $startUploadResponse = Http::timeout($timeout)
+                ->retry(3, 1000, fn ($exception) => $exception instanceof ConnectionException)
+                ->withHeaders([
+                    'X-Goog-Upload-Protocol' => 'resumable',
+                    'X-Goog-Upload-Command' => 'start',
+                    'X-Goog-Upload-Header-Content-Length' => (string) $asset->size_bytes,
+                    'X-Goog-Upload-Header-Content-Type' => $asset->mime_type,
+                    'Content-Type' => 'application/json',
+                ])
+                ->post($this->buildGeminiApiUrl("{$baseUrl}/upload/v1beta/files", $apiKey), [
+                    'file' => [
+                        'display_name' => $asset->original_name,
+                    ],
+                ]);
+        } catch (ConnectionException $exception) {
+            throw AiQuestionGenerationException::providerConnectionFailed(
+                provider: $this->providerName,
+                operation: 'startUpload',
+                reason: $exception->getMessage()
+            );
+        }
 
         if (! $startUploadResponse->successful()) {
-            throw AiQuestionGenerationException::connectionFailed((int) $startUploadResponse->status());
+            throw AiQuestionGenerationException::providerRequestFailed(
+                provider: $this->providerName,
+                operation: 'startUpload',
+                status: (int) $startUploadResponse->status(),
+                responseBody: $startUploadResponse->body()
+            );
         }
 
         $uploadUrl = $startUploadResponse->header('X-Goog-Upload-URL');
 
         if (! $uploadUrl) {
-            throw new RuntimeException('Gemini upload URL is missing.');
+            throw AiQuestionGenerationException::providerUploadUrlMissing(
+                provider: $this->providerName
+            );
         }
 
         $fileBytes = file_get_contents($filePath);
 
         if ($fileBytes === false) {
-            throw AiQuestionGenerationException::TemporaryFileReadFailed();
+            throw AiQuestionGenerationException::temporaryFileReadFailed(
+                path: $asset->storage_path
+            );
         }
 
-        $uploadResponse = Http::timeout($timeout)
-            ->retry(3, 1000, fn ($exception) => $exception instanceof ConnectionException)
-            ->withBody($fileBytes, $asset->mime_type)
-            ->withHeaders([
-                'Content-Length' => (string) $asset->size_bytes,
-                'X-Goog-Upload-Offset' => '0',
-                'X-Goog-Upload-Command' => 'upload, finalize',
-            ])
-            ->post($uploadUrl);
+        try {
+            $uploadResponse = Http::timeout($timeout)
+                ->retry(3, 1000, fn ($exception) => $exception instanceof ConnectionException)
+                ->withBody($fileBytes, $asset->mime_type)
+                ->withHeaders([
+                    'Content-Length' => (string) $asset->size_bytes,
+                    'X-Goog-Upload-Offset' => '0',
+                    'X-Goog-Upload-Command' => 'upload, finalize',
+                ])
+                ->post($uploadUrl);
+        } catch (ConnectionException $exception) {
+            throw AiQuestionGenerationException::providerConnectionFailed(
+                provider: $this->providerName,
+                operation: 'uploadBytes',
+                reason: $exception->getMessage()
+            );
+        }
 
         if (! $uploadResponse->successful()) {
-            throw new RuntimeException('Failed to upload Gemini file bytes.');
+            throw AiQuestionGenerationException::providerRequestFailed(
+                provider: $this->providerName,
+                operation: 'uploadBytes',
+                status: (int) $uploadResponse->status(),
+                responseBody: $uploadResponse->body()
+            );
         }
 
         $file = $uploadResponse->json('file');
 
         if (! is_array($file) || empty($file['uri']) || empty($file['mimeType'])) {
-            throw new RuntimeException('Invalid Gemini uploaded file response');
+            throw AiQuestionGenerationException::providerUploadedFileResponseInvalid(
+                provider: $this->providerName
+            );
         }
 
         return [
-            'uri' => $file['uri'], //uri related of file (not in local storage put in gemini after upload file on it)
+            'uri' => $file['uri'],
             'mime_type' => $file['mimeType'],
         ];
     }
+
 
     private function buildInlineDataPart(AiQuestionGenerationAsset $asset): array
     {
@@ -143,7 +176,9 @@ class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderIn
         $fileBytes = file_get_contents($filePath);
 
         if ($fileBytes === false) {
-            throw new RuntimeException('Failed to read temporary file');
+            throw AiQuestionGenerationException::temporaryFileReadFailed(
+                path: $asset->storage_path
+            );
         }
 
         return [
@@ -177,7 +212,9 @@ class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderIn
         $filePath = Storage::disk($asset->storage_disk)->path($asset->storage_path);
 
         if (! is_file($filePath)) {
-            throw new RuntimeException('Temporary file does not exist');
+            throw AiQuestionGenerationException::temporaryFileMissing(
+                path: $asset->storage_path
+            );
         }
 
         return $filePath;
@@ -193,41 +230,61 @@ class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderIn
             'text' => $this->buildPrompt($generationRequest),
         ];
 
-
-        $response = Http::timeout($timeout)
-            ->retry(3, 1000, fn ($exception) => $exception instanceof ConnectionException)
-            ->withHeaders([
-                'X-Goog-Api-Key' => $apiKey,
-                'Content-Type' => 'application/json',
-            ])
-            ->post("{$baseUrl}/v1beta/models/{$model}:generateContent", [
-                'contents' => [
-                    [
-                        'role' => 'user',
-                        'parts' => $parts,
+        try {
+            $response = Http::timeout($timeout)
+                ->retry(3, 1000, fn ($exception) => $exception instanceof ConnectionException)
+                ->withHeaders([
+                    'X-Goog-Api-Key' => $apiKey,
+                    'Content-Type' => 'application/json',
+                ])
+                ->post("{$baseUrl}/v1beta/models/{$model}:generateContent", [
+                    'contents' => [
+                        [
+                            'role' => 'user',
+                            'parts' => $parts,
+                        ],
                     ],
-                ],
-                'generationConfig' => [
-                    'temperature' => 0.4,
-                    'responseMimeType' => 'application/json',
-                    'responseSchema' => $this->questionSchema(),
-                ],
-            ]);
+                    'generationConfig' => [
+                        'temperature' => 0.4,
+                        'responseMimeType' => 'application/json',
+                        'responseSchema' => $this->questionSchema(),
+                    ],
+                ]);
+        } catch (ConnectionException $exception) {
+            throw AiQuestionGenerationException::providerConnectionFailed(
+                provider: $this->providerName,
+                operation: 'generateContent',
+                reason: $exception->getMessage()
+            );
+        }
 
         if (! $response->successful()) {
-            throw new RuntimeException('Gemini generateContent request failed.');
+            throw AiQuestionGenerationException::providerRequestFailed(
+                provider: $this->providerName,
+                operation: 'generateContent',
+                status: (int) $response->status(),
+                responseBody: $response->body()
+            );
         }
 
         $text = $response->json('candidates.0.content.parts.0.text');
 
         if (! is_string($text) || trim($text) === '') {
-            throw new RuntimeException('Gemini response text is empty.');
+            throw AiQuestionGenerationException::providerInvalidResponse(
+                provider: $this->providerName,
+                operation: 'generateContent',
+                reason: 'Gemini response text is empty.'
+            );
         }
 
         $decoded = json_decode($text, true);
 
         if (! is_array($decoded)) {
-            throw new RuntimeException('Gemini response is not valid JSON.');
+            throw AiQuestionGenerationException::providerInvalidResponse(
+                provider: $this->providerName,
+                operation: 'generateContent',
+                reason: 'Gemini response is not valid JSON.'
+            );
         }
 
         return $decoded;

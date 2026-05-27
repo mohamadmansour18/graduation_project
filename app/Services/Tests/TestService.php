@@ -2,12 +2,17 @@
 
 namespace App\Services\Tests;
 
+use App\Enums\TestDeletionStrategy;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
+use App\Events\TestDeleted;
 use App\Exceptions\Api\TestException;
 use App\Helpers\CounterProcessor;
+use App\Models\Test;
 use App\Repositories\Tests\TestRepository;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class TestService
@@ -274,5 +279,89 @@ class TestService
         }
 
         return $this->testRepository->getStatusHistories($testId);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    public function deleteTest(int $testId, int $userId): void
+    {
+        DB::transaction(function () use ($testId, $userId) {
+            $test = $this->testRepository->findForDelete($testId);
+
+            if (! $test) {
+                throw TestException::notFound();
+            }
+
+            if ((int) $test->creator_user_id !== $userId) {
+                throw TestException::notOwner();
+            }
+
+            if ($test->trashed() || $test->review_status === TestReviewStatus::Deleted->value) {
+                throw TestException::alreadyDeleted();
+            }
+
+            $fromStatus = (string) $test->review_status;
+            $strategy = $this->determineDeletionStrategy($test);
+
+            $wasPublished = $fromStatus === TestReviewStatus::Approved->value && $test->published_at !== null;
+
+            $eventPayload = [
+                'testId' => (int) $test->id,
+                'creatorUserId' => (int) $test->creator_user_id,
+                'deletedByUserId' => $userId,
+                'publishedAt' => $test->published_at?->toDateTimeString(),
+                'wasPublished' => $wasPublished,
+                'likesCount' => (int) $test->likes_count,
+                'bookmarksCount' => (int) $test->bookmarks_count,
+                'reviewsCount' => (int) $test->reviews_count,
+                'downloadsCount' => (int) $test->downloads_count,
+                'averageRating' => (float) $test->average_rating,
+                'deletionStrategy' => $strategy,
+            ];
+
+            $test->review_status = TestReviewStatus::Deleted->value;
+            $test->save();
+
+            $this->testRepository->createStatusHistory(
+                testId: (int) $test->id,
+                testReviewRoundId: null,
+                fromStatus: $fromStatus,
+                toStatus: TestReviewStatus::Deleted->value,
+                changedByUserId: $userId,
+                note: 'تم حذف هذا الاختبار من قبل صاحب الاختبار'
+            );
+
+            if ($strategy === TestDeletionStrategy::SoftDelete) {
+                $test->delete();
+            } else {
+                $test->forceDelete();
+            }
+
+            TestDeleted::dispatch(...$eventPayload)->afterCommit();
+
+            Log::channel('audit')->info('test_deleted', [
+                'test_id' => $eventPayload['testId'],
+                'creator_user_id' => $eventPayload['creatorUserId'],
+                'deleted_by_user_id' => $eventPayload['deletedByUserId'],
+                'deletion_strategy' => $strategy->value,
+            ]);
+        });
+    }
+
+    private function determineDeletionStrategy(Test $test): TestDeletionStrategy
+    {
+        if ($test->test_type === TestType::Private->value) {
+            return TestDeletionStrategy::ForceDelete;
+        }
+
+        $price = (float) ($test->price ?? 0);
+
+        if ($price <= 0) {
+            return TestDeletionStrategy::ForceDelete;
+        }
+
+        return $this->testRepository->hasPaidPurchases((int) $test->id)
+            ? TestDeletionStrategy::SoftDelete
+            : TestDeletionStrategy::ForceDelete;
     }
 }

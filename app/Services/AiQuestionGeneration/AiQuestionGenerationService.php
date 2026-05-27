@@ -120,8 +120,12 @@ class AiQuestionGenerationService
             'status' => $generationRequest->status,
             'source_type' => $generationRequest->source_type,
             'requested_question_count' => $generationRequest->requested_question_count,
+            'question_actually_generated' => $generationRequest->status === 'Completed'
+                ? count($generationRequest->generated_questions_json ?? [])
+                : 0,
             'difficulty_level' => $generationRequest->difficulty_level,
             'language' => $generationRequest->language,
+            'provider' => $generationRequest->provider ?? null,
             'questions' => $generationRequest->status === 'Completed'
                 ? $this->formatQuestionsForResponse($generationRequest->generated_questions_json ?? [])
                 : null,

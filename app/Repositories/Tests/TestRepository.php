@@ -377,4 +377,36 @@ class TestRepository
             ->orderByDesc('id')
             ->get();
     }
+
+    public function findForDelete(int $testId): Builder|Test|null
+    {
+        return Test::query()
+            ->withTrashed()
+            ->whereKey($testId)
+            ->first();
+    }
+
+    public function hasPaidPurchases(int $testId): bool
+    {
+        return DB::table('test_purchases')
+            ->where('test_id', $testId)
+            ->where('payment_status', PaymentStatus::Paid->value)
+            ->exists();
+    }
+
+
+    public function createStatusHistory(int $testId, ?int $testReviewRoundId, string $fromStatus, string $toStatus, int $changedByUserId, ?string $note = null): void
+    {
+        DB::table('test_status_histories')->insert([
+            'test_id' => $testId,
+            'test_review_round_id' => $testReviewRoundId,
+            'from_status' => $fromStatus,
+            'to_status' => $toStatus,
+            'changed_by_user_id' => $changedByUserId,
+            'note' => $note,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
 }
