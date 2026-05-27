@@ -21,7 +21,6 @@ use App\Http\Controllers\V1\Tests\TestRevisionRequestController;
 use App\Http\Controllers\V1\Webhooks\StripeWebhookController;
 use App\Models\Test;
 use Carbon\Carbon;
-use Cloudstudio\Ollama\Facades\Ollama;
 use Illuminate\Support\Facades\Route;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
