@@ -60,6 +60,16 @@ class AiProviderFailureClassifier
             'AI_PROVIDER_TIMEOUT',
             'AI_PROVIDER_INVALID_RESPONSE',
             'AI_PROVIDER_UNSUPPORTED_SOURCE_TYPE',
+            'AI_PROVIDER_AUTH_FAILED',
+            'AI_PROVIDER_REQUEST_REJECTED',
+            'AI_PROVIDER_REQUEST_FAILED',
+            'AI_PROVIDER_UPLOAD_URL_MISSING',
+            'AI_PROVIDER_UPLOADED_FILE_RESPONSE_INVALID',
+            'PROVIDER_API_KEY_MISSING',
+            'PROVIDER_NOT_ENOUGH_EDUCATIONAL_CONTENT',
+            'CONTENT_NOT_EDUCATIONAL',
+            'INVALID_GENERATED_QUESTIONS',
+            'AI_ASSET_TEXT_EXTRACTION_FAILED',
         ], true);
     }
 
@@ -78,6 +88,18 @@ class AiProviderFailureClassifier
             => $this->cooldownSeconds('temporary_unavailable_seconds'),
 
             'AI_PROVIDER_UNSUPPORTED_SOURCE_TYPE'
+            => null,
+
+            'AI_PROVIDER_AUTH_FAILED',
+            'AI_PROVIDER_REQUEST_REJECTED',
+            'AI_PROVIDER_REQUEST_FAILED',
+            'AI_PROVIDER_UPLOAD_URL_MISSING',
+            'AI_PROVIDER_UPLOADED_FILE_RESPONSE_INVALID',
+            'PROVIDER_API_KEY_MISSING',
+            'PROVIDER_NOT_ENOUGH_EDUCATIONAL_CONTENT',
+            'CONTENT_NOT_EDUCATIONAL',
+            'INVALID_GENERATED_QUESTIONS',
+            'AI_ASSET_TEXT_EXTRACTION_FAILED'
             => null,
 
             default => null,

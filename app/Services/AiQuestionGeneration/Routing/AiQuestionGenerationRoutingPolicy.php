@@ -4,10 +4,15 @@ namespace App\Services\AiQuestionGeneration\Routing;
 
 use App\Models\AiQuestionGenerationAsset;
 use App\Models\AiQuestionGenerationRequest;
+use App\Services\AiQuestionGeneration\Support\AiProviderCapabilityService;
 use Illuminate\Support\Facades\Log;
 
 class AiQuestionGenerationRoutingPolicy
 {
+    public function __construct(
+        private readonly AiProviderCapabilityService $providerCapabilityService
+    ) {}
+
     /**
      * Build ordered provider chain based on request complexity score.
      *
@@ -15,37 +20,148 @@ class AiQuestionGenerationRoutingPolicy
      */
     public function buildProviderChain(AiQuestionGenerationRequest $generationRequest): array
     {
-        $score = $this->score($generationRequest);
+        $scoreBreakdown = $this->scoreBreakdown($generationRequest);
+        $score = array_sum($scoreBreakdown);
         $level = $this->levelForScore($score);
 
-        $chain = config("ai_question_generation.provider_routing.chains.{$level}", []);
+        $chainSelection = $this->configuredChainFor(
+            sourceType: $generationRequest->source_type,
+            level: $level
+        );
 
-        if (! is_array($chain) || $chain === []) {
-            $chain = config('ai_question_generation.provider_routing.chains.high', [
-                'gemini',
-                'deepseek',
-                'ollama_cloud',
-                'ollama_local',
-            ]);
+        $chain = $chainSelection['chain'];
+        $rawChain = $chain;
+        $filterResult = $this->providerCapabilityService->filterProviderChainWithDetails(
+            providerNames: $chain,
+            sourceType: $generationRequest->source_type,
+            context: [
+                'generation_request_id' => $generationRequest->id,
+                'complexity_score' => $score,
+                'complexity_level' => $level,
+                'chain_source' => $chainSelection['source'],
+            ]
+        );
+        $chain = $filterResult['provider_chain'];
+
+        if ($chain === []) {
+            $fallbackResult = $this->fallbackProviderChain($generationRequest);
+            $chain = $fallbackResult['provider_chain'];
+        } else {
+            $fallbackResult = null;
         }
 
         Log::info('AI question generation provider chain selected.', [
             'generation_request_id' => $generationRequest->id,
+            'source_type' => $generationRequest->source_type,
+            'requested_question_count' => $generationRequest->requested_question_count,
+            'difficulty_level' => $generationRequest->difficulty_level,
+            'assets_count' => $generationRequest->assets->count(),
+            'total_assets_size_bytes' => (int) $generationRequest->assets->sum('size_bytes'),
             'complexity_score' => $score,
+            'score_breakdown' => $scoreBreakdown,
             'complexity_level' => $level,
+            'chain_source' => $chainSelection['source'],
+            'chain_reason' => $chainSelection['reason'],
+            'raw_provider_chain' => $rawChain,
             'provider_chain' => $chain,
+            'accepted_providers' => $filterResult['accepted_providers'],
+            'skipped_providers' => $filterResult['skipped_providers'],
+            'fallback_used' => $fallbackResult !== null,
+            'fallback_provider_chain' => $fallbackResult['provider_chain'] ?? [],
+            'fallback_reason' => $fallbackResult['reason'] ?? null,
         ]);
 
         return $chain;
     }
 
+    /**
+     * @return array{chain: array<int, string>, source: string, reason: string}
+     */
+    private function configuredChainFor(string $sourceType, string $level): array
+    {
+        $sourceTypeChain = config("ai_question_generation.provider_routing.chains_by_source_type.{$sourceType}.{$level}", []);
+
+        if (is_array($sourceTypeChain) && $sourceTypeChain !== []) {
+            return [
+                'chain' => $sourceTypeChain,
+                'source' => 'chains_by_source_type',
+                'reason' => "Using source-specific {$sourceType} {$level} chain.",
+            ];
+        }
+
+        $chain = config("ai_question_generation.provider_routing.chains.{$level}", []);
+
+        if (is_array($chain) && $chain !== []) {
+            return [
+                'chain' => $chain,
+                'source' => 'chains',
+                'reason' => "Source-specific chain missing; using legacy {$level} chain.",
+            ];
+        }
+
+        $highChain = config('ai_question_generation.provider_routing.chains.high', [
+            'gemini',
+            'deepseek',
+            'ollama_cloud',
+            'ollama_local',
+        ]);
+
+        return [
+            'chain' => is_array($highChain) ? $highChain : [],
+            'source' => 'chains.high',
+            'reason' => 'Requested chain missing; using high chain as final configured fallback.',
+        ];
+    }
+
+    /**
+     * @return array{provider_chain: array<int, string>, reason: string}
+     */
+    private function fallbackProviderChain(AiQuestionGenerationRequest $generationRequest): array
+    {
+        $fallbackProvider = (string) config('ai_question_generation.provider_routing.fallback_provider', '');
+
+        $fallbackResult = $this->providerCapabilityService->filterProviderChainWithDetails(
+            providerNames: [$fallbackProvider],
+            sourceType: $generationRequest->source_type,
+            context: [
+                'generation_request_id' => $generationRequest->id,
+                'fallback_provider' => $fallbackProvider,
+                'chain_source' => 'fallback_provider',
+            ]
+        );
+
+        if ($fallbackResult['provider_chain'] !== []) {
+            return [
+                'provider_chain' => $fallbackResult['provider_chain'],
+                'reason' => 'Configured chain became empty after capability filtering; using fallback provider.',
+            ];
+        }
+
+        return [
+            'provider_chain' => $this->providerCapabilityService->registeredProvidersSupporting(
+                sourceType: $generationRequest->source_type
+            ),
+            'reason' => 'Fallback provider is unavailable for this source type; using any registered compatible provider.',
+        ];
+    }
+
     public function score(AiQuestionGenerationRequest $generationRequest): int
     {
-        return $this->questionCountScore($generationRequest)
-            + $this->difficultyScore($generationRequest)
-            + $this->sourceTypeScore($generationRequest)
-            + $this->assetsCountScore($generationRequest)
-            + $this->assetsSizeScore($generationRequest);
+        return array_sum($this->scoreBreakdown($generationRequest));
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    public function scoreBreakdown(AiQuestionGenerationRequest $generationRequest): array
+    {
+        return [
+            'question_count' => $this->questionCountScore($generationRequest),
+            'difficulty' => $this->difficultyScore($generationRequest),
+            'source_type' => $this->sourceTypeScore($generationRequest),
+            'assets_count' => $this->assetsCountScore($generationRequest),
+            'assets_size' => $this->assetsSizeScore($generationRequest),
+        ];
     }
 
     private function questionCountScore(AiQuestionGenerationRequest $generationRequest): int

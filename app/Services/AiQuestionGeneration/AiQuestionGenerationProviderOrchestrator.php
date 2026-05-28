@@ -24,6 +24,7 @@ class AiQuestionGenerationProviderOrchestrator
      * @return array{
      *     provider: string,
      *     model: string,
+     *     input_mode?: string,
      *     questions: array<int, array>
      * }
      *
@@ -56,9 +57,28 @@ class AiQuestionGenerationProviderOrchestrator
             $attemptedProviderCount++;
 
             try {
+                Log::info('AI question generation provider attempt started.', [
+                    'generation_request_id' => $generationRequest->id,
+                    'provider_name' => $providerName,
+                    'provider_class' => $provider::class,
+                    'attempt_index' => $attemptedProviderCount,
+                    'source_type' => $generationRequest->source_type,
+                ]);
+
                 $result = $provider->generate($generationRequest);
 
                 $this->providerHealthService->markAvailable($providerName);
+
+                Log::info('AI question generation provider succeeded.', [
+                    'generation_request_id' => $generationRequest->id,
+                    'provider_name' => $providerName,
+                    'provider_class' => $provider::class,
+                    'provider_label' => $result['provider'] ?? $providerName,
+                    'model' => $result['model'] ?? null,
+                    'input_mode' => $result['input_mode'] ?? 'unknown',
+                    'questions_count' => count($result['questions'] ?? []),
+                    'attempted_provider_count' => $attemptedProviderCount,
+                ]);
 
                 return $result;
 

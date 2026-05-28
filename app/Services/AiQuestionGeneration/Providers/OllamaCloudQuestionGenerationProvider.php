@@ -10,9 +10,9 @@ use App\Services\AiQuestionGeneration\Extraction\AiQuestionGenerationAssetTextEx
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
-class DeepSeekQuestionGenerationProvider implements AiQuestionGenerationProviderInterface
+class OllamaCloudQuestionGenerationProvider implements AiQuestionGenerationProviderInterface
 {
-    private string $providerName = 'DeepSeek';
+    private string $providerName = 'OllamaCloud';
 
     public function __construct(
         private readonly AiGeneratedQuestionNormalizer $normalizer,
@@ -23,14 +23,22 @@ class DeepSeekQuestionGenerationProvider implements AiQuestionGenerationProvider
     {
         $this->assertSourceTypeIsSupported($generationRequest);
 
-        $apiKey = (string) config('ai_question_generation.deepseek.api_key');
-        $baseUrl = rtrim((string) config('ai_question_generation.deepseek.base_url'), '/');
-        $model = (string) config('ai_question_generation.deepseek.model');
-        $timeout = (int) config('ai_question_generation.deepseek.timeout_seconds', 160);
+        $apiKey = (string) config('ai_question_generation.ollama_cloud.api_key');
+        $baseUrl = rtrim((string) config('ai_question_generation.ollama_cloud.base_url'), '/');
+        $model = (string) config('ai_question_generation.ollama_cloud.model');
+        $timeout = (int) config('ai_question_generation.ollama_cloud.timeout_seconds', 180);
 
         if ($apiKey === '') {
             throw AiQuestionGenerationException::providerApiKeyMissing(
                 provider: $this->providerName
+            );
+        }
+
+        if ($baseUrl === '' || $model === '') {
+            throw AiQuestionGenerationException::providerInvalidResponse(
+                provider: $this->providerName,
+                operation: 'configuration',
+                reason: 'Ollama Cloud base_url or model is missing.'
             );
         }
 
@@ -58,7 +66,7 @@ class DeepSeekQuestionGenerationProvider implements AiQuestionGenerationProvider
     private function assertSourceTypeIsSupported(AiQuestionGenerationRequest $generationRequest): void
     {
         $supportedSourceTypes = config(
-            'ai_question_generation.deepseek.supported_source_types',
+            'ai_question_generation.ollama_cloud.supported_source_types',
             ['Images', 'Pdf']
         );
 
@@ -81,8 +89,6 @@ class DeepSeekQuestionGenerationProvider implements AiQuestionGenerationProvider
         string $model,
         int $timeout
     ): array {
-        $content = $this->buildTextOnlyContent($generationRequest);
-
         try {
             $response = Http::timeout($timeout)
                 ->withToken($apiKey)
@@ -90,25 +96,26 @@ class DeepSeekQuestionGenerationProvider implements AiQuestionGenerationProvider
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ])
-                ->post("{$baseUrl}/chat/completions", [
+                ->post("{$baseUrl}/api/chat", [
                     'model' => $model,
+                    'stream' => false,
+                    'format' => $this->questionSchema(),
                     'messages' => [
                         [
                             'role' => 'user',
-                            'content' => $content,
+                            'content' => $this->buildTextOnlyContent($generationRequest),
                         ],
                     ],
-                    'temperature' => (float) config('ai_question_generation.deepseek.temperature', 0.3),
-                    'max_tokens' => (int) config('ai_question_generation.deepseek.max_tokens', 8192),
-                    'response_format' => [
-                        'type' => 'json_object',
+                    'options' => [
+                        'temperature' => (float) config('ai_question_generation.ollama_cloud.temperature', 0.3),
+                        'num_ctx' => (int) config('ai_question_generation.ollama_cloud.num_ctx', 4096),
+                        'num_predict' => (int) config('ai_question_generation.ollama_cloud.num_predict', 1200),
                     ],
-                    'stream' => false,
                 ]);
         } catch (ConnectionException $exception) {
             throw AiQuestionGenerationException::providerConnectionFailed(
                 provider: $this->providerName,
-                operation: 'chat_completions',
+                operation: 'chat',
                 reason: $exception->getMessage()
             );
         }
@@ -116,29 +123,29 @@ class DeepSeekQuestionGenerationProvider implements AiQuestionGenerationProvider
         if (! $response->successful()) {
             throw AiQuestionGenerationException::providerRequestFailed(
                 provider: $this->providerName,
-                operation: 'chat_completions',
+                operation: 'chat',
                 status: (int) $response->status(),
                 responseBody: $response->body()
             );
         }
 
-        $text = $response->json('choices.0.message.content');
+        $content = $response->json('message.content');
 
-        if (! is_string($text) || trim($text) === '') {
+        if (! is_string($content) || trim($content) === '') {
             throw AiQuestionGenerationException::providerInvalidResponse(
                 provider: $this->providerName,
-                operation: 'chat_completions',
-                reason: 'DeepSeek response choices.0.message.content is empty.'
+                operation: 'chat',
+                reason: 'Ollama Cloud response message.content is empty.'
             );
         }
 
-        $decoded = json_decode($text, true);
+        $decoded = json_decode($content, true);
 
         if (! is_array($decoded)) {
             throw AiQuestionGenerationException::providerInvalidResponse(
                 provider: $this->providerName,
-                operation: 'chat_completions',
-                reason: 'DeepSeek response is not valid JSON.'
+                operation: 'chat',
+                reason: 'Ollama Cloud response message.content is not valid JSON.'
             );
         }
 
@@ -176,24 +183,23 @@ PROMPT);
         };
 
         return <<<PROMPT
-أنت مساعد متخصص في إنشاء أسئلة اختيار من متعدد MCQ من الملفات أو الصور التعليمية المرفقة.
+أنت مساعد متخصص في إنشاء أسئلة اختيار من متعدد MCQ من نص مستخرج من ملفات تعليمية.
 
 مهم جداً:
-- اقرأ محتوى الملفات أو الصور المرفقة فقط.
-- لا تخترع معلومات من خارج المحتوى المرفق.
+- استخدم النص المستخرج من الملفات فقط.
+- لا تخترع معلومات من خارج النص.
 - لا تكتب Markdown.
-- لا تكتب أي شرح خارج JSON.
+- لا تكتب شرحاً خارج JSON.
 - أرجع JSON صالح فقط.
-- يجب أن تحتوي الاستجابة على كائن JSON واحد فقط.
+- يجب أن يكون الرد كائن JSON واحد فقط.
 
 قبل توليد الأسئلة:
-- قيّم هل المحتوى المرفق يحتوي على مادة علمية أو تعليمية مناسبة لتوليد أسئلة منه.
-- إذا كان المحتوى صورة شخصية، عشوائياً، غير واضح، فارغاً، أو غير تعليمي، أرجع:
+- إذا كان النص غير تعليمي أو فارغاً أو غير واضح، أرجع:
 {
   "content_type": "NotEducational",
   "questions": []
 }
-- إذا كان المحتوى تعليمياً أو علمياً، أرجع:
+- إذا كان النص تعليمياً، أرجع:
 {
   "content_type": "Educational",
   "questions": [...]
@@ -204,8 +210,7 @@ PROMPT);
 - كل سؤال يجب أن يحتوي من خيارين إلى خمسة خيارات.
 - كل سؤال يجب أن يحتوي إجابة صحيحة واحدة فقط.
 - لا تكرر نفس السؤال بصياغة مختلفة.
-- لا تستخدم عبارات مثل: "حسب النص" أو "كما ورد في الملف" أو "كما ورد في الصورة" داخل نص السؤال.
-- لا تستخدم أي معلومة غير موجودة في المحتوى المرفق.
+- لا تستخدم عبارات مثل: "حسب النص" أو "كما ورد في الملف" أو "كما ورد في الصورة".
 - اجعل الخيارات الخاطئة معقولة وليست سخيفة.
 - اجعل التلميح قصيراً أو null إذا لم يكن ضرورياً.
 
@@ -214,27 +219,44 @@ PROMPT);
 
 تعليمات الصعوبة:
 {$difficultyInstruction}
-
-صيغة JSON المطلوبة حرفياً:
-{
-  "content_type": "Educational",
-  "questions": [
-    {
-      "question_text": "نص السؤال",
-      "hint_text": "تلميح قصير أو null",
-      "options": [
-        {
-          "option_text": "نص الخيار",
-          "is_correct": true
-        },
-        {
-          "option_text": "نص الخيار",
-          "is_correct": false
-        }
-      ]
-    }
-  ]
-}
 PROMPT;
+    }
+
+    private function questionSchema(): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'content_type' => [
+                    'type' => 'string',
+                    'enum' => ['Educational', 'NotEducational'],
+                ],
+                'questions' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'question_text' => ['type' => 'string'],
+                            'hint_text' => ['type' => 'string'],
+                            'options' => [
+                                'type' => 'array',
+                                'minItems' => 2,
+                                'maxItems' => 5,
+                                'items' => [
+                                    'type' => 'object',
+                                    'properties' => [
+                                        'option_text' => ['type' => 'string'],
+                                        'is_correct' => ['type' => 'boolean'],
+                                    ],
+                                    'required' => ['option_text', 'is_correct'],
+                                ],
+                            ],
+                        ],
+                        'required' => ['question_text', 'options'],
+                    ],
+                ],
+            ],
+            'required' => ['content_type', 'questions'],
+        ];
     }
 }

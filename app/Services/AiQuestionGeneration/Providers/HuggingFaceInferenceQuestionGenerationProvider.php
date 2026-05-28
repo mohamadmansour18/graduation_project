@@ -4,29 +4,30 @@ namespace App\Services\AiQuestionGeneration\Providers;
 
 use App\Contracts\AiQuestionGeneration\AiQuestionGenerationProviderInterface;
 use App\Exceptions\Api\AiQuestionGenerationException;
-use App\Models\AiQuestionGenerationAsset;
 use App\Models\AiQuestionGenerationRequest;
 use App\Services\AiQuestionGeneration\AiGeneratedQuestionNormalizer;
+use App\Services\AiQuestionGeneration\Extraction\AiQuestionGenerationAssetTextExtractionService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
-class OpenRouterQuestionGenerationProvider implements AiQuestionGenerationProviderInterface
+class HuggingFaceInferenceQuestionGenerationProvider implements AiQuestionGenerationProviderInterface
 {
-    private string $providerName = 'OpenRouter';
+    private string $providerName = 'HuggingFace';
 
     public function __construct(
-        private readonly AiGeneratedQuestionNormalizer $normalizer
+        private readonly AiGeneratedQuestionNormalizer $normalizer,
+        private readonly AiQuestionGenerationAssetTextExtractionService $assetTextExtractionService
     ) {}
 
     public function generate(AiQuestionGenerationRequest $generationRequest): array
     {
         $this->assertSourceTypeIsSupported($generationRequest);
 
-        $apiKey = (string) config('ai_question_generation.openrouter.api_key');
-        $baseUrl = rtrim((string) config('ai_question_generation.openrouter.base_url'), '/');
-        $model = (string) config('ai_question_generation.openrouter.model');
-        $timeout = (int) config('ai_question_generation.openrouter.timeout_seconds', 180);
+        $apiKey = (string) config('ai_question_generation.huggingface.api_key');
+        $baseUrl = rtrim((string) config('ai_question_generation.huggingface.base_url'), '/');
+        $model = (string) config('ai_question_generation.huggingface.model');
+        $timeout = (int) config('ai_question_generation.huggingface.timeout_seconds', 180);
 
         if ($apiKey === '') {
             throw AiQuestionGenerationException::providerApiKeyMissing(
@@ -38,7 +39,7 @@ class OpenRouterQuestionGenerationProvider implements AiQuestionGenerationProvid
             throw AiQuestionGenerationException::providerInvalidResponse(
                 provider: $this->providerName,
                 operation: 'configuration',
-                reason: 'OpenRouter base_url or model is missing.'
+                reason: 'Hugging Face base_url or model is missing.'
             );
         }
 
@@ -58,17 +59,20 @@ class OpenRouterQuestionGenerationProvider implements AiQuestionGenerationProvid
         return [
             'provider' => $this->providerName,
             'model' => $model,
-            'input_mode' => 'raw_image',
+            'input_mode' => 'extracted_text',
             'questions' => $questions,
         ];
     }
 
     private function assertSourceTypeIsSupported(AiQuestionGenerationRequest $generationRequest): void
     {
-        $supportedSourceTypes = config('ai_question_generation.openrouter.supported_source_types', ['Images']);
+        $supportedSourceTypes = config(
+            'ai_question_generation.huggingface.supported_source_types',
+            ['Images', 'Pdf']
+        );
 
         if (! is_array($supportedSourceTypes)) {
-            $supportedSourceTypes = ['Images'];
+            $supportedSourceTypes = ['Images', 'Pdf'];
         }
 
         if (! in_array($generationRequest->source_type, $supportedSourceTypes, true)) {
@@ -79,38 +83,38 @@ class OpenRouterQuestionGenerationProvider implements AiQuestionGenerationProvid
         }
     }
 
-    private function generateQuestionsPayload(AiQuestionGenerationRequest $generationRequest, string $apiKey, string $baseUrl, string $model, int $timeout): array
-    {
-        $content = [];
-
-        $content[] = [
-            'type' => 'text',
-            'text' => $this->buildPrompt($generationRequest),
+    private function generateQuestionsPayload(
+        AiQuestionGenerationRequest $generationRequest,
+        string $apiKey,
+        string $baseUrl,
+        string $model,
+        int $timeout
+    ): array {
+        $headers = [
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
         ];
 
-        foreach ($generationRequest->assets as $asset) {
-            $content[] = $this->buildAssetContentPart($asset);
+        $billTo = trim((string) config('ai_question_generation.huggingface.bill_to', ''));
+
+        if ($billTo !== '') {
+            $headers['X-HF-Bill-To'] = $billTo;
         }
 
         try {
             $response = Http::timeout($timeout)
                 ->withToken($apiKey)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                    'HTTP-Referer' => (string) config('ai_question_generation.openrouter.site_url'),
-                    'X-Title' => (string) config('ai_question_generation.openrouter.app_name'),
-                ])
+                ->withHeaders($headers)
                 ->post("{$baseUrl}/chat/completions", [
                     'model' => $model,
                     'messages' => [
                         [
                             'role' => 'user',
-                            'content' => $content,
+                            'content' => $this->buildTextOnlyContent($generationRequest),
                         ],
                     ],
-                    'temperature' => (float) config('ai_question_generation.openrouter.temperature', 0.3),
-                    'max_tokens' => (int) config('ai_question_generation.openrouter.max_tokens', 8192),
+                    'temperature' => (float) config('ai_question_generation.huggingface.temperature', 0.3),
+                    'max_tokens' => (int) config('ai_question_generation.huggingface.max_tokens', 8192),
                     'response_format' => [
                         'type' => 'json_schema',
                         'json_schema' => [
@@ -179,7 +183,7 @@ class OpenRouterQuestionGenerationProvider implements AiQuestionGenerationProvid
             throw AiQuestionGenerationException::providerInvalidResponse(
                 provider: $this->providerName,
                 operation: 'chat_completions',
-                reason: 'OpenRouter response choices.0.message.content is empty.'
+                reason: 'Hugging Face response choices.0.message.content is empty.'
             );
         }
 
@@ -189,73 +193,25 @@ class OpenRouterQuestionGenerationProvider implements AiQuestionGenerationProvid
             throw AiQuestionGenerationException::providerInvalidResponse(
                 provider: $this->providerName,
                 operation: 'chat_completions',
-                reason: 'OpenRouter response is not valid JSON.'
+                reason: 'Hugging Face response is not valid JSON.'
             );
         }
 
         return $decoded;
     }
 
-    private function buildAssetContentPart(AiQuestionGenerationAsset $asset): array
+    private function buildTextOnlyContent(AiQuestionGenerationRequest $generationRequest): string
     {
-        $filePath = $this->getStoredAssetPath($asset);
+        $extractedTextContext = $this->assetTextExtractionService
+            ->extractPromptContext($generationRequest);
 
-        $fileBytes = file_get_contents($filePath);
+        return trim(<<<PROMPT
+{$this->buildPrompt($generationRequest)}
 
-        if ($fileBytes === false) {
-            throw AiQuestionGenerationException::temporaryFileReadFailed(
-                path: $asset->storage_path
-            );
-        }
+النص المستخرج من الملفات المرفقة:
 
-        $dataUrl = 'data:' . $asset->mime_type . ';base64,' . base64_encode($fileBytes);
-
-        if ($this->isImageAsset($asset)) {
-            return [
-                'type' => 'image_url',
-                'image_url' => [
-                    'url' => $dataUrl,
-                ],
-            ];
-        }
-
-        if ($this->isPdfAsset($asset)) {
-            return [
-                'type' => 'file',
-                'file' => [
-                    'filename' => $asset->original_name,
-                    'file_data' => $dataUrl,
-                ],
-            ];
-        }
-
-        throw AiQuestionGenerationException::providerUnsupportedSourceType(
-            provider: $this->providerName,
-            sourceType: $asset->mime_type
-        );
-    }
-
-    private function getStoredAssetPath(AiQuestionGenerationAsset $asset): string
-    {
-        $filePath = Storage::disk($asset->storage_disk)->path($asset->storage_path);
-
-        if (! is_file($filePath)) {
-            throw AiQuestionGenerationException::temporaryFileMissing(
-                path: $asset->storage_path
-            );
-        }
-
-        return $filePath;
-    }
-
-    private function isImageAsset(AiQuestionGenerationAsset $asset): bool
-    {
-        return str_starts_with($asset->mime_type, 'image/');
-    }
-
-    private function isPdfAsset(AiQuestionGenerationAsset $asset): bool
-    {
-        return $asset->mime_type === 'application/pdf';
+{$extractedTextContext}
+PROMPT);
     }
 
     private function buildPrompt(AiQuestionGenerationRequest $generationRequest): string
@@ -275,23 +231,23 @@ class OpenRouterQuestionGenerationProvider implements AiQuestionGenerationProvid
         };
 
         return <<<PROMPT
-أنت مساعد متخصص في إنشاء أسئلة اختيار من متعدد MCQ من الصور أو ملفات PDF التعليمية المرفقة.
+أنت مساعد متخصص في إنشاء أسئلة اختيار من متعدد MCQ من نص مستخرج من ملفات تعليمية.
 
 مهم جداً:
-- اقرأ محتوى الملفات المرفقة فقط.
-- لا تخترع معلومات من خارج المحتوى.
+- استخدم النص المستخرج من الملفات فقط.
+- لا تخترع معلومات من خارج النص.
 - لا تكتب Markdown.
 - لا تكتب شرحاً خارج JSON.
 - أرجع JSON صالح فقط.
 - يجب أن يكون الرد كائن JSON واحد فقط.
 
 قبل توليد الأسئلة:
-- إذا كان المحتوى غير تعليمي أو فارغاً أو غير واضح، أرجع:
+- إذا كان النص غير تعليمي أو فارغاً أو غير واضح، أرجع:
 {
   "content_type": "NotEducational",
   "questions": []
 }
-- إذا كان المحتوى تعليمياً، أرجع:
+- إذا كان النص تعليمياً، أرجع:
 {
   "content_type": "Educational",
   "questions": [...]
@@ -302,7 +258,7 @@ class OpenRouterQuestionGenerationProvider implements AiQuestionGenerationProvid
 - كل سؤال يجب أن يحتوي من خيارين إلى ثلاثة خيارات.
 - كل سؤال يجب أن يحتوي إجابة صحيحة واحدة فقط.
 - لا تكرر نفس السؤال بصياغة مختلفة.
-- لا تستخدم عبارات مثل: "حسب النص" أو "كما ورد في الملف" أو "كما ورد في الصورة".
+- لا تستخدم عبارات مثل: "كما ورد في النص" أو "كما ورد في الملف" أو "كما ورد في الصورة" أو "المذكورة في النص".
 - اجعل الخيارات الخاطئة معقولة وليست سخيفة.
 
 تعليمات اللغة:
@@ -310,7 +266,6 @@ class OpenRouterQuestionGenerationProvider implements AiQuestionGenerationProvid
 
 تعليمات الصعوبة:
 {$difficultyInstruction}
-
 PROMPT;
     }
 }

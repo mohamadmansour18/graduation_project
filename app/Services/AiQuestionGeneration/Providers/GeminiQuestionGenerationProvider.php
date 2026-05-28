@@ -32,9 +32,9 @@ class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderIn
             throw AiQuestionGenerationException::providerApiKeyMissing(provider: $this->providerName);
         }
 
-        $contentParts = [];
-
         $shouldSendImagesInline = $this->shouldSendImagesInline($generationRequest);
+        $inputMode = $this->inputModeForRequest($generationRequest, $shouldSendImagesInline);
+        $contentParts = [];
 
         foreach ($generationRequest->assets as $asset) {
 
@@ -69,8 +69,18 @@ class GeminiQuestionGenerationProvider implements AiQuestionGenerationProviderIn
         return [
             'provider' => $this->providerName,
             'model' => $model,
+            'input_mode' => $inputMode,
             'questions' => $questions,
         ];
+    }
+
+    private function inputModeForRequest(AiQuestionGenerationRequest $generationRequest, bool $shouldSendImagesInline): string
+    {
+        if ($generationRequest->source_type === 'Images' && $shouldSendImagesInline) {
+            return 'raw_image';
+        }
+
+        return 'raw_file';
     }
 
     private function uploadAssetToGemini(AiQuestionGenerationAsset $asset, string $apiKey): array

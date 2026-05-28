@@ -60,7 +60,7 @@ docker compose exec ollama ollama run qwen3.5:9b
 ctrl + c او bye
 
 -------------------
-&& apt-get install -y gnupg gosu curl ca-certificates zip unzip git supervisor sqlite3 libcap2-bin libpng-dev python3 dnsutils librsvg2-bin fswatch ffmpeg nano poppler-utils \
+&& apt-get install -y gnupg gosu curl ca-certificates zip unzip git supervisor sqlite3 libcap2-bin libpng-dev python3 dnsutils librsvg2-bin fswatch ffmpeg nano poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-ara \
 
 او :
 
@@ -68,7 +68,15 @@ RUN apt-get update && apt-get install -y poppler-utils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update \
+    && apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-ara \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 sail build
+
+sail exec laravel.test which pdftotext tesseract
+sail exec laravel.test tesseract --list-langs
 
 pdftotext -v
 pdfinfo -v

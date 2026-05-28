@@ -142,6 +142,20 @@ class AiQuestionGenerationException extends ApiException
         );
     }
 
+    public static function assetTextExtractionFailed(?string $path = null, ?string $reason = null): self
+    {
+        return new self(
+            title: '! فشل استخراج النص من الملف',
+            message: 'تعذر استخراج نص كافٍ من أحد الملفات المرفقة، يرجى تجربة ملف أو صورة أوضح',
+            status: 422,
+            extraContext: [
+                'failure_code' => 'AI_ASSET_TEXT_EXTRACTION_FAILED',
+                'storage_path' => $path,
+                'reason' => self::limitContextText($reason),
+            ]
+        );
+    }
+
     public static function providerUploadUrlMissing(string $provider): self
     {
         return new self(

@@ -62,6 +62,7 @@ class OllamaLocalQuestionGenerationProvider implements AiQuestionGenerationProvi
         return [
             'provider' => $this->providerName,
             'model' => $model,
+            'input_mode' => 'raw_image',
             'questions' => $questions,
         ];
     }

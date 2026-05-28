@@ -2,8 +2,11 @@
 
 use App\Services\AiQuestionGeneration\Providers\DeepSeekQuestionGenerationProvider;
 use App\Services\AiQuestionGeneration\Providers\GeminiQuestionGenerationProvider;
+use App\Services\AiQuestionGeneration\Providers\HuggingFaceInferenceQuestionGenerationProvider;
+use App\Services\AiQuestionGeneration\Providers\OllamaCloudQuestionGenerationProvider;
 use App\Services\AiQuestionGeneration\Providers\OllamaLocalQuestionGenerationProvider;
 use App\Services\AiQuestionGeneration\Providers\OpenRouterQuestionGenerationProvider;
+use App\Services\AiQuestionGeneration\Providers\CloudflareWorkersAiQuestionGenerationProvider;
 
 return [
 
@@ -57,10 +60,94 @@ return [
     'default_provider' => env('AI_QUESTION_GENERATION_PROVIDER', 'gemini'),
 
     'providers' => [
-        'gemini' => GeminiQuestionGenerationProvider::class,
-        'openrouter' => OpenRouterQuestionGenerationProvider::class,
-        'deepseek' => DeepSeekQuestionGenerationProvider::class,
-        'ollama_local' => OllamaLocalQuestionGenerationProvider::class,
+//        'gemini' => GeminiQuestionGenerationProvider::class,            //done
+//        'openrouter' => OpenRouterQuestionGenerationProvider::class,    //done
+//        'deepseek' => DeepSeekQuestionGenerationProvider::class,
+        'cloudflare_workers_ai' => CloudflareWorkersAiQuestionGenerationProvider::class,    //سلملي
+//        'ollama_cloud' => OllamaCloudQuestionGenerationProvider::class,                           //
+//        'huggingface' => HuggingFaceInferenceQuestionGenerationProvider::class, //done
+//        'ollama_local' => OllamaLocalQuestionGenerationProvider::class, //done
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Provider Capabilities
+    |--------------------------------------------------------------------------
+    |
+    | These capabilities describe what each provider can receive from this
+    | feature. Providers listed in routing chains but not registered above are
+    | ignored until their provider class is implemented and added.
+    |
+    */
+
+    'provider_capabilities' => [
+        'gemini' => [
+            'source_types' => ['Images', 'Pdf'],
+            'input_modes' => ['raw_image', 'raw_file'],
+        ],
+
+        'openrouter' => [
+            'source_types' => ['Images'],
+            'input_modes' => ['raw_image'],
+        ],
+
+        'deepseek' => [
+            'source_types' => ['Images', 'Pdf'],
+            'input_modes' => ['extracted_text'],
+        ],
+
+        'cloudflare_workers_ai' => [
+            'source_types' => ['Images', 'Pdf'],
+            'input_modes' => ['raw_image', 'raw_file'],
+        ],
+
+        'ollama_local' => [
+            'source_types' => ['Images'],
+            'input_modes' => ['raw_image'],
+        ],
+
+        'ollama_cloud' => [
+            'source_types' => ['Images', 'Pdf'],
+            'input_modes' => ['extracted_text'],
+        ],
+
+        'huggingface' => [
+            'source_types' => ['Images', 'Pdf'],
+            'input_modes' => ['extracted_text'],
+        ],
+    ],
+
+    'runtime_input_modes' => [
+        'Images' => ['raw_image', 'extracted_text'],
+        'Pdf' => ['raw_file', 'extracted_text'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Text Extraction
+    |--------------------------------------------------------------------------
+    */
+
+    'text_extraction' => [
+        'min_extracted_text_chars' => 40,
+        'max_extracted_text_chars' => 60_000,
+
+        'pdf' => [
+            'binary' => env('AI_PDF_TEXT_BINARY', 'pdftotext'),
+            'timeout_seconds' => env('AI_PDF_TEXT_TIMEOUT_SECONDS', 30),
+            'render_binary' => env('AI_PDF_RENDER_BINARY', 'pdftoppm'),
+            'render_timeout_seconds' => env('AI_PDF_RENDER_TIMEOUT_SECONDS', 60),
+            'ocr_fallback_enabled' => env('AI_PDF_OCR_FALLBACK_ENABLED', true),
+            'ocr_render_dpi' => env('AI_PDF_OCR_RENDER_DPI', 220),
+            'ocr_max_pages' => env('AI_PDF_OCR_MAX_PAGES', 20),
+        ],
+
+        'ocr' => [
+            'binary' => env('AI_OCR_BINARY', 'tesseract'),
+            'timeout_seconds' => env('AI_OCR_TIMEOUT_SECONDS', 45),
+            'languages' => env('AI_OCR_LANGUAGES', 'ara+eng'),
+            'page_segmentation_mode' => env('AI_OCR_PSM', 6),
+        ],
     ],
 
     /*
@@ -93,7 +180,9 @@ return [
         'chains' => [
             'low' => [
                 'openrouter',
+                'cloudflare_workers_ai',
                 'ollama_cloud',
+                'huggingface',
                 'deepseek',
                 'gemini',
                 'ollama_local',
@@ -102,7 +191,9 @@ return [
             'medium' => [
                 'openrouter',
                 'gemini',
+                'cloudflare_workers_ai',
                 'ollama_cloud',
+                'huggingface',
                 'deepseek',
                 'ollama_local',
             ],
@@ -110,9 +201,71 @@ return [
             'high' => [
                 'gemini',
                 'openrouter',
+                'cloudflare_workers_ai',
                 'ollama_cloud',
+                'huggingface',
                 'deepseek',
                 'ollama_local',
+            ],
+        ],
+
+        'chains_by_source_type' => [
+            'Images' => [
+                'low' => [
+                    'openrouter',
+                    'cloudflare_workers_ai',
+                    'gemini',
+                    'ollama_cloud',
+                    'huggingface',
+                    'deepseek',
+                    'ollama_local',
+                ],
+
+                'medium' => [
+                    'openrouter',
+                    'cloudflare_workers_ai',
+                    'gemini',
+                    'ollama_cloud',
+                    'huggingface',
+                    'deepseek',
+                    'ollama_local',
+                ],
+
+                'high' => [
+                    'gemini',
+                    'openrouter',
+                    'cloudflare_workers_ai',
+                    'ollama_cloud',
+                    'huggingface',
+                    'deepseek',
+                    'ollama_local',
+                ],
+            ],
+
+            'Pdf' => [
+                'low' => [
+                    'cloudflare_workers_ai',
+                    'gemini',
+                    'ollama_cloud',
+                    'huggingface',
+                    'deepseek',
+                ],
+
+                'medium' => [
+                    'cloudflare_workers_ai',
+                    'gemini',
+                    'ollama_cloud',
+                    'huggingface',
+                    'deepseek',
+                ],
+
+                'high' => [
+                    'gemini',
+                    'cloudflare_workers_ai',
+                    'ollama_cloud',
+                    'huggingface',
+                    'deepseek',
+                ],
             ],
         ],
 
@@ -229,6 +382,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cloudflare Workers AI Provider
+    |--------------------------------------------------------------------------
+    */
+
+    'cloudflare_workers_ai' => [
+        'api_key' => env('CLOUDFLARE_AI_API_KEY'),
+
+        'account_id' => env('CLOUDFLARE_ACCOUNT_ID'),
+
+        'base_url' => env('CLOUDFLARE_AI_BASE_URL', 'https://api.cloudflare.com/client/v4'),
+
+        'model' => env('CLOUDFLARE_AI_MODEL', '@cf/google/gemma-3-12b-it'),
+
+        'timeout_seconds' => env('CLOUDFLARE_AI_TIMEOUT_SECONDS', 180),
+
+        'temperature' => 0.3,
+
+        'max_tokens' => env('CLOUDFLARE_AI_MAX_TOKENS', 1200),
+
+        'supported_source_types' => [
+            'Images',
+            'Pdf',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Ollama Local Provider
     |--------------------------------------------------------------------------
     */
@@ -253,6 +433,60 @@ return [
         ],
 
         'temperature' => 0.3,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ollama Cloud Provider
+    |--------------------------------------------------------------------------
+    */
+
+    'ollama_cloud' => [
+        'api_key' => env('OLLAMA_API_KEY'),
+
+        'base_url' => env('OLLAMA_CLOUD_BASE_URL', 'https://ollama.com'),
+
+        'model' => env('OLLAMA_CLOUD_MODEL', 'gpt-oss:120b'),
+
+        'timeout_seconds' => env('OLLAMA_CLOUD_TIMEOUT_SECONDS', 180),
+
+        'temperature' => 0.3,
+
+        'num_ctx' => env('OLLAMA_CLOUD_NUM_CTX', 4096),
+
+        'num_predict' => env('OLLAMA_CLOUD_NUM_PREDICT', 1200),
+
+        'supported_source_types' => [
+            'Images',
+            'Pdf',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Hugging Face Inference Provider
+    |--------------------------------------------------------------------------
+    */
+
+    'huggingface' => [
+        'api_key' => env('HUGGINGFACE_API_KEY', env('HF_TOKEN')),
+
+        'base_url' => env('HUGGINGFACE_BASE_URL', 'https://router.huggingface.co/v1'),
+
+        'model' => env('HUGGINGFACE_MODEL', 'openai/gpt-oss-20b:cheapest'),
+
+        'timeout_seconds' => env('HUGGINGFACE_TIMEOUT_SECONDS', 180),
+
+        'temperature' => 0.3,
+
+        'max_tokens' => env('HUGGINGFACE_MAX_TOKENS', 8192),
+
+        'bill_to' => env('HUGGINGFACE_BILL_TO'),
+
+        'supported_source_types' => [
+            'Images',
+            'Pdf',
+        ],
     ],
 
 
