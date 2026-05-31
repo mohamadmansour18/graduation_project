@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('test_question', function (Blueprint $table) {
             $table->id();
             $table->foreignId('test_id')->constrained('test')->cascadeOnDelete();
-            $table->unsignedTinyInteger('position');
+            $table->unsignedInteger('position');
             $table->text('question_text');
             $table->string('hint_text' , 255)->nullable();
             $table->boolean('is_preview')->default(false);

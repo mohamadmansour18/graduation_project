@@ -120,7 +120,7 @@ class StoreCreateTestRequest extends ApiFormRequest
             'questions.*.options.*.option_text' => [
                 'required',
                 'string',
-                'min:1',
+                'min:2',
                 'max:500',
             ],
 

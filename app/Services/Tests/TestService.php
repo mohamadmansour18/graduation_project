@@ -293,14 +293,14 @@ class TestService
             }
 
             if ((int) $test->creator_user_id !== $userId) {
-                throw TestException::notOwner();
+                throw TestException::notOwner('لا يمكنك حذف اختبار لا تملكه');
             }
 
             if ($test->trashed() || $test->review_status === TestReviewStatus::Deleted->value) {
                 throw TestException::alreadyDeleted();
             }
 
-            $fromStatus = (string) $test->review_status;
+            $fromStatus = (string) $test->review_status->value;
             $strategy = $this->determineDeletionStrategy($test);
 
             $wasPublished = $fromStatus === TestReviewStatus::Approved->value && $test->published_at !== null;
@@ -337,7 +337,7 @@ class TestService
                 $test->forceDelete();
             }
 
-            TestDeleted::dispatch(...$eventPayload)->afterCommit();
+            TestDeleted::dispatch(...array_values($eventPayload));
 
             Log::channel('audit')->info('test_deleted', [
                 'test_id' => $eventPayload['testId'],
@@ -350,15 +350,15 @@ class TestService
 
     private function determineDeletionStrategy(Test $test): TestDeletionStrategy
     {
-        if ($test->test_type === TestType::Private->value) {
+        if ($test->test_type === TestType::Private) {
             return TestDeletionStrategy::ForceDelete;
         }
 
-        $price = (float) ($test->price ?? 0);
-
-        if ($price <= 0) {
-            return TestDeletionStrategy::ForceDelete;
-        }
+//        $price = (float) ($test->price ?? 0);
+//
+//        if ($price <= 0) {
+//            return TestDeletionStrategy::ForceDelete;
+//        }
 
         return $this->testRepository->hasPaidPurchases((int) $test->id)
             ? TestDeletionStrategy::SoftDelete

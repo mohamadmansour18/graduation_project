@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
 class TestDeleted
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    public bool $afterCommit = true;
     public function __construct(
         public readonly int $testId,
         public readonly int $creatorUserId,

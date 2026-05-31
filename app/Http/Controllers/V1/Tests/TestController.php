@@ -4,14 +4,19 @@ namespace App\Http\Controllers\V1\Tests;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tests\ListTestReviewsRequest;
+use App\Http\Requests\Tests\StoreTestAttemptRequest;
+use App\Http\Requests\Tests\UpdateTestRequest;
 use App\Http\Resources\Tests\MyPrivateTestDetailsResource;
 use App\Http\Resources\Tests\MyPublicTestDetailsResource;
 use App\Http\Resources\Tests\MyReviewResource;
 use App\Http\Resources\Tests\TestContentResource;
 use App\Http\Resources\Tests\TestDetailsResource;
 use App\Http\Resources\Tests\TestReviewResource;
-use App\Http\Resources\TestStatusHistoryResource;
+use App\Http\Resources\Tests\TestStatusHistoryResource;
+use App\Http\Resources\Tests\UpdateTestResultResource;
+use App\Services\Tests\TestAttemptService;
 use App\Services\Tests\TestService;
+use App\Services\Tests\UpdateTestService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +26,8 @@ class TestController extends Controller
     use ApiResponse;
 
     public function __construct(
-        private readonly TestService $testService
+        private readonly TestService $testService,
+        private readonly UpdateTestService $updateTestService,
     ) {}
 
     public function show(int $testId): JsonResponse
@@ -181,9 +187,9 @@ class TestController extends Controller
 
     //////////////////////////////////////////////////////////////
 
-    public function destroy(int $testId, TestService $testService): JsonResponse
+    public function destroy(int $testId): JsonResponse
     {
-        $testService->deleteTest(
+        $this->testService->deleteTest(
             testId: $testId,
             userId: Auth::id()
         );
@@ -191,6 +197,38 @@ class TestController extends Controller
         return $this->successResponse(
             title: '! تم حذف الاختبار بنجاح',
             message: 'تم حذف الاختبار المحدد بنجاح ولن تسطيع الوصول اليه بعدد الان'
+        );
+    }
+
+    //////////////////////////////////////////////////////////////
+
+    public function update(int $testId, UpdateTestRequest $request): JsonResponse
+    {
+        $result = $this->updateTestService->updateTest(
+            testId: $testId,
+            userId: (int) auth()->id(),
+            payload: $request->validated()
+        );
+
+        return $this->dataResponse(
+            data: new UpdateTestResultResource($result),
+            title: '! تم تعديل الاختبار بنجاح'
+        );
+    }
+
+    //////////////////////////////////////////////////////////////
+
+    public function storeAttempt(int $testId, StoreTestAttemptRequest $request, TestAttemptService $testAttemptService): JsonResponse
+    {
+        $testAttemptService->registerAttempt(
+            testId: $testId,
+            userId: (int) auth()->id(),
+            mode: $request->validated('mode')
+        );
+
+        return $this->successResponse(
+            title: '! تم تسجيل التفاعل بنجاح',
+            message: 'تم تسجيل تفاعلك مع الاختبار بنجاح'
         );
     }
 }

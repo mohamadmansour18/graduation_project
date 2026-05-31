@@ -13,6 +13,7 @@ use App\Http\Controllers\V1\Tests\LabController;
 use App\Http\Controllers\V1\Tests\TestBookmarkController;
 use App\Http\Controllers\V1\Tests\TestController;
 use App\Http\Controllers\V1\Tests\TestDownloadController;
+use App\Http\Controllers\V1\Tests\TestFilterController;
 use App\Http\Controllers\V1\Tests\TestLikeController;
 use App\Http\Controllers\V1\Tests\TestReportController;
 use App\Http\Controllers\V1\Tests\TestReportReviewController;
@@ -89,6 +90,8 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             Route::prefix('lab')->group(function () {
                 Route::get('/recommended-tests', [LabTestDiscoveryController::class, 'index']);
                 Route::post('/search' , [LabController::class, 'searchTests'])->middleware('throttle:api-search');
+                Route::get('/ai-question-generation/daily-limit' , [AiQuestionGenerationController::class, 'aiGenerationDailyLimit']);
+
                 Route::middleware('idempotency')->group(function () {
                     Route::post('/create-test' , [LabController::class , 'store']);
                     Route::post('/ai-question-generations', [AiQuestionGenerationController::class, 'store']);
@@ -109,6 +112,8 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/tests-details/my-public/status-history/{testId}/revision-request/{roundId}' , [TestRevisionRequestController::class , 'revisionRequestsByRound']);
                 Route::get('/tests-details/my-public/reviews/{testId}' , [TestController::class , 'showMyTestReviews']);
 
+                Route::get('/tests/filter', [TestFilterController::class, 'filter']);
+
                 Route::middleware('throttle:5,2')->group(function () {
                     Route::post('/like/{testId}' , [TestLikeController::class , 'like']);
                     Route::delete('/unlike/{testId}' , [TestLikeController::class , 'unlike']);
@@ -123,11 +128,14 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::post('/add/feedback-on-review/{reviewId}' , [TestReviewController::class ,'storeFeedback']);
                     Route::delete('/delete/feedback-on-review/{reviewId}' , [TestReviewController::class ,'deleteFeedback']);
 
+                    Route::post('/attempts/{testId}' , [TestController::class, 'storeAttempt']);
+
                     Route::middleware('idempotency')->group(function () {
                         Route::post('/reports/{testId}' , [TestReportController::class , 'store']);
                         Route::post('/reports/review/{reviewId}' , [TestReportReviewController::class , 'store']);
                         Route::post('/payments/stripe/{testId}' , [TestPaymentController::class , 'createStripeCheckoutSession']);
                         Route::delete('/delete/test/{testId}', [TestController::class, 'destroy']);
+                        Route::post('/update/test/{testId}' , [TestController::class, 'update']);
                     });
 
                 });

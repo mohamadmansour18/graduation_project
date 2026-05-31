@@ -8,9 +8,10 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class UpdateTestSummariesAfterDeletion
+class UpdateTestSummariesAfterDeletion implements ShouldQueue
 {
-
+    use InteractsWithQueue;
+    public int $tries = 2;
     public function handle(TestDeleted $event): void
     {
         DB::transaction(function () use ($event) {

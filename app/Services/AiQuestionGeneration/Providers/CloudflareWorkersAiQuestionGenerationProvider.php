@@ -9,6 +9,7 @@ use App\Models\AiQuestionGenerationRequest;
 use App\Services\AiQuestionGeneration\AiGeneratedQuestionNormalizer;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class CloudflareWorkersAiQuestionGenerationProvider implements AiQuestionGenerationProviderInterface
@@ -100,6 +101,7 @@ class CloudflareWorkersAiQuestionGenerationProvider implements AiQuestionGenerat
         if ($this->shouldSendSingleImageRaw($generationRequest)) {
             $imageDataUrl = $this->buildImageDataUrl($generationRequest->assets->first());
         } else {
+
             $textContext = $this->convertAssetsToMarkdown(
                 generationRequest: $generationRequest,
                 apiKey: $apiKey,
@@ -110,22 +112,37 @@ class CloudflareWorkersAiQuestionGenerationProvider implements AiQuestionGenerat
         }
 
         try {
+            $messages = [
+                [
+                    'role' => 'user',
+                    'content' => $imageDataUrl !== null
+                        ? [
+                            [
+                                'type' => 'text',
+                                'text' => $this->buildPrompt($generationRequest, $textContext),
+                            ],
+                            [
+                                'type' => 'image_url',
+                                'image_url' => [
+                                    'url' => $imageDataUrl,
+                                ],
+                            ],
+                        ]
+                        : $this->buildPrompt($generationRequest, $textContext),
+                ],
+            ];
+
             $response = Http::timeout($timeout)
                 ->withToken($apiKey)
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ])
-                ->post("{$baseUrl}/accounts/{$accountId}/ai/run/{$model}", array_filter([
-                    'messages' => [
-                        [
-                            'role' => 'user',
-                            'content' => $this->buildPrompt($generationRequest, $textContext),
-                        ],
-                    ],
-                    'image' => $imageDataUrl,
-                    'temperature' => (float) config('ai_question_generation.cloudflare_workers_ai.temperature', 0.3),
-                    'max_tokens' => (int) config('ai_question_generation.cloudflare_workers_ai.max_tokens', 1200),
+                ->post("{$baseUrl}/accounts/{$accountId}/ai/v1/chat/completions", [
+                    'model' => $model,
+                    'messages' => $messages,
+                    'temperature' => (float) config('ai_question_generation.cloudflare_workers_ai.temperature', 0.1),
+                    'max_completion_tokens' => (int) config('ai_question_generation.cloudflare_workers_ai.max_tokens', 3500),
                     'response_format' => [
                         'type' => 'json_schema',
                         'json_schema' => [
@@ -175,7 +192,7 @@ class CloudflareWorkersAiQuestionGenerationProvider implements AiQuestionGenerat
                         ],
                     ],
                     'stream' => false,
-                ], fn ($value): bool => $value !== null));
+                ]);
         } catch (ConnectionException $exception) {
             throw AiQuestionGenerationException::providerConnectionFailed(
                 provider: $this->providerName,
@@ -193,7 +210,12 @@ class CloudflareWorkersAiQuestionGenerationProvider implements AiQuestionGenerat
             );
         }
 
-        $text = $response->json('result.response') ?? $response->json('response');
+        $text = $response->json('choices.0.message.content')
+            ?? $response->json('choices.0.message.reasoning')
+            ?? $response->json('result.response')
+            ?? $response->json('response');
+
+
 
         if (! is_string($text) || trim($text) === '') {
             throw AiQuestionGenerationException::providerInvalidResponse(
@@ -389,6 +411,7 @@ TEXT);
 - لا تكتب شرحاً خارج JSON.
 - أرجع JSON صالح فقط.
 - يجب أن يكون الرد كائن JSON واحد فقط.
+- ممنوع كتابة أي تفكير أو خطوات أو تحليل. أخرج JSON النهائي فقط مباشرة.
 
 قبل توليد الأسئلة:
 - إذا كان المحتوى غير تعليمي أو فارغاً أو غير واضح، أرجع:

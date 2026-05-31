@@ -3,10 +3,12 @@
 namespace App\Repositories\Tests;
 
 use App\Enums\PaymentStatus;
+use App\Enums\TestReviewRoundsTriggerType;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
 use App\Models\Test;
 use App\Models\TestQuestion;
+use App\Models\TestQuestionOption;
 use App\Models\TestReview;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -395,7 +397,7 @@ class TestRepository
     }
 
 
-    public function createStatusHistory(int $testId, ?int $testReviewRoundId, string $fromStatus, string $toStatus, int $changedByUserId, ?string $note = null): void
+    public function createStatusHistory(int $testId, ?int $testReviewRoundId, ?string $fromStatus, string $toStatus, int $changedByUserId, ?string $note = null): void
     {
         DB::table('test_status_histories')->insert([
             'test_id' => $testId,
@@ -407,6 +409,154 @@ class TestRepository
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /////////////////////////////////////////////////////////////////
+
+    public function findForUpdate(int $testId): Builder|Test|null
+    {
+        return Test::query()
+            ->with([
+                'testQuestions.testQuestionOptions',
+                'testIntersetSelections',
+            ])
+            ->whereKey($testId)
+            ->first();
+    }
+
+
+    public function getNextReviewRoundNo(int $testId): int
+    {
+        $lastRoundNo = DB::table('test_review_rounds')
+            ->where('test_id', $testId)
+            ->max('round_no');
+
+        return ((int) $lastRoundNo) + 1;
+    }
+
+    public function createReviewRoundForOwnerUpdate(Test $test): int
+    {
+        return DB::table('test_review_rounds')->insertGetId([
+            'test_id' => $test->id,
+            'round_no' => $this->getNextReviewRoundNo((int) $test->id),
+            'reviewer_user_id' => null,
+            'trigger_type' => TestReviewRoundsTriggerType::Owner_Resubmission->value,
+            'decision' => null,
+            'based_on_approval_version' => $test->current_approval_version,
+            'started_at' => now(),
+            'decided_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    public function getOpenRevisionRoundId(int $testId): ?int
+    {
+        return DB::table('test_review_rounds')
+            ->where('test_id', $testId)
+            ->whereNull('decided_at')
+            ->orderByDesc('id')
+            ->value('id');
+    }
+
+    public function getUnresolvedRevisionRequests(int $testId, int $roundId): \Illuminate\Support\Collection
+    {
+        return DB::table('test_revision_requests')
+            ->where('test_id', $testId)
+            ->where('test_review_round_id', $roundId)
+            ->whereNull('resolved_at')
+            ->get();
+    }
+
+    public function resolveRevisionRequests(array $requestIds): void
+    {
+        if (empty($requestIds)) {
+            return;
+        }
+
+        DB::table('test_revision_requests')
+            ->whereIn('id', $requestIds)
+            ->update([
+                'resolved_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function createRevisionChangeLog(
+        int $roundId,
+        int $testId,
+        ?int $revisionRequestId,
+        string $revisionType,
+        ?int $targetQuestionId,
+        ?int $targetOptionId,
+        mixed $beforeValue,
+        mixed $afterValue,
+        int $changedByUserId
+    ): void {
+        DB::table('test_revision_change_logs')->insert([
+            'test_review_round_id' => $roundId,
+            'test_id' => $testId,
+            'revision_request_id' => $revisionRequestId,
+            'revision_type' => $revisionType,
+            'target_question_id' => $targetQuestionId,
+            'target_option_id' => $targetOptionId,
+            'before_value' => is_string($beforeValue) ? $beforeValue : json_encode($beforeValue, JSON_UNESCAPED_UNICODE),
+            'after_value' => is_string($afterValue) ? $afterValue : json_encode($afterValue, JSON_UNESCAPED_UNICODE),
+            'changed_by_user_id' => $changedByUserId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    public function syncTestInterests(int $testId, array $interestIds): void
+    {
+        DB::table('test_interset_selections')
+            ->where('test_id', $testId)
+            ->delete();
+
+        $rows = [];
+
+        $now = now();
+
+        foreach (array_values($interestIds) as $index => $interestId) {
+            $rows[] = [
+                'test_id' => $testId,
+                'interest_id' => $interestId,
+                'slot_no' => $index + 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if (! empty($rows)) {
+            DB::table('test_interset_selections')->insert($rows);
+        }
+
+        DB::afterCommit(function () use ($testId) {
+            Test::query()
+                ->whereKey($testId)
+                ->first()
+                ?->searchable();
+        });
+
+    }
+
+    public function moveExistingQuestionsToTemporaryPositions(int $testId): void
+    {
+        TestQuestion::query()
+            ->where('test_id', $testId)
+            ->update([
+                'position' => DB::raw('position + 100000'),
+            ]);
+    }
+
+    public function moveExistingOptionsToTemporaryPositions(int $questionId): void
+    {
+        TestQuestionOption::query()
+            ->where('test_question_id', $questionId)
+            ->update([
+                'position' => DB::raw('position + 100000'),
+            ]);
     }
 
 }

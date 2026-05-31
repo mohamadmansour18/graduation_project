@@ -356,11 +356,11 @@ class TestException extends ApiException
         );
     }
 
-    public static function notOwner(): self
+    public static function notOwner(string $message): self
     {
         return new self(
             title: '! لا تملك الصلاحية',
-            message: 'لا يمكنك حذف اختبار لا تملكه',
+            message: $message,
             status: 403
         );
     }
@@ -371,6 +371,87 @@ class TestException extends ApiException
             title: '! فشل حذف الاختبار',
             message: 'لا يمكن حذف اختبار محذوف مسبقاً',
             status: 409
+        );
+    }
+
+    public static function testCannotBeEdited(): self
+    {
+        return new self(
+            title: '! لا يمكن تعديل الاختبار',
+            message: 'لا يمكن تعديل الاختبار في حالته الحالية',
+            status: 409
+        );
+    }
+
+    public static function cannotConvertPublicToPrivate(): self
+    {
+        return new self(
+            title: '! لا يمكن تغيير نوع الاختبار',
+            message: 'لا يمكن تحويل اختبار عام إلى اختبار خاص',
+            status: 422
+        );
+    }
+
+    public static function previewQuestionsRequired(): self
+    {
+        return new self(
+            title: '! أسئلة المعاينة مطلوبة',
+            message: 'عند تحويل الاختبار من خاص إلى عام يجب تحديد أسئلة المعاينة المطلوبة',
+            status: 422
+        );
+    }
+
+    public static function invalidPreviewQuestionsCount(int $requiredCount): self
+    {
+        return new self(
+            title: '! عدد أسئلة المعاينة غير صحيح',
+            message: "يجب تحديد {$requiredCount} سؤال معاينة بالضبط لهذا الاختبار",
+            status: 422
+        );
+    }
+
+    public static function incompleteRevisionRequests(): self
+    {
+        return new self(
+            title: '! لم تكتمل التعديلات المطلوبة',
+            message: 'يجب إكمال جميع التعديلات المطلوبة من مركز التحكم قبل إرسال الاختبار للمراجعة',
+            status: 422
+        );
+    }
+
+    public static function forbiddenScientificChangeInRevision(): self
+    {
+        return new self(
+            title: '! تعديل غير مسموح',
+            message: 'في حالة يحتاج تعديل، يمكنك تعديل المعلومات العلمية المطلوبة فقط من مركز التحكم',
+            status: 422
+        );
+    }
+
+    public static function invalidQuestionPayload(): self
+    {
+        return new self(
+            title: '! بيانات الأسئلة غير صحيحة',
+            message: 'بيانات الأسئلة المرسلة غير صحيحة أو لا تتبع بنية الاختبار',
+            status: 422
+        );
+    }
+
+    public static function testCannotBeAccessed(): self
+    {
+        return new self(
+            title: '! لا يمكن التفاعل مع الاختبار',
+            message: 'لا يمكن التفاعل مع هذا الاختبار في حالته الحالية',
+            status: 403
+        );
+    }
+
+    public static function noTestsMatchFilter(): self
+    {
+        return new self(
+            title: '! لا توجد اختبارات',
+            message: 'لا توجد اختبارات مطابقة للفلتر المطلوب',
+            status: 404
         );
     }
 }

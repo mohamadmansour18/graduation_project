@@ -12,7 +12,7 @@ use Throwable;
 class UpdateTestLikeSummaryTables implements ShouldQueue
 {
     use InteractsWithQueue;
-    public int $tries = 3;
+    public int $tries = 2;
     /**
      * Create the event listener.
      */

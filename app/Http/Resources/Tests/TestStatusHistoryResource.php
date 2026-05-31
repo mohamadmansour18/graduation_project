@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Resources;
+namespace App\Http\Resources\Tests;
 
 use App\Enums\TestReviewStatus;
 use App\Helpers\DateProcessor;

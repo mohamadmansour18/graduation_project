@@ -40,6 +40,12 @@ class TestRevisionRequestRepository
                 '=',
                 'test_revision_requests.target_question_id'
             )
+            ->leftJoin(
+                'test_question_options',
+                'test_question_options.id',
+                '=',
+                'test_revision_requests.target_option_id'
+            )
             ->leftJoin('test' , 'test.id' , '=' , 'test_question.test_id')
             ->select([
                 'test_revision_requests.id',
@@ -51,6 +57,7 @@ class TestRevisionRequestRepository
                 'test_revision_requests.created_at',
 
                 'test_question.position as question_position',
+                'test_question_options.position as question_option_position',
 
                 'test.question_count',
 

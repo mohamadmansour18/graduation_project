@@ -47,4 +47,14 @@ class AiQuestionGenerationController extends Controller
             title: 'تم جلب حالة طلب توليد الأسئلة بنجاح'
         );
     }
+
+    public function aiGenerationDailyLimit(): JsonResponse
+    {
+        $result = $this->service->getDailyLimitStatus(auth()->user());
+
+        return $this->dataResponse(
+            data: $result,
+            title: '! تم جلب عدد المحاولات اليومية بنجاح'
+        );
+    }
 }

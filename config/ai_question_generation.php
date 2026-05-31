@@ -60,13 +60,13 @@ return [
     'default_provider' => env('AI_QUESTION_GENERATION_PROVIDER', 'gemini'),
 
     'providers' => [
-//        'gemini' => GeminiQuestionGenerationProvider::class,            //done
-//        'openrouter' => OpenRouterQuestionGenerationProvider::class,    //done
-//        'deepseek' => DeepSeekQuestionGenerationProvider::class,
-        'cloudflare_workers_ai' => CloudflareWorkersAiQuestionGenerationProvider::class,    //سلملي
-//        'ollama_cloud' => OllamaCloudQuestionGenerationProvider::class,                           //
-//        'huggingface' => HuggingFaceInferenceQuestionGenerationProvider::class, //done
-//        'ollama_local' => OllamaLocalQuestionGenerationProvider::class, //done
+//        'gemini' => GeminiQuestionGenerationProvider::class,
+//        'openrouter' => OpenRouterQuestionGenerationProvider::class,
+//        'deepseek' => DeepSeekQuestionGenerationProvider::class, //noooooooooooooooooooooooooooooooo
+//        'cloudflare_workers_ai' => CloudflareWorkersAiQuestionGenerationProvider::class,
+//        'ollama_cloud' => OllamaCloudQuestionGenerationProvider::class,         //testttttttttttttttttttt
+//        'huggingface' => HuggingFaceInferenceQuestionGenerationProvider::class,
+//        'ollama_local' => OllamaLocalQuestionGenerationProvider::class,
     ],
 
     /*
@@ -89,11 +89,6 @@ return [
         'openrouter' => [
             'source_types' => ['Images'],
             'input_modes' => ['raw_image'],
-        ],
-
-        'deepseek' => [
-            'source_types' => ['Images', 'Pdf'],
-            'input_modes' => ['extracted_text'],
         ],
 
         'cloudflare_workers_ai' => [
@@ -183,7 +178,6 @@ return [
                 'cloudflare_workers_ai',
                 'ollama_cloud',
                 'huggingface',
-                'deepseek',
                 'gemini',
                 'ollama_local',
             ],
@@ -194,7 +188,6 @@ return [
                 'cloudflare_workers_ai',
                 'ollama_cloud',
                 'huggingface',
-                'deepseek',
                 'ollama_local',
             ],
 
@@ -204,7 +197,6 @@ return [
                 'cloudflare_workers_ai',
                 'ollama_cloud',
                 'huggingface',
-                'deepseek',
                 'ollama_local',
             ],
         ],
@@ -217,7 +209,6 @@ return [
                     'gemini',
                     'ollama_cloud',
                     'huggingface',
-                    'deepseek',
                     'ollama_local',
                 ],
 
@@ -227,7 +218,6 @@ return [
                     'gemini',
                     'ollama_cloud',
                     'huggingface',
-                    'deepseek',
                     'ollama_local',
                 ],
 
@@ -237,7 +227,6 @@ return [
                     'cloudflare_workers_ai',
                     'ollama_cloud',
                     'huggingface',
-                    'deepseek',
                     'ollama_local',
                 ],
             ],
@@ -248,7 +237,6 @@ return [
                     'gemini',
                     'ollama_cloud',
                     'huggingface',
-                    'deepseek',
                 ],
 
                 'medium' => [
@@ -256,7 +244,6 @@ return [
                     'gemini',
                     'ollama_cloud',
                     'huggingface',
-                    'deepseek',
                 ],
 
                 'high' => [
@@ -264,7 +251,6 @@ return [
                     'cloudflare_workers_ai',
                     'ollama_cloud',
                     'huggingface',
-                    'deepseek',
                 ],
             ],
         ],
@@ -393,13 +379,13 @@ return [
 
         'base_url' => env('CLOUDFLARE_AI_BASE_URL', 'https://api.cloudflare.com/client/v4'),
 
-        'model' => env('CLOUDFLARE_AI_MODEL', '@cf/google/gemma-3-12b-it'),
+        'model' => env('CLOUDFLARE_AI_MODEL', '@cf/google/gemma-4-26b-a4b-it'),
 
         'timeout_seconds' => env('CLOUDFLARE_AI_TIMEOUT_SECONDS', 180),
 
-        'temperature' => 0.3,
+        'temperature' => 0.1,
 
-        'max_tokens' => env('CLOUDFLARE_AI_MAX_TOKENS', 1200),
+        'max_tokens' => env('CLOUDFLARE_AI_MAX_TOKENS', 8192),
 
         'supported_source_types' => [
             'Images',
@@ -454,7 +440,7 @@ return [
 
         'num_ctx' => env('OLLAMA_CLOUD_NUM_CTX', 4096),
 
-        'num_predict' => env('OLLAMA_CLOUD_NUM_PREDICT', 1200),
+        'num_predict' => env('OLLAMA_CLOUD_NUM_PREDICT', 8192),
 
         'supported_source_types' => [
             'Images',

@@ -13,7 +13,7 @@ use Throwable;
 class UpdateTestReviewSummaryTables implements ShouldQueue
 {
     use InteractsWithQueue;
-    public int $tries = 3;
+    public int $tries = 2;
 
     public function handle(TestReviewStateChanged $event): void
     {

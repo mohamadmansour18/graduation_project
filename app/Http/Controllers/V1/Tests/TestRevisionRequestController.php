@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\V1\Tests;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\TestRevisionRequestResource;
+use App\Http\Resources\Tests\TestRevisionRequestResource;
 use App\Services\Tests\TestRevisionRequestService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;

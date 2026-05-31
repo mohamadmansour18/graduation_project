@@ -12,12 +12,14 @@ use JsonException;
 
 class AiQuestionGenerationService
 {
+
     public function __construct(
         private readonly AiQuestionGenerationRepository $repository,
         private readonly AiQuestionGenerationFileStorageService $fileStorageService,
         private readonly AiQuestionGenerationReuseService $reuseService,
         private readonly AiQuestionGenerationLocalFileValidationService $localFileValidationService
     ) {}
+
 
     /**
      * @throws AiQuestionGenerationException
@@ -149,5 +151,27 @@ class AiQuestionGenerationService
         }, $questions);
     }
 
+    ////////////////////////////////////////////////////////////////
+
+    public function getDailyLimitStatus(User $user): array
+    {
+        $limit = (bool) $user->is_academically_verified
+            ? config('ai_question_generation.verified_user_daily_limit')
+            : config('ai_question_generation.unverified_user_daily_limit');
+
+        $usedAttempts = $this->repository->countTodayActiveRequestsForUser(
+            userId: (int) $user->id
+        );
+
+        $remainingAttempts = max(0, $limit - $usedAttempts);
+
+        return [
+            'used_attempts' => $usedAttempts,
+            'daily_limit' => $limit,
+            'remaining_attempts' => $remainingAttempts,
+            'attempts_label' => "{$remainingAttempts}/{$limit}",
+            'has_reached_daily_limit' => $remainingAttempts === 0,
+        ];
+    }
 }
 
