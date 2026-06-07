@@ -158,7 +158,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             //USER PROFILE
             Route::prefix('users-profile')->group(function () {
 
-                Route::get('/overview/{userId}' , [PublicProfileController::class , 'show']);
+                //Route::get('/overview/{userId}' , [PublicProfileController::class , 'show']);
 
                 Route::middleware('throttle:4,2')->group(function () {
                     Route::post('/follow/{userId}' , [FollowController::class , 'follow']);
