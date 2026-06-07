@@ -71,11 +71,6 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(UserBan::class, 'user_id');
     }
 
-    public function imposedByUserBans(): HasMany
-    {
-        return $this->hasMany(UserBan::class, 'imposed_by_user_id');
-    }
-
     public function liftedByUserBans(): HasMany
     {
         return $this->hasMany(UserBan::class, 'lifted_by_user_id');

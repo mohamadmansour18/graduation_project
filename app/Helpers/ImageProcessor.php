@@ -18,7 +18,13 @@ class ImageProcessor
     }
 
     public static function urlOrDefault(?string $path, string $defaultPath = 'defaults/default-avatar.svg', string $disk = 'public'): string {
-        return asset(Storage::disk($disk)->url($path ?: $defaultPath));
+
+        if ($path && Storage::disk($disk)->exists($path)) {
+            return asset(Storage::disk($disk)->url($path));
+        }
+
+        return asset(Storage::disk($disk)->url($defaultPath));
+//        return asset(Storage::disk($disk)->url($path ?: $defaultPath));
     }
 
     public static function uploadImage(UploadedFile $file, string $directory, string $disk = 'public'): string

@@ -5,8 +5,15 @@ use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
 use App\Http\Controllers\V1\Auth\PasswordResetController;
 use App\Http\Controllers\V1\Home\HomeController;
+use App\Http\Controllers\V1\Library\LibraryMaterialBookmarkController;
+use App\Http\Controllers\V1\Library\LibraryMaterialController;
+use App\Http\Controllers\V1\Library\LibraryMaterialDownloadController;
+use App\Http\Controllers\V1\Library\LibraryMaterialLikeController;
+use App\Http\Controllers\V1\Library\LibraryMaterialReportController;
+use App\Http\Controllers\V1\Library\LibraryMaterialShareController;
 use App\Http\Controllers\V1\Payments\TestPaymentController;
 use App\Http\Controllers\V1\Profile\FollowController;
+use App\Http\Controllers\V1\Profile\PublicProfileController;
 use App\Http\Controllers\V1\TestDiscovery\HomeTestDiscoveryController;
 use App\Http\Controllers\V1\TestDiscovery\LabTestDiscoveryController;
 use App\Http\Controllers\V1\Tests\LabController;
@@ -93,7 +100,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/ai-question-generation/daily-limit' , [AiQuestionGenerationController::class, 'aiGenerationDailyLimit']);
 
                 Route::middleware('idempotency')->group(function () {
-                    Route::post('/create-test' , [LabController::class , 'store']);
+                    Route::post('/create-test' , [LabController::class , 'store'])->middleware('throttle:3,2');
                     Route::post('/ai-question-generations', [AiQuestionGenerationController::class, 'store']);
                 });
                 Route::get('/ai-question-generations/{id}', [AiQuestionGenerationController::class, 'show']);
@@ -150,11 +157,47 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
             //USER PROFILE
             Route::prefix('users-profile')->group(function () {
+
+                Route::get('/overview/{userId}' , [PublicProfileController::class , 'show']);
+
                 Route::middleware('throttle:4,2')->group(function () {
                     Route::post('/follow/{userId}' , [FollowController::class , 'follow']);
                     Route::delete('/unfollow/{userId}' , [FollowController::class , 'unfollow']);
                 });
             });
+
+            //LIBRARY
+            Route::prefix('library')->group(function () {
+                Route::get('/show', [LibraryMaterialController::class, 'index']);
+                Route::get('/search' , [LibraryMaterialController::class , 'search']);
+                Route::get('/library-materials-details/other/{materialId}' , [LibraryMaterialController::class , 'showDetails']);
+                Route::get('/library-materials-details/my-public/{materialId}' , [LibraryMaterialController::class , 'showMyDetails']);
+
+                Route::get('/like-list/{materialId}' , [LibraryMaterialLikeController::class , 'likedUsers']);
+                Route::get('/bookmark-list/{materialId}' , [LibraryMaterialBookmarkController::class , 'bookmarkedUsers']);
+
+                Route::get('/download/{materialId}' , [LibraryMaterialDownloadController::class , 'download'])->middleware('throttle:8,3');
+                Route::get('/share-link/{materialId}' , [LibraryMaterialShareController::class , 'generate']);
+                Route::get('/shared/{slug}' , [LibraryMaterialShareController::class , 'resolve']);
+
+                Route::get('/similar/{materialId}' , [LibraryMaterialController::class, 'similar']);
+
+                Route::middleware('throttle:5,2')->group(function () {
+                    Route::post('/like/{libraryMaterial}', [LibraryMaterialLikeController::class, 'like']);
+                    Route::delete('/unlike/{libraryMaterial}', [LibraryMaterialLikeController::class, 'unlike']);
+
+                    Route::post('/bookmark/{libraryMaterial}', [LibraryMaterialBookmarkController::class, 'bookmark']);
+                    Route::delete('/unbookmark/{libraryMaterial}', [LibraryMaterialBookmarkController::class, 'unbookmark']);
+                });
+
+                Route::middleware('idempotency')->group(function () {
+                    Route::post('/create-content' , [LibraryMaterialController::class , 'store'])->middleware('throttle:3,2');
+                    Route::post('/reports/{libraryMaterial}' , [LibraryMaterialReportController::class , 'store']);
+                    Route::delete('/delete/material/{libraryMaterial}', [LibraryMaterialController::class, 'destroy']);
+                    Route::post('/update/material/{libraryMaterial}' , [LibraryMaterialController::class, 'update']);
+                });
+            });
+
         });
 
         });

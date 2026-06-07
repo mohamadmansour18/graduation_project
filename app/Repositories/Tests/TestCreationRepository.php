@@ -88,7 +88,7 @@ class TestCreationRepository
             'round_no' => ((int) $latestRoundNo) + 1,
             'reviewer_user_id' => null,
             'trigger_type' => TestReviewRoundsTriggerType::Initial_Submission->value,
-            'decision' => Decision::Pending,
+            'decision' => Decision::Pending->value,
             'based_on_approval_version' => $test->current_approval_version,
             'started_at' => now(),
             'decided_at' => null,

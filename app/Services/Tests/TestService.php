@@ -160,29 +160,31 @@ class TestService
 
     ////////////////////////////////////////////////////////////////////////////
 
-    public function getShareLink(int $testId): array
+    public function getShareLink(int $testId ): array
     {
-        $test = $this->testRepository->findShareableTest($testId);
+        return DB::transaction(function () use ($testId) {
+            $test = $this->testRepository->findShareableTest($testId);
 
-        if (!$test) {
-            throw TestException::notAvailableToShare();
-        }
+            if (!$test) {
+                throw TestException::notAvailableToShare();
+            }
 
-        $slug = $test->share_slug;
+            $slug = $test->share_slug;
 
-        if (!$slug) {
-            $slug = $this->generateUniqueSlug();
+            if (!$slug) {
+                $slug = $this->generateUniqueSlug();
 
-            $this->testRepository->updateShareSlug(
-                testId: $testId,
-                slug: $slug
-            );
-        }
+                $this->testRepository->updateShareSlug(
+                    testId: $testId,
+                    slug: $slug
+                );
+            }
 
-        return [
-            'share_slug' => $slug,
-            'share_url' => url('/share/tests/' . $slug)  ,
-        ];
+            return [
+                'share_slug' => $slug,
+                'share_url' => url('/share/tests/' . $slug),
+            ];
+        });
     }
 
     private function generateUniqueSlug(): string

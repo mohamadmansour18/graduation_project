@@ -6,6 +6,7 @@ use App\Enums\LibraryMaterialContentKind;
 use App\Enums\LibraryMaterialReviewStatus;
 use App\Enums\TargetLevel;
 use App\Enums\VisibilityType;
+use App\Helpers\ArabicSearchNormalizer;
 use App\Models\LibraryMaterialAsset;
 use App\Models\LibraryMaterialBookmark;
 use App\Models\LibraryMaterialDownloadLog;
@@ -19,17 +20,19 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Laravel\Scout\Searchable;
 
 class LibraryMaterial extends Model
 {
+    use Searchable;
 
     protected $table = 'library_material';
 
     protected $fillable = [
         'creator_user_id',
-        'imposed_by_user_id',
         'title',
         'description',
         'content_kind',
@@ -60,11 +63,6 @@ class LibraryMaterial extends Model
     public function creatorUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_user_id');
-    }
-
-    public function imposedByUser(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'imposed_by_user_id');
     }
 
     public function libraryMaterialAssets(): HasMany
@@ -110,5 +108,36 @@ class LibraryMaterial extends Model
     public function libraryMaterialReportReasonCounters(): HasMany
     {
         return $this->hasMany(LibraryReportReasonCounter::class, 'library_material_id');
+    }
+
+    public function firstAsset(): HasOne|\Illuminate\Database\Eloquent\Builder|LibraryMaterial
+    {
+        return $this->hasOne(LibraryMaterialAsset::class, 'library_material_id')
+            ->oldest('position')
+            ->oldest('id');
+    }
+
+    public function interests(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Interest::class,
+            'library_material_interest_selections',
+            'library_material_id',
+            'interest_id'
+        )->withPivot('slot_no')->orderBy('library_material_interest_selections.slot_no');
+    }
+
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'title' => $this->title,
+            'normalized_title' => ArabicSearchNormalizer::normalize($this->title),
+            'creator_user_id' => $this->creator_user_id,
+            'content_kind' => $this->content_kind,
+            'review_status' => $this->review_status,
+            'visibility_type' => $this->visibility_type,
+            'published_at_timestamp' => optional($this->published_at)->timestamp,
+        ];
     }
 }

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->foreignId('test_review_round_id')->nullable()->constrained('test_review_rounds')->nullOnDelete();
             $table->enum('from_status', array_column(TestReviewStatus::cases(), 'value'))->nullable();
             $table->enum('to_status', array_column(TestReviewStatus::cases(), 'value'));
-            $table->foreignId('changed_by_user_id')->nullable()->constrained('users')->cascadeOnDelete()->nul;
+            $table->foreignId('changed_by_user_id')->nullable()->constrained('users')->cascadeOnDelete();
             $table->text('note')->nullable();
             $table->timestamps();
 

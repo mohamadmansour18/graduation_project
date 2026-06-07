@@ -4,8 +4,8 @@ namespace App\Enums;
 
 enum LibraryMaterialReviewStatus: string
 {
-    case New = 'new';
-    case Approved = 'approved';
-    case Deleted = 'deleted';
-    case Reported = 'reported';
+    case New = 'مسودة';
+    case Approved = 'تم الموافقة عليه';
+    case Deleted = 'تم حذفه';
+    case Reported = 'مبلغ عنه';
 }

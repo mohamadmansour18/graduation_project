@@ -234,9 +234,9 @@ class TestRepository
 
     /////////////////////////////////////////////////////////////////
 
-    public function findShareableTest(int $testId): ?object
+    public function findShareableTest(int $testId): ?Test
     {
-        return DB::table('test')
+        return Test::query()
             ->select([
                 'id',
                 'creator_user_id',
@@ -248,6 +248,7 @@ class TestRepository
             ->where('id', $testId)
             ->where('test_type', TestType::Public->value)
             ->where('review_status', TestReviewStatus::Approved->value)
+            ->lockForUpdate()
             ->first();
     }
 

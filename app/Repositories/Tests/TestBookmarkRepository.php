@@ -115,13 +115,13 @@ class TestBookmarkRepository
             ->where('test_bookmarks.test_id', $testId)
             ->where('test_bookmarks.user_id' , '!=' , $viewerId)
             ->when($search !== null, function ($query) use ($search) {
-                $query->where('users.name', 'like', $this->escapeLike($search) . '%');
+                $query->where('users.name', 'like', $this->escapeBookmark($search) . '%');
             })
             ->orderByDesc('bookmark_id')
             ->cursorPaginate($perPage);
     }
 
-    private function escapeLike(string $value): string
+    private function escapeBookmark(string $value): string
     {
         return str_replace(
             ['\\', '%', '_'],

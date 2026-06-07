@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\LibraryMaterial;
 use App\Models\Test;
 
 return [
@@ -197,13 +198,48 @@ return [
                     'هذا',
                     'هذه',
                 ],
-
-                'synonyms' => [
-                    'فرونت' => ['frontend', 'front-end', 'واجهة أمامية'],
-                    'باك' => ['backend', 'back-end', 'واجهة خلفية'],
-                ],
             ],
         ],
+
+        LibraryMaterial::class => [
+            'searchableAttributes' => [
+                'normalized_title',
+                'title',
+                'description',
+            ],
+            'filterableAttributes' => [
+                'id',
+                'creator_user_id',
+                'visibility_type',
+                'review_status',
+                'published_at_timestamp',
+                'interest_ids',
+                'content_kind',
+            ],
+            'sortableAttributes' => [
+                'published_at_timestamp',
+                'like_count',
+            ],
+            'rankingRules' => [
+                'words',
+                'typo',
+                'proximity',
+                'attribute',
+                'sort',
+                'exactness',
+            ],
+            'typoTolerance' => [
+                'enabled' => true,
+                'minWordSizeForTypos' => [
+                    'oneTypo' => 4,
+                    'twoTypos' => 8,
+                ],
+            ],
+            'stopWords' => [
+                'في','من','عن','على','الى','إلى','ال','و','يا','مع','هذا','هذه',
+            ],
+        ],
+
     ],
 
     /*

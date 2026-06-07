@@ -13,5 +13,13 @@ class SharedLinkController extends Controller
             'fallbackUrl' => url('/app-not-installed'),
         ]);
     }
+
+    public function libraryMaterial(string $slug)
+    {
+        return view('share.library-material', [
+            'deepLink' => "nerd://library/{$slug}",
+            'fallbackUrl' => url('/app-not-installed'),
+        ]);
+    }
 }
 //'https://play.google.com/store/apps/details?id=com.yourcompany.nerd'

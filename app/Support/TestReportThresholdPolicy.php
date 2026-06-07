@@ -4,13 +4,13 @@ namespace App\Support;
 
 class TestReportThresholdPolicy
 {
-    private const MIN_BASE_PARTICIPANTS = 20;
+    private const int MIN_BASE_PARTICIPANTS = 20;
 
-    private const SAME_REASON_MIN_REPORTS = 5;
-    private const SAME_REASON_RATIO = 0.15;
+    private const int SAME_REASON_MIN_REPORTS = 5;
+    private const float SAME_REASON_RATIO = 0.15;
 
-    private const TOTAL_MIN_DISTINCT_REPORTERS = 10;
-    private const TOTAL_REPORTS_RATIO = 0.20;
+    private const int TOTAL_MIN_DISTINCT_REPORTERS = 10;
+    private const float TOTAL_REPORTS_RATIO = 0.20;
 
     public function shouldMarkAsReported(int $participantsCount, int $sameReasonReportersCount, int $totalDistinctReportersCount): bool
     {

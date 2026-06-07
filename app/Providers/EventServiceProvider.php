@@ -2,11 +2,15 @@
 
 namespace App\Providers;
 
+use App\Events\LibraryMaterialDeletedByOwner;
+use App\Events\LibraryMaterialLikeChanged;
 use App\Events\TestBookmarkStateChanged;
 use App\Events\TestDeleted;
 use App\Events\TestDownloaded;
 use App\Events\TestLikeStateChanged;
 use App\Events\TestReviewStateChanged;
+use App\Listeners\UpdateAdminLibraryMaterialMonthlyStats;
+use App\Listeners\UpdateAdminLibraryOnMaterialDeleted;
 use App\Listeners\UpdateTestBookmarkSummaryTables;
 use App\Listeners\UpdateTestDownloadSummaryTables;
 use App\Listeners\UpdateTestLikeSummaryTables;
@@ -47,6 +51,14 @@ class EventServiceProvider extends ServiceProvider
 
         TestDeleted::class => [
             UpdateTestSummariesAfterDeletion::class,
+        ],
+
+        LibraryMaterialLikeChanged::class => [
+            UpdateAdminLibraryMaterialMonthlyStats::class,
+        ],
+
+        LibraryMaterialDeletedByOwner::class => [
+            UpdateAdminLibraryOnMaterialDeleted::class,
         ],
     ];
 

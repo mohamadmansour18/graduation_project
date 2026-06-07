@@ -15,7 +15,6 @@ return new class extends Migration
         Schema::create('library_material', function (Blueprint $table) {
             $table->id();
             $table->foreignId('creator_user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('imposed_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('title' ,150);
             $table->string('description' , 255);
             $table->enum('content_kind', array_column(LibraryMaterialContentKind::cases(), 'value'));
@@ -28,6 +27,7 @@ return new class extends Migration
             $table->unsignedInteger('like_count')->default(0);
             $table->unsignedInteger('bookmarks_count')->default(0);
             $table->unsignedInteger('download_count')->default(0);
+            $table->string('share_slug', 32)->nullable()->unique();
             $table->timestamps();
         });
     }

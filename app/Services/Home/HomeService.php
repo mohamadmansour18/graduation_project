@@ -52,7 +52,7 @@ class HomeService
             ->map(fn ($creator) => [
                 'id' => $creator->id,
                 'name' => $creator->name,
-                'avatar_url' => ImageProcessor::urlOrDefault($creator->avatar_disk ?? null),
+                'avatar_url' => ImageProcessor::urlOrDefault($creator->avatar_path ?? null),
                 'published_tests_count' => (int) $creator->published_tests_count,
                 'average_test_rating' => (float) $creator->average_test_rating,
             ])
