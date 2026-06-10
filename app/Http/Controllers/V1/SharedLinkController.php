@@ -21,5 +21,13 @@ class SharedLinkController extends Controller
             'fallbackUrl' => url('/app-not-installed'),
         ]);
     }
+
+    public function profile(string $slug)
+    {
+        return view('share.profile', [
+            'deepLink' => "nerd://profiles/{$slug}",
+            'fallbackUrl' => url('/app-not-installed'),
+        ]);
+    }
 }
 //'https://play.google.com/store/apps/details?id=com.yourcompany.nerd'

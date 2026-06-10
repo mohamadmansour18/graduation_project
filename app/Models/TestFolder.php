@@ -19,7 +19,7 @@ class TestFolder extends Model
     protected $table = 'test_folder';
 
     protected $fillable = [
-        'creator_id',
+        'creator_user_id',
         'name',
         'color_code',
         'visibility_type',

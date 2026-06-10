@@ -13,7 +13,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('verification_request_id')->constrained('user_academic_verification_requests')->cascadeOnDelete();
             $table->enum('asset_type' , array_column(AcademicAssetType::cases() , 'value'));
-            $table->string('storage_disk' , 50)->default('public');
+            $table->string('storage_disk' , 50)->default('local');
             $table->string('storage_path' , 500);
             $table->string('original_name' , 255);
             $table->string('mime_type' , 100);

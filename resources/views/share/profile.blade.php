@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>فتح الاختبار</title>
+    <title>فتح الملف الشخصي</title>
 </head>
 <body>
 <p>جاري فتح تطبيق Nerd...</p>
@@ -12,7 +12,7 @@
 
     setTimeout(function () {
         window.location.href = "{{ $fallbackUrl }}";
-    }, 5000;
+    }, 5000);
 </script>
 </body>
 </html>

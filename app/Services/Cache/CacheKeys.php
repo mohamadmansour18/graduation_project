@@ -11,19 +11,20 @@ class CacheKeys
     | Tags
     |--------------------------------------------------------------------------
     */
-    public const TAG_HOME = 'home';
-    public const TAG_INTERESTS = 'interests';
-    public const TAG_INTEREST_CATEGORIES = 'interest_categories';
-    public const TAG_TESTS = 'tests';
-    public const TAG_TEST_INTERESTS = 'test_interests';
-
+    public const string TAG_HOME = 'home';
+    public const string TAG_INTERESTS = 'interests';
+    public const string TAG_INTEREST_CATEGORIES = 'interest_categories';
+    public const string TAG_TESTS = 'tests';
+    public const string TAG_TEST_INTERESTS = 'test_interests';
+    public const string TAG_PROFILE = 'profile';
+    public const string TAG_USER_PROFILE = 'user_profile';
 
     /*
     |--------------------------------------------------------------------------
     | Cache Keys
     |--------------------------------------------------------------------------
     */
-    public const HOME_SCIENTIFIC_INTERESTS_GROUPED = 'home:scientific_interests:grouped';
+    public const string HOME_SCIENTIFIC_INTERESTS_GROUPED = 'home:scientific_interests:grouped';
 
     public static function testsByInterest(int $interestId, int $page, int $perPage): string
     {
@@ -34,6 +35,11 @@ class CacheKeys
     public static function testPdfDownloadLock(int $testId): string
     {
         return "tests:{$testId}:pdf_download:lock";
+    }
+
+    public static function myBasicProfileInfo(int $userId): string
+    {
+        return "profile:users:{$userId}:basic_info";
     }
 
     /*
@@ -61,6 +67,15 @@ class CacheKeys
         ];
     }
 
+    public static function myBasicProfileInfoTags(int $userId): array
+    {
+        return [
+            self::TAG_PROFILE,
+            self::TAG_USER_PROFILE,
+            "user:{$userId}",
+        ];
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Clear Helpers
@@ -76,6 +91,12 @@ class CacheKeys
     public static function clearTestsByInterest(): void
     {
         Cache::tags(self::testsByInterestTags())->flush();
+    }
+
+    public static function clearMyBasicProfileInfo(int $userId): void
+    {
+        Cache::tags(self::myBasicProfileInfoTags($userId))
+            ->forget(self::myBasicProfileInfo($userId));
     }
 
 }

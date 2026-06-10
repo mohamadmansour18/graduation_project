@@ -17,7 +17,7 @@ class ImageProcessor
         return asset(Storage::disk($disk)->url($path));
     }
 
-    public static function urlOrDefault(?string $path, string $defaultPath = 'defaults/default-avatar.svg', string $disk = 'public'): string {
+    public static function urlOrDefault(?string $path, string $defaultPath = 'defaults/default-avatar.svg', ?string $disk = 'public'): string {
 
         if ($path && Storage::disk($disk)->exists($path)) {
             return asset(Storage::disk($disk)->url($path));

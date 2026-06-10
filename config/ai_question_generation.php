@@ -60,12 +60,12 @@ return [
     'default_provider' => env('AI_QUESTION_GENERATION_PROVIDER', 'gemini'),
 
     'providers' => [
-//        'gemini' => GeminiQuestionGenerationProvider::class,
-//        'openrouter' => OpenRouterQuestionGenerationProvider::class,
+        'gemini' => GeminiQuestionGenerationProvider::class,
+        'openrouter' => OpenRouterQuestionGenerationProvider::class,
 //        'deepseek' => DeepSeekQuestionGenerationProvider::class, //noooooooooooooooooooooooooooooooo
-//        'cloudflare_workers_ai' => CloudflareWorkersAiQuestionGenerationProvider::class,
+        'cloudflare_workers_ai' => CloudflareWorkersAiQuestionGenerationProvider::class,
 //        'ollama_cloud' => OllamaCloudQuestionGenerationProvider::class,         //testttttttttttttttttttt
-//        'huggingface' => HuggingFaceInferenceQuestionGenerationProvider::class,
+        'huggingface' => HuggingFaceInferenceQuestionGenerationProvider::class,
 //        'ollama_local' => OllamaLocalQuestionGenerationProvider::class,
     ],
 

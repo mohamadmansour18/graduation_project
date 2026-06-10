@@ -8,6 +8,7 @@ use App\Enums\Status;
 use App\Exceptions\Api\OnboardingException;
 use App\Repositories\Auth\OnboardingRepository;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -238,11 +239,17 @@ class OnboardingService
 
         try {
             if ($certificateImage) {
-                $certificatePath = $certificateImage->store('academic-verification/certificates', 'public');
+                $certificatePath = $this->storeEncryptedAcademicAsset(
+                    file: $certificateImage,
+                    directory: 'academic-verification/certificates'
+                );
             }
 
             if ($identityImage) {
-                $identityPath = $identityImage->store('academic-verification/identities', 'public');
+                $identityPath = $this->storeEncryptedAcademicAsset(
+                    file: $identityImage,
+                    directory: 'academic-verification/identities'
+                );
             }
 
             $result = DB::transaction(function () use ($user , $onboardingProfile , $universityName , $department , $certificateImage , $certificatePath , $identityImage , $identityPath){
@@ -265,6 +272,7 @@ class OnboardingService
                         'verification_request_id' => $verificationRequest->id,
                         'asset_type' => AcademicAssetType::University_Certificate->value,
                         'storage_path' => $certificatePath,
+                        'storage_disk' => 'local',
                         'original_name' => $certificateImage?->getClientOriginalName(),
                         'mime_type' => $certificateImage?->getClientMimeType(),
                     ]);
@@ -273,6 +281,7 @@ class OnboardingService
                         'verification_request_id' => $verificationRequest->id,
                         'asset_type' => AcademicAssetType::Identity_Card->value,
                         'storage_path' => $identityPath,
+                        'storage_disk' => 'local',
                         'original_name' => $identityImage?->getClientOriginalName(),
                         'mime_type' => $identityImage?->getClientMimeType(),
                     ]);
@@ -288,11 +297,11 @@ class OnboardingService
             });
         }catch (\Throwable $exception) {
             if ($certificatePath) {
-                Storage::disk('public')->delete($certificatePath);
+                Storage::disk('local')->delete($certificatePath);
             }
 
             if ($identityPath) {
-                Storage::disk('public')->delete($identityPath);
+                Storage::disk('local')->delete($identityPath);
             }
 
             Log::channel('errors')->error("Error saving graduate academic profile for user_id: {$user->id}, error: {$exception->getMessage()}");
@@ -386,5 +395,18 @@ class OnboardingService
             'education_level' => $onboardingProfile?->education_level,
             'governorate' => $userProfile->governorate
         ];
+    }
+
+    private function storeEncryptedAcademicAsset(UploadedFile $file, string $directory): string
+    {
+        $encryptedContent = Crypt::encrypt($file->get());
+
+        $fileName = Str::uuid()->toString() . '.enc';
+
+        $path = $directory . '/' . $fileName;
+
+        Storage::disk('local')->put($path, $encryptedContent);
+
+        return $path;
     }
 }

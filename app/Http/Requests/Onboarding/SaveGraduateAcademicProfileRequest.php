@@ -43,7 +43,7 @@ class SaveGraduateAcademicProfileRequest extends ApiFormRequest
                 'file',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
-                'max:5120',
+                'max:4096',
                 'required_with:identity_image',
             ],
 
@@ -52,7 +52,7 @@ class SaveGraduateAcademicProfileRequest extends ApiFormRequest
                 'file',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
-                'max:5120',
+                'max:4096',
                 'required_with:certificate_image',
             ],
         ];
@@ -73,13 +73,13 @@ class SaveGraduateAcademicProfileRequest extends ApiFormRequest
             'certificate_image.file' => 'ملف الشهادة غير صالح',
             'certificate_image.image' => 'يجب أن تكون صورة الشهادة ملف صورة صالحًا',
             'certificate_image.mimes' => 'صيغة صورة الشهادة غير صحيحة',
-            'certificate_image.max' => 'حجم صورة الشهادة يجب ألا يتجاوز 5 ميغابايت',
+            'certificate_image.max' => 'حجم صورة الشهادة يجب ألا يتجاوز 4 ميغابايت',
             'certificate_image.required_with' => 'حقل صورة الشهادة مطلوب عندما يتم تقديم صورة الهوية',
 
             'identity_image.file' => 'ملف الهوية غير صالح',
             'identity_image.image' => 'يجب أن تكون صورة الهوية ملف صورة صالحًا',
             'identity_image.mimes' => 'صيغة صورة الهوية غير صحيحة',
-            'identity_image.max' => 'حجم صورة الهوية يجب ألا يتجاوز 5 ميغابايت',
+            'identity_image.max' => 'حجم صورة الهوية يجب ألا يتجاوز 4 ميغابايت',
             'identity_image.required_with' => 'حقل صورة الهوية مطلوب عندما يتم تقديم صورة الشهادة',
 
         ];

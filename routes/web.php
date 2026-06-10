@@ -30,4 +30,11 @@ Route::get('/app-not-installed', function () {
     return view('share.app-not-installed');
 });
 
+//PROFILE
+Route::get('/share/profiles/{slug}', [SharedLinkController::class, 'profile'])
+    ->name('share.profiles.show');
+
+Route::get('/app-not-installed', function () {
+    return view('share.app-not-installed');
+});
 

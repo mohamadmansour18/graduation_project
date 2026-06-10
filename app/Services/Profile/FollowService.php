@@ -4,6 +4,7 @@ namespace App\Services\Profile;
 
 use App\Exceptions\Api\FollowException;
 use App\Repositories\Profile\FollowRepository;
+use App\Services\Cache\CacheKeys;
 use Illuminate\Support\Facades\DB;
 
 class FollowService
@@ -39,6 +40,9 @@ class FollowService
             $this->followRepository->incrementFollowingCount($followerUserId);
             $this->followRepository->incrementFollowersCount($followedUserId);
         });
+
+        CacheKeys::clearMyBasicProfileInfo($followerUserId);
+        CacheKeys::clearMyBasicProfileInfo($followedUserId);
     }
 
     public function unfollow(int $followerUserId, int $followedUserId): void
@@ -67,5 +71,10 @@ class FollowService
             $this->followRepository->decrementFollowingCount($followerUserId);
             $this->followRepository->decrementFollowersCount($followedUserId);
         });
+
+        CacheKeys::clearMyBasicProfileInfo($followerUserId);
+        CacheKeys::clearMyBasicProfileInfo($followedUserId);
     }
+
+
 }

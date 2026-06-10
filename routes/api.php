@@ -13,6 +13,7 @@ use App\Http\Controllers\V1\Library\LibraryMaterialReportController;
 use App\Http\Controllers\V1\Library\LibraryMaterialShareController;
 use App\Http\Controllers\V1\Payments\TestPaymentController;
 use App\Http\Controllers\V1\Profile\FollowController;
+use App\Http\Controllers\V1\Profile\MyProfileController;
 use App\Http\Controllers\V1\Profile\PublicProfileController;
 use App\Http\Controllers\V1\TestDiscovery\HomeTestDiscoveryController;
 use App\Http\Controllers\V1\TestDiscovery\LabTestDiscoveryController;
@@ -158,7 +159,19 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             //USER PROFILE
             Route::prefix('users-profile')->group(function () {
 
-                //Route::get('/overview/{userId}' , [PublicProfileController::class , 'show']);
+                Route::get('/overview/{userId}' , [PublicProfileController::class , 'show']);
+                Route::get('/test/{userId}' , [PublicProfileController::class , 'tests']);
+                Route::get('/folder/{userId}' , [PublicProfileController::class , 'folders']);
+                Route::get('/content/{userId}' , [PublicProfileController::class , 'materials']);
+
+                Route::get('/folder-details/{folderId}' , [PublicProfileController::class , 'folderContent']);
+                Route::get('/academic-certificate/{userId}' , [PublicProfileController::class , 'academicCertificate']);
+
+                Route::get('/share-link/{userId}' , [PublicProfileController::class , 'shareLink']);
+                Route::get('/shared/{slug}' , [PublicProfileController::class , 'resolveShareSlug']);
+
+                Route::get('/followers/{userId}', [PublicProfileController::class, 'followers']); //يلي متابعيني
+                Route::get('/following/{userId}', [PublicProfileController::class, 'following']); //يلي انا متابعهن
 
                 Route::middleware('throttle:4,2')->group(function () {
                     Route::post('/follow/{userId}' , [FollowController::class , 'follow']);
@@ -198,6 +211,16 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 });
             });
 
+            //MY_PROFILE
+            Route::prefix('my-profile')->group(function () {
+                Route::get('/basic-info/{userId}' , [MyProfileController::class , 'myBasicInfo']);
+
+                Route::middleware(['idempotency' , 'throttle:3,2'])->group(function () {
+                    Route::post('/update/basic-info' , [MyProfileController::class, 'updatePersonalInformation']);
+                    Route::post('/update/academic-info' , [MyProfileController::class, 'updateAcademicInformation']);
+                    Route::post('/update/scientific-interests' , [MyProfileController::class, 'updateScientificInterests']);
+                });
+            });
         });
 
         });

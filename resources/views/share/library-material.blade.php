@@ -12,7 +12,7 @@
 
     setTimeout(function () {
         window.location.href = "{{ $fallbackUrl }}";
-    }, 3000);
+    }, 5000);
 </script>
 </body>
 </html>

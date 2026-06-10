@@ -104,7 +104,7 @@ class Test extends Model
         return $this->hasMany(TestQuestion::class, 'test_id');
     }
 
-    public function previewQuestions()
+    public function previewQuestions(): \Illuminate\Database\Eloquent\Builder|HasMany|Test
     {
         return $this->hasMany(TestQuestion::class, 'test_id')
             ->where('is_preview', true);
