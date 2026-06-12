@@ -32,7 +32,7 @@ class UpdatePersonalInformationRequest extends ApiFormRequest
             'governorate' => ['sometimes', 'nullable', 'string' , Rule::enum(Governorate::class)],
 
             'phone' => ['sometimes', 'nullable', 'string', 'regex:/^09[0-9]{8}$/'],
-            'birth_date' => ['sometimes', 'nullable', 'date', 'before:today'],
+            'birth_date' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'before:today'],
 
             'gender' => ['sometimes', 'string', Rule::enum(Gender::class)],
         ];
@@ -50,6 +50,8 @@ class UpdatePersonalInformationRequest extends ApiFormRequest
             'phone.regex' => 'يجب أن يبدأ رقم الهاتف بـ 09 وأن يتكون من 10 أرقام.',
 
             'birth_date.before' => 'تاريخ الميلاد يجب أن يكون قبل تاريخ اليوم',
+            'birth_date.date_format' => 'تنسيق حقل تاريخ الميلاد خاطئ',
+
             'gender.Illuminate\Validation\Rules\Enum' => 'قيمة حقل الجنس غير صحيحة',
         ];
     }

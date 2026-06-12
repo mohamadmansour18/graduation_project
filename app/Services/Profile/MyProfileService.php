@@ -2,9 +2,12 @@
 
 namespace App\Services\Profile;
 
+use App\Enums\AcademicAssetType;
 use App\Exceptions\Api\ProfileException;
+use App\Exceptions\Api\PublicProfileException;
 use App\Repositories\Profile\MyProfileRepository;
 use App\Services\Cache\CacheKeys;
+use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Crypt;
@@ -38,6 +41,15 @@ class MyProfileService
         self::SCHOOL_STAGE_SECONDARY => 3,
     ];
 
+    private const string PHOTO_TYPE_AVATAR = 'avatar';
+    private const string PHOTO_TYPE_COVER = 'cover';
+    private const string PROFILE_PHOTO_DISK = 'local';
+    private const string AVATAR_DIRECTORY = 'users-photo/profile';
+    private const string COVER_DIRECTORY = 'users-photo/cover';
+    private const string DEFAULT_AVATAR_PATH = 'defaults/default-avatar.svg';
+    private const string DEFAULT_COVER_PATH = 'defaults/default-cover.svg';
+    private const string DEFAULT_PHOTO_DISK = 'public';
+
     public function __construct(
         private readonly MyProfileRepository $myProfileRepository
     ) {}
@@ -52,7 +64,7 @@ class MyProfileService
         $cached = Cache::tags(CacheKeys::myBasicProfileInfoTags($userId))
             ->remember(
                 CacheKeys::myBasicProfileInfo($userId),
-                now()->addMinutes(10),
+                now()->addDays(10),
                 function () use ($userId): array {
                     $profile = $this->myProfileRepository->getBasicInfoByUserId($userId);
 
@@ -73,8 +85,13 @@ class MyProfileService
         return $cached;
     }
 
-    public function updatePersonalInformation(int $userId, array $data): void
+    public function updatePersonalInformation(int $userId, array $data , int $viewerId): void
     {
+        if($userId !== $viewerId)
+        {
+            throw ProfileException::cannotViewOwnProfile();
+        }
+
         DB::transaction(function () use ($userId, $data) {
             $this->myProfileRepository->ensureUserProfileRow($userId);
 
@@ -108,8 +125,13 @@ class MyProfileService
         CacheKeys::clearMyBasicProfileInfo($userId);
     }
 
-    public function updateAcademicInformation(int $userId, array $data, ?UploadedFile $certificateImage = null, ?UploadedFile $identityImage = null): void
+    public function updateAcademicInformation(int $userId, array $data, int $viewerId , ?UploadedFile $certificateImage = null, ?UploadedFile $identityImage = null ): void
     {
+        if($userId !== $viewerId)
+        {
+            throw ProfileException::cannotViewOwnProfile();
+        }
+
         DB::transaction(function () use ($userId, $data, $certificateImage, $identityImage) {
             $current = $this->myProfileRepository->getAcademicSnapshotForUpdate($userId);
 
@@ -153,8 +175,13 @@ class MyProfileService
         CacheKeys::clearMyBasicProfileInfo($userId);
     }
 
-    public function updateScientificInterests(int $userId, array $interestIds): void
+    public function updateScientificInterests(int $userId, array $interestIds , int $viewerId): void
     {
+        if($userId !== $viewerId)
+        {
+            throw ProfileException::cannotViewOwnProfile();
+        }
+
         DB::transaction(function () use ($userId, $interestIds) {
             $this->myProfileRepository->replaceScientificInterests(
                 userId: $userId,
@@ -182,7 +209,6 @@ class MyProfileService
 
         $this->myProfileRepository->updateEducationLevel($userId, self::LEVEL_SCHOOL);
         $this->myProfileRepository->upsertSchoolProfile($userId, $targetSchoolStage);
-        $this->myProfileRepository->deleteUniversityProfile($userId);
     }
 
     private function updateUniversityAcademicInformation(int $userId, array $data): void
@@ -209,12 +235,7 @@ class MyProfileService
 
     private function updateGraduateOrHigherAcademicInformation(int $userId, string $targetLevel, array $data, ?UploadedFile $certificateImage, ?UploadedFile $identityImage): void
     {
-        $hasApprovedRequest = $this->myProfileRepository
-            ->hasApprovedAcademicVerificationRequest($userId);
-
-        if ($hasApprovedRequest) {
-            throw ProfileException::cannotEditApprovedAcademicInformation();
-        }
+        $isAcademicallyVerified = $this->myProfileRepository->isUserAcademicallyVerified($userId);
 
         $universityName = $data['university_name'] ?? null;
         $department = $data['department'] ?? null;
@@ -229,12 +250,14 @@ class MyProfileService
             userId: $userId,
             universityName: $universityName,
             department: $department,
-            universityYear: $data['university_year'] ?? null
+            universityYear: null
         );
 
-        $this->myProfileRepository->deleteSchoolProfile($userId);
-
         if ($certificateImage || $identityImage) {
+            if ($isAcademicallyVerified) {
+                throw ProfileException::cannotSendVerificationRequestAfterApproval();
+            }
+
             $this->createAcademicVerificationRequestWithAssets(
                 userId: $userId,
                 certificateImage: $certificateImage,
@@ -263,12 +286,11 @@ class MyProfileService
             directory: 'academic-verification/identities'
         );
 
-        $verificationRequestId = $this->myProfileRepository
-            ->createAcademicVerificationRequest($userId);
+        $verificationRequestId = $this->myProfileRepository->createAcademicVerificationRequest($userId);
 
         $this->myProfileRepository->createAcademicVerificationAsset(
             verificationRequestId: $verificationRequestId,
-            assetType: 'certificate',
+            assetType: AcademicAssetType::University_Certificate->value,
             storagePath: $certificatePath,
             originalName: $certificateImage->getClientOriginalName(),
             mimeType: $certificateImage->getClientMimeType()
@@ -276,7 +298,7 @@ class MyProfileService
 
         $this->myProfileRepository->createAcademicVerificationAsset(
             verificationRequestId: $verificationRequestId,
-            assetType: 'identity',
+            assetType: AcademicAssetType::Identity_Card->value,
             storagePath: $identityPath,
             originalName: $identityImage->getClientOriginalName(),
             mimeType: $identityImage->getClientMimeType()
@@ -326,4 +348,186 @@ class MyProfileService
         }
     }
 
+    public function updatePhoto(int $userId, string $type, UploadedFile $photo , int $viewerId): void
+    {
+
+        if($userId !== $viewerId)
+        {
+            throw ProfileException::cannotViewOwnProfile();
+        }
+
+        $oldDisk = null;
+        $oldPath = null;
+        $newPath = null;
+
+        DB::transaction(function () use ($userId, $type, $photo, &$oldDisk, &$oldPath, &$newPath) {
+            $this->myProfileRepository->ensureUserProfileRow($userId);
+
+            $profile = $this->myProfileRepository->getProfilePhotoDataForUpdate($userId);
+
+            if (! $profile) {
+                throw ProfileException::profileNotFound();
+            }
+
+            if ($type === self::PHOTO_TYPE_AVATAR) {
+                $oldDisk = $profile['avatar_disk'] ?? null;
+                $oldPath = $profile['avatar_path'] ?? null;
+
+                $newPath = $this->storeProfilePhoto($photo, self::AVATAR_DIRECTORY);
+
+                $this->myProfileRepository->updateAvatar(
+                    userId: $userId,
+                    disk: self::PROFILE_PHOTO_DISK,
+                    path: $newPath
+                );
+
+                return;
+            }
+
+            if ($type === self::PHOTO_TYPE_COVER) {
+                $oldDisk = $profile['cover_disk'] ?? null;
+                $oldPath = $profile['cover_path'] ?? null;
+
+                $newPath = $this->storeProfilePhoto($photo, self::COVER_DIRECTORY);
+
+                $this->myProfileRepository->updateCover(
+                    userId: $userId,
+                    disk: self::PROFILE_PHOTO_DISK,
+                    path: $newPath
+                );
+
+                return;
+            }
+        });
+
+        $this->deleteOldPhotoIfExists($oldDisk, $oldPath);
+
+        CacheKeys::clearMyBasicProfileInfo($userId);
+    }
+
+    public function deletePhoto(int $userId, string $type , int $viewerId): string
+    {
+        if($userId !== $viewerId)
+        {
+            throw ProfileException::cannotViewOwnProfile();
+        }
+
+        $oldDisk = null;
+        $oldPath = null;
+        $defaultUrl = null;
+
+        DB::transaction(function () use ($userId, $type, &$oldDisk, &$oldPath, &$defaultUrl) {
+            $this->myProfileRepository->ensureUserProfileRow($userId);
+
+            $profile = $this->myProfileRepository->getProfilePhotoDataForUpdate($userId);
+
+            if (! $profile) {
+                throw ProfileException::profileNotFound();
+            }
+
+            if ($type === self::PHOTO_TYPE_AVATAR) {
+                $oldDisk = $profile['avatar_disk'] ?? null;
+                $oldPath = $profile['avatar_path'] ?? null;
+
+                $this->myProfileRepository->clearAvatar($userId);
+
+                $defaultUrl = Storage::disk(self::DEFAULT_PHOTO_DISK)->url(self::DEFAULT_AVATAR_PATH);
+
+                return;
+            }
+
+            if ($type === self::PHOTO_TYPE_COVER) {
+                $oldDisk = $profile['cover_disk'] ?? null;
+                $oldPath = $profile['cover_path'] ?? null;
+
+                $this->myProfileRepository->clearCover($userId);
+
+                $defaultUrl = Storage::disk(self::DEFAULT_PHOTO_DISK)->url(self::DEFAULT_COVER_PATH);
+
+                return;
+            }
+        });
+
+        $this->deleteOldPhotoIfExists($oldDisk, $oldPath);
+
+        CacheKeys::clearMyBasicProfileInfo($userId);
+
+        return $defaultUrl;
+    }
+
+    private function storeProfilePhoto(UploadedFile $photo, string $directory): string
+    {
+        $extension = $photo->getClientOriginalExtension();
+
+        $fileName = Str::uuid()->toString() . '.' . $extension;
+
+        return $photo->storeAs(
+            path: $directory,
+            name: $fileName,
+            options: self::PROFILE_PHOTO_DISK
+        );
+    }
+
+    private function deleteOldPhotoIfExists(?string $disk, ?string $path): void
+    {
+        if (! $disk || ! $path) {
+            return;
+        }
+
+        if ($disk !== self::PROFILE_PHOTO_DISK) {
+            return;
+        }
+
+        Storage::disk($disk)->delete($path);
+    }
+
+    public function getMyCreatedTests(int $userId , int $viewerId , string $tab = 'public', int $perPage = 20 ): CursorPaginator
+    {
+        if($userId !== $viewerId)
+        {
+            throw ProfileException::cannotViewOwnProfile();
+        }
+
+        return $this->myProfileRepository->getMyCreatedTestsByTab(
+            userId: $userId,
+            tab: $tab,
+            perPage: $perPage
+        );
+    }
+
+    public function getMyLibraryMaterials(int $userId , int $viewerId, string $tab = 'latest', int $perPage = 10): CursorPaginator
+    {
+        if($userId !== $viewerId)
+        {
+            throw ProfileException::cannotViewOwnProfile();
+        }
+
+        return $this->myProfileRepository->getMyLibraryMaterialsByTab(
+            userId: $userId,
+            tab: $tab,
+            perPage: $perPage
+        );
+    }
+
+    public function getMyFolders(int $userId , int $viewerId , string $tab , int $perPage): CursorPaginator
+    {
+        if ($viewerId !== $userId) {
+            throw ProfileException::cannotViewOwnProfile();
+        }
+
+        return $this->myProfileRepository->cursorPaginateUserFolders(
+            userId: $userId,
+            tab: $tab,
+            perPage: $perPage
+        );
+    }
+
+    public function getBookmarks(int $userId, string $tab, int $perPage): CursorPaginator
+    {
+        return match ($tab) {
+            'materials' => $this->myProfileRepository->cursorPaginateBookmarkedMaterials($userId, $perPage),
+            'folders' => $this->myProfileRepository->cursorPaginateBookmarkedFolders($userId, $perPage),
+            default => $this->myProfileRepository->cursorPaginateBookmarkedTests($userId, $perPage),
+        };
+    }
 }

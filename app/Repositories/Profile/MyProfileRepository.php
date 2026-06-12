@@ -2,6 +2,15 @@
 
 namespace App\Repositories\Profile;
 
+use App\Enums\LibraryMaterialReviewStatus;
+use App\Enums\Status;
+use App\Enums\TestReviewStatus;
+use App\Enums\TestType;
+use App\Enums\VisibilityType;
+use App\Models\LibraryMaterial;
+use App\Models\Test;
+use App\Models\TestFolder;
+use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 
 class MyProfileRepository
@@ -163,12 +172,8 @@ class MyProfileRepository
             ->delete();
     }
 
-    public function upsertUniversityProfile(
-        int $userId,
-        string $universityName,
-        string $department,
-        ?string $universityYear = null
-    ): void {
+    public function upsertUniversityProfile(int $userId, string $universityName, string $department, ?string $universityYear = null): void
+    {
         DB::table('user_university_profiles')->updateOrInsert(
             ['user_id' => $userId],
             [
@@ -188,11 +193,11 @@ class MyProfileRepository
             ->delete();
     }
 
-    public function hasApprovedAcademicVerificationRequest(int $userId): bool
+    public function isUserAcademicallyVerified(int $userId): bool
     {
-        return DB::table('user_academic_verification_requests')
-            ->where('user_id', $userId)
-            ->where('status', 'approved')
+        return DB::table('users')
+            ->where('id', $userId)
+            ->where('is_academically_verified', true)
             ->exists();
     }
 
@@ -200,7 +205,7 @@ class MyProfileRepository
     {
         return DB::table('user_academic_verification_requests')
             ->where('user_id', $userId)
-            ->where('status', 'pending')
+            ->where('status', Status::PENDING->value)
             ->exists();
     }
 
@@ -208,21 +213,16 @@ class MyProfileRepository
     {
         return DB::table('user_academic_verification_requests')->insertGetId([
             'user_id' => $userId,
-            'status' => 'pending',
+            'status' => Status::PENDING->value,
             'submitted_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
     }
 
-    public function createAcademicVerificationAsset(
-        int $verificationRequestId,
-        string $assetType,
-        string $storagePath,
-        string $originalName,
-        string $mimeType
-    ): void {
-        DB::table('user_academic_verification_assets')->insert([
+    public function createAcademicVerificationAsset(int $verificationRequestId, string $assetType, string $storagePath, string $originalName, string $mimeType): void
+    {
+        DB::table('user_academic_assets')->insert([
             'verification_request_id' => $verificationRequestId,
             'asset_type' => $assetType,
             'storage_disk' => 'local',
@@ -254,4 +254,298 @@ class MyProfileRepository
 
         DB::table('user_interest_selections')->insert($rows);
     }
+
+    public function getProfilePhotoDataForUpdate(int $userId): ?array
+    {
+        $row = DB::table('user_profile')
+            ->where('user_id', $userId)
+            ->lockForUpdate()
+            ->select([
+                'avatar_disk',
+                'avatar_path',
+                'cover_disk',
+                'cover_path',
+            ])
+            ->first();
+
+        return $row ? (array) $row : null;
+    }
+
+    public function updateAvatar(int $userId, string $disk, string $path): void
+    {
+        DB::table('user_profile')
+            ->where('user_id', $userId)
+            ->update([
+                'avatar_disk' => $disk,
+                'avatar_path' => $path,
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function updateCover(int $userId, string $disk, string $path): void
+    {
+        DB::table('user_profile')
+            ->where('user_id', $userId)
+            ->update([
+                'cover_disk' => $disk,
+                'cover_path' => $path,
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function clearAvatar(int $userId): void
+    {
+        DB::table('user_profile')
+            ->where('user_id', $userId)
+            ->update([
+                'avatar_disk' => null,
+                'avatar_path' => null,
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function clearCover(int $userId): void
+    {
+        DB::table('user_profile')
+            ->where('user_id', $userId)
+            ->update([
+                'cover_disk' => null,
+                'cover_path' => null,
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function getMyCreatedTestsByTab(int $userId, string $tab, int $perPage): CursorPaginator
+    {
+        return Test::query()
+            ->where('creator_user_id', $userId)
+            ->when($tab === 'public', function ($query) {
+                $query->where('test_type', TestType::Public->value);
+            })
+            ->when($tab === 'private', function ($query) {
+                $query->where('test_type', TestType::Private->value);
+            })
+            ->when($tab === 'paid', function ($query) {
+                $query->where('test_type', TestType::Public->value)
+                    ->whereNotNull('price')
+                    ->where('price', '>', 0);
+            })
+            ->with([
+                'testIntersetSelections:id,test_id,interest_id',
+                'testIntersetSelections.interest:id,name',
+            ])
+            ->select([
+                'id',
+                'creator_user_id',
+                'title',
+                'description',
+                'test_type',
+                'target_level',
+                'average_rating',
+                'price',
+                'published_at',
+                'question_count',
+                'created_at',
+            ])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->cursorPaginate($perPage);
+    }
+
+    public function getMyLibraryMaterialsByTab(int $userId, string $tab, int $perPage): CursorPaginator
+    {
+        return LibraryMaterial::query()
+            ->where('creator_user_id', $userId)
+            ->when($tab === 'private', function ($query) {
+                $query->where('visibility_type', VisibilityType::Private->value);
+            })
+            ->when($tab === 'public', function ($query) {
+                $query->where('visibility_type', VisibilityType::Public->value);
+            })
+            ->with([
+                'firstAsset:id,library_material_id,storage_path,position',
+                'interests:id,name',
+            ])
+            ->withExists([
+                'libraryMaterialBookmarks as viewer_has_bookmarked' => function ($query) use ($userId) {
+                    $query->where('user_id', $userId);
+                },
+            ])
+            ->select([
+                'id',
+                'creator_user_id',
+                'title',
+                'description',
+                'content_kind',
+                'visibility_type',
+                'like_count',
+                'published_at',
+                'created_at',
+            ])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->cursorPaginate($perPage);
+    }
+
+    public function cursorPaginateUserFolders(int $userId , string $tab , int $perPage): CursorPaginator
+    {
+        $paginator = TestFolder::query()
+            ->where('creator_user_id', $userId)
+            ->when($tab === 'private', function ($query) {
+                $query->where('visibility_type', VisibilityType::Private->value);
+            })
+            ->when($tab === 'public', function ($query) {
+                $query->where('visibility_type', VisibilityType::Public->value);
+            })
+            ->select([
+                'id',
+                'creator_user_id',
+                'name',
+                'color_code',
+                'tests_count',
+                'published_at',
+                'visibility_type',
+                'created_at',
+            ])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->cursorPaginate($perPage);
+
+        $this->attachScientificInterests($paginator);
+
+        return $paginator;
+    }
+
+    private function attachScientificInterests(CursorPaginator $paginator): void
+    {
+        $folderIds = collect($paginator->items())->pluck('id');
+
+        if ($folderIds->isEmpty()) {
+            return;
+        }
+
+        $interestsByFolder = DB::table('test_folder_item')
+            ->join('test', 'test_folder_item.test_id', '=', 'test.id')
+            ->join('test_interset_selections', 'test.id', '=', 'test_interset_selections.test_id')
+            ->join('interests', 'test_interset_selections.interest_id', '=', 'interests.id')
+            ->whereIn('test_folder_item.test_folder_id', $folderIds)
+            ->where('test.test_type', TestType::Public->value)
+            ->where('test.review_status', TestReviewStatus::Approved->value)
+            ->select([
+                'test_folder_item.test_folder_id',
+                'interests.id',
+                'interests.name',
+            ])
+            ->distinct()
+            ->orderBy('interests.name')
+            ->get()
+            ->groupBy('test_folder_id');
+
+        collect($paginator->items())->each(function ($folder) use ($interestsByFolder) {
+            $folder->scientific_interests = $interestsByFolder
+                ->get($folder->id, collect())
+//                ->map(fn ($interest) => [
+//                    'id' => $interest->id,
+//                    'name' => $interest->name,
+//                ])
+                ->pluck('name')
+                ->values();
+        });
+    }
+
+    public function cursorPaginateBookmarkedTests(int $userId, int $perPage): CursorPaginator
+    {
+        return Test::query()
+            ->select([
+                'test.id',
+                'test.title',
+                'test.description',
+                'test.difficulty_level',
+                'test.average_rating',
+                'test.price',
+                'test.published_at',
+                'test.question_count',
+                'test_bookmarks.created_at',
+            ])
+            ->join('test_bookmarks', 'test.id', '=', 'test_bookmarks.test_id')
+            ->where('test_bookmarks.user_id', $userId)
+            ->where('test.test_type', TestType::Public->value)
+            ->where('test.review_status', TestReviewStatus::Approved->value)
+            ->with([
+                'testIntersetSelections:id,test_id,interest_id',
+                'testIntersetSelections.interest:id,name',
+            ])
+            ->orderByDesc('test_bookmarks.created_at')
+            ->cursorPaginate($perPage);
+    }
+
+    public function cursorPaginateBookmarkedMaterials(int $userId, int $perPage): CursorPaginator
+    {
+        return LibraryMaterial::query()
+            ->select([
+                'library_material.id',
+                'library_material.creator_user_id',
+                'library_material.title',
+                'library_material.description',
+                'library_material.content_kind',
+                'library_material.visibility_type',
+                'library_material.review_status',
+                'library_material.published_at',
+                'library_material.like_count',
+                'library_material_bookmarks.created_at',
+            ])
+            ->join(
+                'library_material_bookmarks',
+                'library_material.id',
+                '=',
+                'library_material_bookmarks.library_material_id'
+            )
+            ->where('library_material_bookmarks.user_id', $userId)
+            ->where('library_material.visibility_type', VisibilityType::Public->value)
+            ->where('library_material.review_status', LibraryMaterialReviewStatus::Approved->value)
+            ->with([
+                'firstAsset:id,library_material_id,storage_path,position',
+                'interests:id,name',
+            ])
+            ->withExists([
+                'libraryMaterialBookmarks as viewer_has_bookmarked' => fn ($query) =>
+                $query->where('user_id', $userId),
+            ])
+            ->orderByDesc('library_material_bookmarks.created_at')
+            ->cursorPaginate($perPage);
+    }
+
+    public function cursorPaginateBookmarkedFolders(int $userId, int $perPage): CursorPaginator
+    {
+        $paginator = TestFolder::query()
+            ->select([
+                'test_folder.id',
+                'test_folder.creator_user_id',
+                'test_folder.name',
+                'test_folder.color_code',
+                'test_folder.tests_count',
+                'test_folder.created_at',
+                'test_folder_bookmarks.created_at',
+            ])
+            ->join(
+                'test_folder_bookmarks',
+                'test_folder.id',
+                '=',
+                'test_folder_bookmarks.test_folder_id'
+            )
+            ->where('test_folder_bookmarks.user_id', $userId)
+            ->where('test_folder.visibility_type', VisibilityType::Public->value)
+            ->where('test_folder.contained_test_type', TestType::Public->value)
+            ->withExists([
+                'testFolderBookmarks as viewer_has_bookmarked' => fn ($query) =>
+                $query->where('user_id', $userId),
+            ])
+            ->orderByDesc('test_folder_bookmarks.created_at')
+            ->cursorPaginate($perPage);
+
+        $this->attachScientificInterests($paginator);
+
+        return $paginator;
+    }
+
 }

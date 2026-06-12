@@ -12,6 +12,7 @@ use App\Models\LibraryMaterialAsset;
 use App\Models\LibraryMaterialInterestSelection;
 use App\Models\LibraryMaterialReviewRound;
 use App\Models\LibraryMaterialStatusHistory;
+use App\Models\Test;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -86,30 +87,48 @@ class LibraryMaterialRepository
 
     public function searchMaterials(int $userId, string $query, string $mode = 'all_public', int $perPage = 10): CursorPaginator
     {
-
         $searchBuilder = LibraryMaterial::search($query);
 
         if ($mode === 'all_public') {
             $searchBuilder->query(fn (Builder $builder) =>
-                $builder->where('visibility_type', VisibilityType::Public->value)
-                        ->where('review_status', LibraryMaterialReviewStatus::Approved->value)
-                        ->where('creator_user_id', '!=', $userId)
-                );
+            $builder->where('visibility_type', VisibilityType::Public->value)
+                ->where('review_status', LibraryMaterialReviewStatus::Approved->value)
+                ->where('creator_user_id', '!=', $userId)
+            );
         } elseif ($mode === 'user_owned') {
             $searchBuilder->query(fn (Builder $builder) =>
-                $builder->where('creator_user_id', $userId)
+            $builder->where('creator_user_id', $userId)
             );
         }
 
         $searchIds = $searchBuilder->keys();
 
-        if (empty($searchIds)) {
-            return LibraryMaterial::query()->whereIn('id', [0])->cursorPaginate($perPage);
+        if ($searchIds->isEmpty()) {
+            return LibraryMaterial::query()
+                ->whereIn('id', [0])
+                ->cursorPaginate($perPage);
         }
 
-        return LibraryMaterial::with(['firstAsset','interests'])
-            ->whereIn('id', $searchIds)
-            ->orderByRaw('FIELD(id, ?)', [implode(',', $searchIds->toArray())])
+        $ids = $searchIds->toArray();
+        $idsString = implode(',', array_map('intval', $ids));
+
+        $queryBuilder = LibraryMaterial::with(['firstAsset', 'interests'])
+            ->select('library_material.*')
+            ->selectRaw("FIELD(id, {$idsString}) as search_order")
+            ->whereIn('id', $ids);
+
+        if ($mode === 'all_public') {
+            $queryBuilder
+                ->where('visibility_type', VisibilityType::Public->value)
+                ->where('review_status', LibraryMaterialReviewStatus::Approved->value)
+                ->where('creator_user_id', '!=', $userId);
+        } elseif ($mode === 'user_owned') {
+            $queryBuilder->where('creator_user_id', $userId);
+        }
+
+        return $queryBuilder
+            ->orderBy('search_order')
+            ->orderBy('id')
             ->cursorPaginate($perPage);
     }
 
@@ -352,6 +371,15 @@ class LibraryMaterialRepository
                 'slot_no' => $index + 1,
             ]);
         }
+
+        $materialId = $material->id;
+
+        DB::afterCommit(function () use ($materialId) {
+            Test::query()
+                ->whereKey($materialId)
+                ->first()
+                ?->searchable();
+        });
     }
 
     private function createPrivateToPublicReviewWorkflow(LibraryMaterial $material, string $fromStatus, int $changedByUserId): void

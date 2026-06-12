@@ -12,6 +12,7 @@ use App\Enums\VisibilityType;
 use App\Models\LibraryMaterial;
 use App\Models\Test;
 use App\Models\TestFolder;
+use App\Models\TestFolderBookmark;
 use App\Models\TestReview;
 use App\Models\User;
 use App\Models\UserAcademicAsset;
@@ -68,7 +69,7 @@ class PublicProfileRepository
                 'creator_user_id',
                 'title',
                 'description',
-                'target_level',
+                'difficulty_level',
                 'average_rating',
                 'price',
                 'published_at',
@@ -121,6 +122,7 @@ class PublicProfileRepository
                 'color_code',
                 'tests_count',
                 'published_at',
+                'created_at'
             ])
             ->where('creator_user_id', $profileUserId)
             ->where('visibility_type', VisibilityType::Public->value)
@@ -151,8 +153,8 @@ class PublicProfileRepository
             ->join('test_interset_selections', 'test.id', '=', 'test_interset_selections.test_id')
             ->join('interests', 'test_interset_selections.interest_id', '=', 'interests.id')
             ->whereIn('test_folder_item.test_folder_id', $folderIds)
-            ->where('test.test_type', 'public')
-            ->where('test.review_status', 'approved')
+            ->where('test.test_type', TestType::Public->value)
+            ->where('test.review_status', TestReviewStatus::Approved->value)
             ->select([
                 'test_folder_item.test_folder_id',
                 'interests.id',
@@ -166,10 +168,11 @@ class PublicProfileRepository
         collect($paginator->items())->each(function ($folder) use ($interestsByFolder) {
             $folder->scientific_interests = $interestsByFolder
                 ->get($folder->id, collect())
-                ->map(fn ($interest) => [
-                    'id' => $interest->id,
-                    'name' => $interest->name,
-                ])
+//                ->map(fn ($interest) => [
+//                    'id' => $interest->id,
+//                    'name' => $interest->name,
+//                ])
+                ->pluck('name')
                 ->values();
         });
     }
@@ -301,7 +304,7 @@ class PublicProfileRepository
                 'test.creator_user_id',
                 'test.title',
                 'test.description',
-                'test.target_level',
+                'test.difficulty_level',
                 'test.average_rating',
                 'test.price',
                 'test.published_at',
@@ -388,5 +391,30 @@ class PublicProfileRepository
             ->when($search, function ($query) use ($search) {
                 $query->where('users.name', 'like',  addcslashes($search, '%_\\') . '%');
             });
+    }
+
+    public function findPublicFolder(int $folderId): ?TestFolder
+    {
+        return TestFolder::query()
+            ->select(['id', 'creator_user_id', 'visibility_type'])
+            ->where('id', $folderId)
+            ->where('visibility_type', VisibilityType::Public->value)
+            ->first();
+    }
+
+    public function createBookmark(int $folderId, int $userId): void
+    {
+        TestFolderBookmark::query()->firstOrCreate([
+            'test_folder_id' => $folderId,
+            'user_id' => $userId,
+        ]);
+    }
+
+    public function deleteBookmark(int $folderId, int $userId): void
+    {
+        TestFolderBookmark::query()
+            ->where('test_folder_id', $folderId)
+            ->where('user_id', $userId)
+            ->delete();
     }
 }

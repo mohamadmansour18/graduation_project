@@ -76,10 +76,18 @@ class LibraryMaterialService
             perPage: $perPage
         );
 
+        $materials = collect($materialsPaginator->items());
+
+        if ($mode === 'user_owned') {
+            $materials->each(function ($material) {
+                $material->include_visibility_type = true;
+            });
+        }
+
         return [
             'query' => $query,
             'mode' => $mode,
-            'materials' => LibraryMaterialListResource::collection($materialsPaginator->items()),
+            'materials' => LibraryMaterialListResource::collection($materials),
             'meta' => [
                 'per_page' => $materialsPaginator->perPage(),
                 'next_cursor' => optional($materialsPaginator->nextCursor())->encode(),

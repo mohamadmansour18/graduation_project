@@ -15,8 +15,7 @@ class TestSearchRepository
 {
     public function searchTestIds(TestSearchFilters $filters): LengthAwarePaginator
     {
-        $builder = Test::search($filters->query)
-            ->query(fn ($query) => $query->select('id'));
+        $builder = Test::search($filters->query)->query(fn ($query) => $query->select('id'));
 
         $this->applyScopeFilters($builder, $filters);
 
@@ -39,8 +38,7 @@ class TestSearchRepository
         match ($filters->scope) {
             TestSearchScope::ALL->value => $this->applyPublicApprovedFilters($builder),
 
-            TestSearchScope::MINE->value => $builder
-                ->where('creator_user_id', $filters->userId),
+            TestSearchScope::MINE->value => $builder->where('creator_user_id', $filters->userId),
 
             TestSearchScope::OTHERS->value => $this->applyOthersFilters($builder, $filters->userId),
         };
@@ -78,6 +76,7 @@ class TestSearchRepository
                 't.difficulty_level',
                 't.average_rating',
                 't.question_count',
+                't.test_type'
             ])
             ->get()
             ->keyBy('id');

@@ -2,6 +2,7 @@
 
 namespace App\Services\Profile;
 
+use App\Exceptions\Api\FoldersException;
 use App\Exceptions\Api\PublicProfileException;
 use App\Models\User;
 use App\Repositories\Profile\PublicProfileRepository;
@@ -154,5 +155,25 @@ class PublicProfileService
             search: $search,
             perPage: $perPage
         );
+    }
+
+    public function bookmarkFolder(int $userId, int $folderId): void
+    {
+        $folder = $this->repository->findPublicFolder($folderId);
+
+        if (! $folder) {
+            throw FoldersException::folderNotFound();
+        }
+
+        if ((int) $folder->creator_user_id === $userId) {
+            throw PublicProfileException::cannotBookmarkOwnFolder();
+        }
+
+        $this->repository->createBookmark($folderId, $userId);
+    }
+
+    public function unbookmarkFolder(int $userId, int $folderId): void
+    {
+        $this->repository->deleteBookmark($folderId, $userId);
     }
 }

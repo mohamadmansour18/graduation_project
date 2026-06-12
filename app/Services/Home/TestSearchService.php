@@ -3,6 +3,8 @@
 namespace App\Services\Home;
 
 use App\DTOs\Search\TestSearchFilters;
+use App\Enums\TestSearchScope;
+use App\Enums\TestType;
 use App\Helpers\DateProcessor;
 use App\Repositories\Home\TestSearchRepository;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -25,8 +27,7 @@ class TestSearchService
             ->toArray();
 
         //get rest of tests data from database
-        $tests = $this->testSearchRepository->getTestsDetailsByIds($testIds)
-                        ->map(fn ($test) => $this->formatTest($test));
+        $tests = $this->testSearchRepository->getTestsDetailsByIds($testIds)->map(fn ($test) => $this->formatTest($test,$filters));
 
         return new LengthAwarePaginator(
             items: $tests,
@@ -40,9 +41,9 @@ class TestSearchService
         );
     }
 
-    private function formatTest(object $test): array
+    private function formatTest(object $test , TestSearchFilters $filters): array
     {
-        return [
+        $data = [
             'id' => (int) $test->id,
             'title' => $test->title,
             'description' => $test->description,
@@ -53,5 +54,11 @@ class TestSearchService
             'average_rating' => (float) ($test->average_rating ?? 0),
             'question_count' => (int) ($test->question_count ?? 0),
         ];
+
+        if ($filters->scope === TestSearchScope::MINE->value) {
+            $data['visibility_type'] = $test->test_type;
+        }
+
+        return $data;
     }
 }

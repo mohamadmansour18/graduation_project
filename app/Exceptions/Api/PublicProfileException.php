@@ -39,4 +39,13 @@ class PublicProfileException extends ApiException
         );
     }
 
+    public static function cannotBookmarkOwnFolder(): self
+    {
+        return new self(
+            title: '! لا يمكن حفظ القائمة',
+            message: 'لا يمكنك حفظ قائمتك الخاصة في المحفوظات',
+            status: 422
+        );
+    }
+
 }

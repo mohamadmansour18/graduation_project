@@ -175,4 +175,28 @@ class PublicProfileController extends Controller
             title: '! تم جلب قائمة من يتابع بنجاح'
         );
     }
+
+    public function bookmarkFolder(int $folder): JsonResponse
+    {
+        $this->service->bookmarkFolder(
+            userId: Auth::id(),
+            folderId: $folder
+        );
+
+        return $this->successResponse(
+            message: '! تم حفظ القائمة بنجاح'
+        );
+    }
+
+    public function unbookmarkFolder(int $folder): JsonResponse
+    {
+        $this->service->unbookmarkFolder(
+            userId: Auth::id(),
+            folderId: $folder
+        );
+
+        return $this->successResponse(
+            message: '! تم إزالة القائمة من المحفوظات بنجاح'
+        );
+    }
 }

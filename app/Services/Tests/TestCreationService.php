@@ -79,7 +79,7 @@ class TestCreationService
                         : TestReviewStatus::Approved->value,
 
                     'current_approval_version' => 0,
-                    'published_at' => null,
+                    'published_at' => $isPublic ? null : now(),
                     'last_content_updated_at' => null,
 
                     'question_count' => $questionsCount,

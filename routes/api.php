@@ -4,6 +4,7 @@ use App\Http\Controllers\V1\AiQuestionGeneration\AiQuestionGenerationController;
 use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
 use App\Http\Controllers\V1\Auth\PasswordResetController;
+use App\Http\Controllers\V1\Folders\TestFolderController;
 use App\Http\Controllers\V1\Home\HomeController;
 use App\Http\Controllers\V1\Library\LibraryMaterialBookmarkController;
 use App\Http\Controllers\V1\Library\LibraryMaterialController;
@@ -122,7 +123,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::get('/tests/filter', [TestFilterController::class, 'filter']);
 
-                Route::middleware('throttle:5,2')->group(function () {
+                Route::middleware('throttle:4,3')->group(function () {
                     Route::post('/like/{testId}' , [TestLikeController::class , 'like']);
                     Route::delete('/unlike/{testId}' , [TestLikeController::class , 'unlike']);
 
@@ -176,6 +177,9 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::middleware('throttle:4,2')->group(function () {
                     Route::post('/follow/{userId}' , [FollowController::class , 'follow']);
                     Route::delete('/unfollow/{userId}' , [FollowController::class , 'unfollow']);
+
+                    Route::post('/folder-bookmarks/{folder}', [PublicProfileController::class, 'bookmarkFolder']);
+                    Route::delete('/folder-bookmarks/{folder}', [PublicProfileController::class, 'unbookmarkFolder']);
                 });
             });
 
@@ -195,7 +199,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::get('/similar/{materialId}' , [LibraryMaterialController::class, 'similar']);
 
-                Route::middleware('throttle:5,2')->group(function () {
+                Route::middleware('throttle:4,3')->group(function () {
                     Route::post('/like/{libraryMaterial}', [LibraryMaterialLikeController::class, 'like']);
                     Route::delete('/unlike/{libraryMaterial}', [LibraryMaterialLikeController::class, 'unlike']);
 
@@ -214,14 +218,41 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             //MY_PROFILE
             Route::prefix('my-profile')->group(function () {
                 Route::get('/basic-info/{userId}' , [MyProfileController::class , 'myBasicInfo']);
+                Route::get('/bookmarks', [MyProfileController::class, 'bookmarks']);
+
+                Route::get('/tests/{userId}' , [MyProfileController::class , 'myCreatedTests']);
+                Route::post('/test/search' , [MyProfileController::class, 'searchTests']);
+
+                Route::get('/library/{userId}' , [MyProfileController::class , 'myLibraryMaterials']);
+                Route::get('/library-material/search' , [MyProfileController::class , 'search']);
+
+                Route::get('/folder/{userId}' , [MyProfileController::class , 'folders']);
+
 
                 Route::middleware(['idempotency' , 'throttle:3,2'])->group(function () {
-                    Route::post('/update/basic-info' , [MyProfileController::class, 'updatePersonalInformation']);
-                    Route::post('/update/academic-info' , [MyProfileController::class, 'updateAcademicInformation']);
-                    Route::post('/update/scientific-interests' , [MyProfileController::class, 'updateScientificInterests']);
+                    Route::post('/update/basic-info/{userId}' , [MyProfileController::class, 'updatePersonalInformation']);
+                    Route::post('/update/academic-info/{userId}' , [MyProfileController::class, 'updateAcademicInformation']);
+                    Route::post('/update/scientific-interests/{userId}' , [MyProfileController::class, 'updateScientificInterests']);
+                    Route::post('/update/photo/{userId}' , [MyProfileController::class, 'updatePhoto']);
+                    Route::delete('/delete/photo/{userId}' , [MyProfileController::class, 'deletePhoto']);
                 });
             });
+
+            //FOLDER
+            Route::prefix('folder')->group(function () {
+
+                Route::get('/folder-content/{folder}' , [TestFolderController::class , 'folderTests']);
+
+                Route::middleware(['idempotency' , 'throttle:3,4'])->group(function () {
+                    Route::post('/create' , [TestFolderController::class , 'storeFolder']);
+                    Route::delete('/delete/{folderId}' , [TestFolderController::class , 'deleteFolder' ]);
+                    Route::post('/update/{folderId}' , [TestFolderController::class , 'updateFolder']);
+                });
+            });
+
         });
+
+
 
         });
 

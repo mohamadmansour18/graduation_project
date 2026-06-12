@@ -66,11 +66,11 @@ class ProfileException extends ApiException
         );
     }
 
-    public static function cannotEditApprovedAcademicInformation(): self
+    public static function cannotSendVerificationRequestAfterApproval(): self
     {
         return new self(
-            title: '! فشل تعديل المعلومات الدراسية',
-            message: 'لا يمكنك تعديل معلوماتك الأكاديمية بعد الموافقة على طلب التوثيق الأكاديمي',
+            title: '! فشل إرسال طلب التوثيق',
+            message: 'لا يمكنك إرسال طلب توثيق أكاديمي جديد لأن مستواك الأكاديمي موثق بالفعل',
             status: 409
         );
     }

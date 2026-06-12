@@ -1,14 +1,19 @@
 <?php
 
-namespace App\Http\Resources\LibraryMaterial;
+namespace App\Http\Resources;
 
 use App\Helpers\DateProcessor;
 use App\Helpers\ImageProcessor;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class LibraryMaterialListResource extends JsonResource
+class MyLibraryMaterialListResource extends JsonResource
 {
+    /**
+     * Transform the resource into an array.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         $defaultPath = '';
@@ -27,20 +32,13 @@ class LibraryMaterialListResource extends JsonResource
             'description' => $this->description,
 
             'type' => $this->content_kind->value === 'ملف' ? 'ملف' : 'صورة',
+            'library_material_kind' => $this->visibility_type->value,
             'interests' => $this->interests->pluck('name')->toArray(),
 
             'like_count' => (int) $this->like_count,
-            'published_at' => DateProcessor::fromTimestamp($this->published_at),
+            'published_at' => DateProcessor::fromTimestamp($this->created_at),
 
             'viewer_has_bookmarked' => (bool) $this->viewer_has_bookmarked,
-
-            $this->mergeWhen(
-                isset($this->include_visibility_type),
-                [
-                    'visibility_type' => $this->visibility_type->value,
-                ]
-            ),
         ];
     }
-
 }
