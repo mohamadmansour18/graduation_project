@@ -163,7 +163,7 @@ class PublicProfileController extends Controller
     public function following(PublicProfileFollowListRequest $request, int $userId): JsonResponse
     {
         $paginator = $this->service->getFollowing(
-            viewer: $request->user(),
+            viewer: $request->user()->id,
             profileOwner: $userId,
             search: $request->search(),
             perPage: $request->perPage()

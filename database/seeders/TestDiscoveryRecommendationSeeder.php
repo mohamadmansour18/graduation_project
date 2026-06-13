@@ -146,8 +146,8 @@ class TestDiscoveryRecommendationSeeder extends Seeder
 
                 $userProfileStatsSeed[$userId] = [
                     'user_id' => $userId,
-                    'followers_count' => ($userId * 7) % 120,
-                    'following_count' => ($userId * 5) % 140,
+                    'followers_count' => 0,
+                    'following_count' => 0,
                     'published_tests_count' => 0,
                     'library_materials_count' => ($userId * 3) % 9,
                     'folders_count' => ($userId * 2) % 7,
@@ -159,6 +159,17 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                     'updated_at' => $blueprint['timestamps']['updated_at'],
                 ];
             }
+
+            [$userFollowRows, $userFollowStats] = $this->buildUserFollowRows(
+                users: $resolvedUsers,
+                now: $now,
+            );
+
+            foreach ($userProfileStatsSeed as $userId => &$profileStats) {
+                $profileStats['followers_count'] = $userFollowStats[$userId]['followers_count'] ?? 0;
+                $profileStats['following_count'] = $userFollowStats[$userId]['following_count'] ?? 0;
+            }
+            unset($profileStats);
 
             $testsRows = [];
             $testInterestRows = [];
@@ -219,6 +230,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             $this->insertInChunks('user_school_profiles', $userSchoolRows);
             $this->insertInChunks('user_university_profiles', $userUniversityRows);
             $this->insertInChunks('user_interest_selections', $userInterestRows);
+            $this->insertInChunks('user_follows', $userFollowRows);
             $this->insertInChunks('test', $testsRows);
 
             $resolvedUserIds = array_column($resolvedUsers, 'id');
@@ -415,6 +427,50 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         $familyName = $familyNames[(int) floor(($index - 1) / 3) % count($familyNames)];
 
         return sprintf('%s %s %d', $firstName, $familyName, $index);
+    }
+
+    private function buildUserFollowRows(array $users, CarbonImmutable $now): array
+    {
+        $followRows = [];
+        $followStats = [];
+
+        foreach ($users as $user) {
+            $userId = (int) $user['id'];
+            $followStats[$userId] = [
+                'followers_count' => 0,
+                'following_count' => 0,
+            ];
+        }
+
+        foreach ($users as $offset => $follower) {
+            $followerUserId = (int) $follower['id'];
+            $followCount = 20 + (($offset * 11) % 21);
+            $followedUsers = $this->pickDistinctUsers(
+                users: $users,
+                count: $followCount,
+                excludedIds: [$followerUserId],
+                startIndex: (($offset + 1) * 19)
+            );
+
+            foreach ($followedUsers as $followOffset => $followedUser) {
+                $followedUserId = (int) $followedUser['id'];
+                $followedAt = $now
+                    ->subDays((($offset + 1) * 3 + $followOffset) % 120)
+                    ->subMinutes($followOffset + 1);
+
+                $followRows[] = [
+                    'follower_user_id' => $followerUserId,
+                    'followed_user_id' => $followedUserId,
+                    'created_at' => $followedAt,
+                    'updated_at' => $followedAt,
+                ];
+
+                $followStats[$followerUserId]['following_count']++;
+                $followStats[$followedUserId]['followers_count']++;
+            }
+        }
+
+        return [$followRows, $followStats];
     }
 
     private function buildArabicTestDescription(string $interestName, string $targetLevel, string $difficulty): string

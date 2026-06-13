@@ -356,7 +356,7 @@ class PublicProfileRepository
             ->join('user_follows', 'users.id', '=', 'user_follows.follower_user_id')
             ->where('user_follows.followed_user_id', $profileUserId)
             ->where('users.id', '!=', $viewerUserId)
-            ->orderByDesc('user_follows.id')
+//            ->orderByDesc('user_follows.id')
             ->orderByDesc('users.id')
             ->cursorPaginate($perPage);
     }
@@ -367,7 +367,7 @@ class PublicProfileRepository
             ->join('user_follows', 'users.id', '=', 'user_follows.followed_user_id')
             ->where('user_follows.follower_user_id', $profileUserId)
             ->where('users.id', '!=', $viewerUserId)
-            ->orderByDesc('user_follows.id')
+//            ->orderByDesc('user_follows.id')
             ->orderByDesc('users.id')
             ->cursorPaginate($perPage);
     }
