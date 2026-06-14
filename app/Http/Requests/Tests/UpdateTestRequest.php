@@ -45,7 +45,7 @@ class UpdateTestRequest extends ApiFormRequest
 
             'target_level' => ['sometimes', 'string' , Rule::enum(TargetLevel::class)],
 
-            'interest_ids' => ['sometimes', 'array' , 'min:1' , 'min:3'],
+            'interest_ids' => ['sometimes', 'array' , 'min:1' , 'max:3'],
             'interest_ids.*' => ['integer', 'distinct' , 'exists:interests,id'],
 
             'questions' => ['sometimes', 'array' , 'min:3' , 'max:100'],
@@ -116,6 +116,7 @@ class UpdateTestRequest extends ApiFormRequest
             // interest_ids
             'interest_ids.array' => 'الاهتمامات يجب أن تكون على شكل قائمة.',
             'interest_ids.min' => 'يجب اختيار اهتمام واحد على الأقل.',
+            'interest_ids.max' => 'لا يمكن اختيار أكثر من 3 اهتمامات',
 
             'interest_ids.*.integer' => 'معرف الاهتمام يجب أن يكون رقماً صحيحاً.',
             'interest_ids.*.distinct' => 'لا يمكن تكرار نفس الاهتمام.',
