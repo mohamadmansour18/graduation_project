@@ -41,7 +41,7 @@ class SendFailedLoginAlertJob implements ShouldQueue
 
     public function failed(\Throwable $exception):void
     {
-        Log::channel('daily_errors')->error('Security alert email job failed', [
+        Log::channel('errors')->error('Security alert email job failed', [
             'user_id' => $this->user->id,
             'ip_address' => $this->ipAddress,
             'user_agent' => $this->userAgent,

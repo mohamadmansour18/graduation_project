@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\V1\Admin\AuthDashboardController;
+use App\Http\Controllers\V1\Admin\HomeDashboardController;
 use App\Http\Controllers\V1\AiQuestionGeneration\AiQuestionGenerationController;
 use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
@@ -83,6 +85,8 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             });
 
         Route::middleware(['jwt.auth.api', 'role:mobile_user'])->group(function () {
+
+            Route::get('/logout' , [AuthController::class , 'logout']);
 
             //HOME
             Route::prefix('home')->group(function () {
@@ -257,20 +261,43 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
         });
 
 
+    Route::prefix('dashboard')->group(function () {
 
-        Route::middleware(['jwt.auth.api' , 'role:owner'])->group(function () {
+        Route::prefix('auth')->group(function () {
+            Route::post('/login', [AuthDashboardController::class, 'login'])->middleware('throttle:api-login');
 
+            Route::middleware('throttle:api-reset-password')->group(function () {
+                Route::post('/forgot-password/request-otp', [PasswordResetController::class, 'requestPasswordResetOtp']);
+                Route::post('/forgot-password/verify-otp', [PasswordResetController::class, 'verifyPasswordResetOtp']);
+                Route::post('/forgot-password/resend-otp', [PasswordResetController::class, 'resendPasswordResetOtp']);
+                Route::post('/forgot-password/reset' , [PasswordResetController::class , 'resetPassword']);
+            });
         });
 
         Route::middleware(['jwt.auth.api' , 'role:owner,supervisor'])->group(function () {
+            Route::get('/logout' , [AuthController::class , 'logout']);
 
+            Route::prefix('home')->group(function () {
+                Route::get('/test-yearly-activity' , [HomeDashboardController::class , 'yearlyTestActivity']);
+                Route::get('/library_stats' , [HomeDashboardController::class , 'usersAndLibraryStats']);
+            });
         });
 
+        Route::middleware(['jwt.auth.api' , 'role:owner'])->group(function () {
+            Route::get('/financial-stats' , [HomeDashboardController::class , 'financialStats']);
+        });
+
+
+
     });
+
+
+});
 
 /*
  * TODO :
  * في الـ APIs التي تعرض الاختبارات العامة لا تستخدم withTrashed() أبدا
  أما API مشتريات المستخدم لاحقاً، نستخدم withTrashed() فقط حتى يرى المشتري الاختبار المدفوع المحذوف Soft Delete
 
+TODO: تعديل اختبار فيه مشكلة لازم تشوفها وتحلها
  * */

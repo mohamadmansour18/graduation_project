@@ -5,6 +5,7 @@ namespace App\Services\Auth;
 use App\Enums\BanType;
 use App\Enums\PurposeOTP;
 use App\Enums\SystemRole;
+use App\Events\UserOnboardingCompleted;
 use App\Exceptions\Api\ApiException;
 use App\Exceptions\Api\AuthenticationException;
 use App\Exceptions\Api\PasswordResetException;
@@ -57,7 +58,6 @@ class AuthService
 
             return $user;
         });
-
         SendOtpMailJob::dispatch($result , $otpCode , PurposeOTP::Email_Verification->value)->afterCommit();
 
         return [

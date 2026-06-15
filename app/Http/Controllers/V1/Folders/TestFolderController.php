@@ -5,7 +5,7 @@ namespace App\Http\Controllers\V1\Folders;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Folders\StoreTestFolderRequest;
 use App\Http\Requests\Folders\UpdateTestFolderRequest;
-use App\Http\Resources\MyProfileFolderTestResource;
+use App\Http\Resources\Profile\MyProfileFolderTestResource;
 use App\Services\Folders\TestFolderService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;

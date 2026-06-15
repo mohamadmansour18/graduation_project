@@ -17,6 +17,7 @@ return new class extends Migration
             $table->decimal('users_profit_amount', 12, 2)->default(0);
             $table->decimal('platform_net_profit_amount', 12, 2)->default(0);
             $table->timestamps();
+
             $table->unique(['year', 'test_id']);
         });
     }

@@ -5,6 +5,8 @@ namespace App\Services\Auth;
 use App\Enums\AcademicAssetType;
 use App\Enums\EducationLevel;
 use App\Enums\Status;
+use App\Events\UserDiscoverySourceSaved;
+use App\Events\UserOnboardingCompleted;
 use App\Exceptions\Api\OnboardingException;
 use App\Repositories\Auth\OnboardingRepository;
 use Illuminate\Http\UploadedFile;
@@ -31,6 +33,9 @@ class OnboardingService
 
         $profile  = $this->onboardingRepository->findOnboardingProfileByUserId($user->id);
 
+        $oldDiscoverySource = $profile->discovery_source->value ?? null;
+
+
         if(!$profile)
         {
             $profile = $this->onboardingRepository->createOnboardingProfile([
@@ -44,6 +49,15 @@ class OnboardingService
                 'discovery_source' => $discoverySource,
             ]);
         }
+
+        $newDiscoverySource = $profile->discovery_source->value;
+
+        UserDiscoverySourceSaved::dispatch(
+            (int) $user->id,
+            (int) $profile->created_at->year,
+            $newDiscoverySource,
+            $oldDiscoverySource,
+        );
 
         return [
             'onboarding_profile' => [
@@ -332,7 +346,9 @@ class OnboardingService
 
         $onboardingProfile = $this->onboardingRepository->findOnboardingProfileByUserId($user->id);
 
-        DB::transaction(function () use ($user , $onboardingProfile, $interestIds){
+        $completedAt = now();
+
+        DB::transaction(function () use ($user , $onboardingProfile, $interestIds , $completedAt){
 
             $this->onboardingRepository->deleteUserInterestSelections($user->id);
 
@@ -354,8 +370,14 @@ class OnboardingService
                 'last_completed_step' => 6,
             ]);
 
-            $this->onboardingRepository->updateUserOnboardingCompletedAt($user->id,);
+            $this->onboardingRepository->updateUserOnboardingCompletedAt($user->id , $completedAt);
         });
+
+        UserOnboardingCompleted::dispatch(
+            (int) $user->id,
+            (int) $completedAt->year,
+            $user->gender->value,
+        );
 
         return [
             'onboarding_profile' => [

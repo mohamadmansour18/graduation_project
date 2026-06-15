@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 
 class LoginRequest extends ApiFormRequest
 {
@@ -34,8 +34,8 @@ class LoginRequest extends ApiFormRequest
             'email.required' => 'حقل البريد الإلكتروني مطلوب',
             'email.string' => 'حقل البريد الإلكتروني غير صالح',
             'email.email' => 'صيغة البريد الإلكتروني غير صحيحة',
-            'password.required' => 'كلمة المرور مطلوبة.',
-            'password.string' => 'كلمة المرور غير صالحة.',
+            'password.required' => 'كلمة المرور مطلوبة',
+            'password.string' => 'كلمة المرور غير صالحة',
             'password.min' => 'كلمة المرور غير صحيحة',
         ];
     }

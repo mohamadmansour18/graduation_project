@@ -8,7 +8,11 @@ use App\Events\TestBookmarkStateChanged;
 use App\Events\TestDeleted;
 use App\Events\TestDownloaded;
 use App\Events\TestLikeStateChanged;
+use App\Events\TestPurchasePaid;
 use App\Events\TestReviewStateChanged;
+use App\Events\UserDiscoverySourceSaved;
+use App\Events\UserOnboardingCompleted;
+use App\Listeners\UpdateAdminFinancialStatsAfterTestPurchase;
 use App\Listeners\UpdateAdminLibraryMaterialMonthlyStats;
 use App\Listeners\UpdateAdminLibraryOnMaterialDeleted;
 use App\Listeners\UpdateTestBookmarkSummaryTables;
@@ -16,6 +20,8 @@ use App\Listeners\UpdateTestDownloadSummaryTables;
 use App\Listeners\UpdateTestLikeSummaryTables;
 use App\Listeners\UpdateTestReviewSummaryTables;
 use App\Listeners\UpdateTestSummariesAfterDeletion;
+use App\Listeners\UpdateUserStatsByDiscoverySource;
+use App\Listeners\UpdateUserStatsSummaryAfterOnboardingCompleted;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -48,7 +54,6 @@ class EventServiceProvider extends ServiceProvider
         TestReviewStateChanged::class => [
             UpdateTestReviewSummaryTables::class,
         ],
-
         TestDeleted::class => [
             UpdateTestSummariesAfterDeletion::class,
         ],
@@ -59,6 +64,18 @@ class EventServiceProvider extends ServiceProvider
 
         LibraryMaterialDeletedByOwner::class => [
             UpdateAdminLibraryOnMaterialDeleted::class,
+        ],
+
+        TestPurchasePaid::class => [
+            UpdateAdminFinancialStatsAfterTestPurchase::class,
+        ],
+
+        UserDiscoverySourceSaved::class => [
+            UpdateUserStatsByDiscoverySource::class,
+        ],
+
+        UserOnboardingCompleted::class => [
+            UpdateUserStatsSummaryAfterOnboardingCompleted::class,
         ],
     ];
 

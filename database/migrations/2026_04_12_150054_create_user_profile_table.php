@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('avatar_path')->nullable();
             $table->string('cover_disk')->nullable();
             $table->string('cover_path')->nullable();
-            $table->string('profile_slug' , 180)->unique();
+            $table->string('profile_slug' , 180)->nullable()->unique();
             $table->enum('governorate' , array_column(Governorate::cases() , 'value'));
             $table->timestamps();
 

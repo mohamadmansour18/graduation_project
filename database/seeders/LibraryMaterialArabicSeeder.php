@@ -21,6 +21,9 @@ use RuntimeException;
 class LibraryMaterialArabicSeeder extends Seeder
 {
     private const int MATERIALS_COUNT = 400;
+    private const int MATERIALS_PER_SEEDED_YEAR = 200;
+    private const int CURRENT_MATERIAL_YEAR = 2026;
+    private const int PREVIOUS_MATERIAL_YEAR = 2025;
     private const string USER_EMAIL_DOMAIN = 'library.seed.nerd.local';
     private const string MATERIAL_TITLE_PREFIX = 'مكتبة نيرد';
 
@@ -54,7 +57,7 @@ class LibraryMaterialArabicSeeder extends Seeder
 
             foreach ($this->materialBlueprints($interests) as $index => $material) {
                 $creator = $usersByEmail[$material['creator_email']];
-                $timestamps = $this->timestampsForIndex($now, $index + 1);
+                $timestamps = $this->materialTimestampsForIndex($index + 1);
                 $assetCount = count($material['assets']);
                 $likeUserIds = $this->pickUserIds($usersByEmail, $index + 2, $material['likes_count']);
                 $bookmarkUserIds = $this->pickUserIds($usersByEmail, $index + 5, $material['bookmarks_count']);
@@ -84,6 +87,11 @@ class LibraryMaterialArabicSeeder extends Seeder
                 $this->insertUserInteractions('library_material_bookmarks', $libraryMaterialId, $bookmarkUserIds, $timestamps);
                 $this->insertUserInteractions('library_material_download_logs', $libraryMaterialId, $downloadUserIds, $timestamps);
             }
+
+            $this->rebuildAdminYearlyLibraryMaterialActivityMonthStats([
+                self::PREVIOUS_MATERIAL_YEAR,
+                self::CURRENT_MATERIAL_YEAR,
+            ]);
         });
     }
 
@@ -211,17 +219,88 @@ class LibraryMaterialArabicSeeder extends Seeder
         return array_values(array_unique($picked));
     }
 
-    private function timestampsForIndex(CarbonImmutable $now, int $index): array
+    private function materialTimestampsForIndex(int $index): array
     {
-        $createdAt = $now
-            ->subDays(self::MATERIALS_COUNT - $index)
-            ->setTime(8 + ($index % 10), ($index * 7) % 60);
+        $year = $index <= self::MATERIALS_PER_SEEDED_YEAR
+            ? self::CURRENT_MATERIAL_YEAR
+            : self::PREVIOUS_MATERIAL_YEAR;
+
+        $yearIndex = (($index - 1) % self::MATERIALS_PER_SEEDED_YEAR) + 1;
+        $month = ((($yearIndex * 19) + ((int) floor(($yearIndex - 1) / 2) * 11)) % 12) + 1;
+        $daysInMonth = CarbonImmutable::create($year, $month, 1)->daysInMonth;
+        $day = (($yearIndex * 11) % ($daysInMonth - 2)) + 1;
+        $hour = 8 + (($yearIndex * 5) % 10);
+        $minute = ($yearIndex * 13) % 60;
+
+        $createdAt = CarbonImmutable::create($year, $month, $day, $hour, $minute);
+        $publishedAt = $createdAt->addHours(1);
 
         return [
             'created_at' => $createdAt,
-            'updated_at' => $createdAt->addHours(2),
-            'published_at' => $createdAt->addHours(1),
+            'updated_at' => $publishedAt->addHour(),
+            'published_at' => $publishedAt,
         ];
+    }
+
+    private function rebuildAdminYearlyLibraryMaterialActivityMonthStats(array $years): void
+    {
+        $now = CarbonImmutable::now();
+        $stats = [];
+
+        foreach ($years as $year) {
+            foreach (range(1, 12) as $month) {
+                $stats[$year][$month] = [
+                    'year' => $year,
+                    'month_no' => $month,
+                    'published_materials_count' => 0,
+                    'likes_count' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+
+        $publishedCounts = DB::table('library_material')
+            ->selectRaw('YEAR(published_at) as year, MONTH(published_at) as month_no, COUNT(*) as aggregate_count')
+            ->where('title', 'like', self::MATERIAL_TITLE_PREFIX . '%')
+            ->whereNotNull('published_at')
+            ->whereIn(DB::raw('YEAR(published_at)'), $years)
+            ->groupByRaw('YEAR(published_at), MONTH(published_at)')
+            ->get();
+
+        foreach ($publishedCounts as $row) {
+            $stats[(int) $row->year][(int) $row->month_no]['published_materials_count'] = (int) $row->aggregate_count;
+        }
+
+        $likeCounts = DB::table('library_material_likes')
+            ->join('library_material', 'library_material.id', '=', 'library_material_likes.library_material_id')
+            ->selectRaw('YEAR(library_material_likes.created_at) as year, MONTH(library_material_likes.created_at) as month_no, COUNT(*) as aggregate_count')
+            ->where('library_material.title', 'like', self::MATERIAL_TITLE_PREFIX . '%')
+            ->whereIn(DB::raw('YEAR(library_material_likes.created_at)'), $years)
+            ->groupByRaw('YEAR(library_material_likes.created_at), MONTH(library_material_likes.created_at)')
+            ->get();
+
+        foreach ($likeCounts as $row) {
+            $stats[(int) $row->year][(int) $row->month_no]['likes_count'] = (int) $row->aggregate_count;
+        }
+
+        $rows = [];
+
+        foreach ($stats as $months) {
+            foreach ($months as $monthStats) {
+                $rows[] = $monthStats;
+            }
+        }
+
+        DB::table('admin_yearly_library_material_activity_month_stats')->upsert(
+            $rows,
+            ['year', 'month_no'],
+            [
+                'published_materials_count',
+                'likes_count',
+                'updated_at',
+            ],
+        );
     }
 
     private function materialBlueprints(Collection $interests): array

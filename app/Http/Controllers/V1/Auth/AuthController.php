@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers\V1\Auth;
 
-use App\Exceptions\Jwt\RefreshTokenExpiredException;
 use App\Exceptions\Jwt\TokenMissingException;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\LoginRequest;
+use App\Http\Requests\Admin\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\Reset_Password\RequestPasswordResetOtpRequest;
 use App\Http\Requests\VerifyEmailOtpRequest;
@@ -82,6 +81,15 @@ class AuthController extends Controller
         return $this->successResponse(
             title: 'تمت العملية بنجاح',
             message: 'سيتم إرسال رمز تحقق جديد إليك'
+        );
+    }
+
+    public function logout(): JsonResponse
+    {
+        auth('api')->logout();
+
+        return $this->successResponse(
+            message :"تم تسجيل الخروج من حسابك بنجاح ، شكرا لاستخدامك تطبيق نيرد"
         );
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Resources;
+namespace App\Http\Resources\Profile;
 
 use App\Helpers\DateProcessor;
 use App\Helpers\ImageProcessor;
@@ -50,7 +50,7 @@ class PublicProfileOverviewResource extends JsonResource
             'reviews' => [
                 'average_rating' => round((float) ($stats?->average_test_rating ?? 0), 1),
                 'total_reviews_count' => $totalReviews,
-                'rating_distribution' => $this->ratingDistribution($ratingCounts, $totalReviews),
+                'rating_distribution' => (object) $this->ratingDistribution($ratingCounts, $totalReviews),
             ],
 
             'general_statistics' => [

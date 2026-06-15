@@ -7,6 +7,7 @@ use App\Enums\DiscoverySource;
 use App\Enums\EducationLevel;
 use App\Enums\Gender;
 use App\Enums\Language;
+use App\Enums\PaymentStatus;
 use App\Enums\SchoolStage;
 use App\Enums\SystemRole;
 use App\Enums\TargetLevel;
@@ -25,11 +26,14 @@ use RuntimeException;
 
 class TestDiscoveryRecommendationSeeder extends Seeder
 {
-    private const MOBILE_USERS_COUNT = 800;
-    private const TESTS_COUNT = 800;
-    private const INSERT_CHUNK_SIZE = 200;
-    private const USER_EMAIL_DOMAIN = 'seed.nerd.local';
-    private const GENERATED_TEST_TITLE_PREFIX = 'اختبار توصية';
+    private const int MOBILE_USERS_COUNT = 800;
+    private const int TESTS_COUNT = 800;
+    private const int TESTS_PER_SEEDED_YEAR = 400;
+    private const int CURRENT_TEST_YEAR = 2026;
+    private const int PREVIOUS_TEST_YEAR = 2025;
+    private const int INSERT_CHUNK_SIZE = 200;
+    private const string USER_EMAIL_DOMAIN = 'seed.nerd.local';
+    private const string GENERATED_TEST_TITLE_PREFIX = 'اختبار توصية';
 
     public function run(): void
     {
@@ -181,7 +185,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
 
                 $difficulty = $this->pickValueByIndex(DifficultyLevel::cases(), $index + 2);
                 $language = $this->pickValueByIndex(Language::cases(), $index + 7);
-                $timestamps = $this->timestampsForIndex($now, $index);
+                $timestamps = $this->testTimestampsForIndex($index);
                 $targetLevel = $this->resolveTargetLevelForUser($creator, $index);
 
                 $likesCount = $this->engagementCountForIndex($index, 11);
@@ -236,7 +240,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             $resolvedUserIds = array_column($resolvedUsers, 'id');
 
             $persistedTests = DB::table('test')
-                ->select(['id', 'title', 'creator_user_id'])
+                ->select(['id', 'title', 'creator_user_id', 'price', 'published_at'])
                 ->whereIn('creator_user_id', $resolvedUserIds)
                 ->orderBy('id')
                 ->get();
@@ -260,7 +264,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
 
             foreach ($persistedTests as $offset => $test) {
                 $interest = $interests[(($offset + 1) * 3 + 5) % $interests->count()];
-                $timestamps = $this->timestampsForIndex($now, $offset + 1);
+                $timestamps = $this->testTimestampsForIndex($offset + 1);
 
                 $testInterestRows[] = [
                     'test_id' => (int) $test->id,
@@ -273,6 +277,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
 
             [$reviewRows, $feedbackRows, $testReviewAggregates] = $this->buildReviewDataset(
                 tests: $persistedTests->all(),
+                testBlueprints: $testsRows,
                 users: $resolvedUsers,
                 now: $now,
             );
@@ -322,7 +327,17 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             }
             unset($profileStats);
 
+            $this->seedTestPurchasesAndFinancialStats(
+                tests: $persistedTests->all(),
+                users: $resolvedUsers,
+            );
+
             $this->insertInChunks('user_profile_stats', array_values($userProfileStatsSeed));
+            $this->rebuildGeneratedUserStats($resolvedUserIds);
+            $this->rebuildAdminYearlyTestActivityMonthStats([
+                self::PREVIOUS_TEST_YEAR,
+                self::CURRENT_TEST_YEAR,
+            ]);
         });
     }
 
@@ -482,6 +497,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
     {
         $bookmarkRows = [];
         $likeRows = [];
+        $downloadRows = [];
 
         foreach ($tests as $offset => $test) {
             $testBlueprint = $testBlueprints[$offset] ?? null;
@@ -493,7 +509,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             $testIndex = $offset + 1;
             $testId = (int) $test->id;
             $creatorUserId = (int) $test->creator_user_id;
-            $baseTimestamps = $this->timestampsForIndex($now, $testIndex);
+            $baseTimestamps = $this->testTimestampsForIndex($testIndex);
 
             $bookmarkUsers = $this->pickDistinctUsers(
                 users: $users,
@@ -530,10 +546,29 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                     'updated_at' => $likeTimestamp,
                 ];
             }
+
+            $downloadUsers = $this->pickDistinctUsers(
+                users: $users,
+                count: (int) $testBlueprint['downloads_count'],
+                excludedIds: [$creatorUserId],
+                startIndex: ($testIndex * 23) + 9
+            );
+
+            foreach ($downloadUsers as $downloadOffset => $user) {
+                $downloadTimestamp = $baseTimestamps['published_at']->addDays(3)->addMinutes($downloadOffset + 1);
+
+                $downloadRows[] = [
+                    'test_id' => $testId,
+                    'user_id' => $user['id'],
+                    'created_at' => $downloadTimestamp,
+                    'updated_at' => $downloadTimestamp,
+                ];
+            }
         }
 
         $this->insertInChunks('test_bookmarks', $bookmarkRows);
         $this->insertInChunks('test_likes', $likeRows);
+        $this->insertInChunks('test_download_logs', $downloadRows);
     }
 
     private function seedTestQuestionsAndOptions(array $tests, array $testBlueprints, CarbonImmutable $now): void
@@ -638,17 +673,25 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         }
     }
 
-    private function buildReviewDataset(array $tests, array $users, CarbonImmutable $now): array
+    private function buildReviewDataset(array $tests, array $testBlueprints, array $users, CarbonImmutable $now): array
     {
         $reviewRows = [];
         $feedbackRows = [];
         $testReviewAggregates = [];
+        $nextReviewId = ((int) DB::table('test_reviews')->max('id')) + 1;
 
         foreach ($tests as $offset => $test) {
+            $testBlueprint = $testBlueprints[$offset] ?? null;
+
+            if ($testBlueprint === null) {
+                throw new RuntimeException('تعذر مطابقة بيانات المراجعة مع الاختبار المحفوظ.');
+            }
+
             $testIndex = $offset + 1;
             $testId = (int) $test->id;
-            $creatorUserId = $users[$offset % count($users)]['id'];
+            $creatorUserId = (int) $test->creator_user_id;
             $reviewCount = 3 + ($testIndex % 4);
+            $publishedAt = CarbonImmutable::parse((string) $testBlueprint['published_at']);
 
             $ratingSum = 0;
 
@@ -659,12 +702,17 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                     startIndex: $testIndex * 11 + $reviewOffset
                 );
 
-                $reviewId = count($reviewRows) + 1;
+                $reviewId = $nextReviewId++;
                 $rating = (($testIndex + $reviewOffset) % 5) + 1;
                 $feedbackCount = 1 + (($testIndex + $reviewOffset) % 3);
                 $helpfulYesCount = 0;
                 $helpfulNoCount = 0;
-                $reviewTimestamp = $now->subDays(($testIndex % 120) + $reviewOffset)->subHours($reviewOffset);
+                $reviewTimestamp = $publishedAt->addDays(4)->addHours($reviewOffset);
+
+                if ($reviewTimestamp->greaterThan($now)) {
+                    $reviewTimestamp = $publishedAt->addHours($reviewOffset);
+                }
+
                 $usedFeedbackUserIds = [$creatorUserId, $reviewer['id']];
 
                 for ($feedbackOffset = 1; $feedbackOffset <= $feedbackCount; $feedbackOffset++) {
@@ -719,6 +767,115 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         }
 
         return [$reviewRows, $feedbackRows, $testReviewAggregates];
+    }
+
+    private function seedTestPurchasesAndFinancialStats(array $tests, array $users): void
+    {
+        $paidTestsByYear = [
+            self::CURRENT_TEST_YEAR => [],
+            self::PREVIOUS_TEST_YEAR => [],
+        ];
+
+        foreach ($tests as $test) {
+            if ($test->price === null || (float) $test->price <= 0 || $test->published_at === null) {
+                continue;
+            }
+
+            $publishedAt = CarbonImmutable::parse((string) $test->published_at);
+            $year = (int) $publishedAt->year;
+
+            if (! array_key_exists($year, $paidTestsByYear)) {
+                continue;
+            }
+
+            $paidTestsByYear[$year][] = $test;
+        }
+
+        foreach ($paidTestsByYear as $year => $paidTests) {
+            if ($paidTests === []) {
+                throw new RuntimeException("لا توجد اختبارات مدفوعة مناسبة لتوليد عمليات شراء سنة {$year}.");
+            }
+        }
+
+        $purchaseRows = [];
+        $currency = (string) config('payments.default_currency', 'usd');
+        $paymentProvider = (string) config('payments.default_provider', 'stripe');
+        $platformFeePercent = (float) config('payments.platform_fee_percent', 20);
+
+        foreach ($users as $offset => $buyer) {
+            $buyerIndex = $offset + 1;
+            $purchaseYear = $buyerIndex <= (int) floor(count($users) / 2)
+                ? self::CURRENT_TEST_YEAR
+                : self::PREVIOUS_TEST_YEAR;
+            $purchaseCount = 1 + (($buyerIndex * 7) % 5);
+            $usedTestIds = [];
+
+            for ($purchaseOffset = 0; $purchaseOffset < $purchaseCount; $purchaseOffset++) {
+                $test = $this->findPurchasableTestForBuyer(
+                    tests: $paidTestsByYear[$purchaseYear],
+                    buyerUserId: (int) $buyer['id'],
+                    usedTestIds: $usedTestIds,
+                    startIndex: ($buyerIndex * 17) + ($purchaseOffset * 11),
+                );
+
+                $usedTestIds[] = (int) $test->id;
+
+                $grossAmount = round((float) $test->price, 2);
+                $platformFeeAmount = round(($grossAmount * $platformFeePercent) / 100, 2);
+                $sellerNetAmount = round($grossAmount - $platformFeeAmount, 2);
+                $purchasedAt = CarbonImmutable::parse((string) $test->published_at)
+                    ->addHours(2 + $purchaseOffset)
+                    ->addMinutes($buyerIndex % 60);
+
+                $purchaseRows[] = [
+                    'test_id' => (int) $test->id,
+                    'buyer_user_id' => (int) $buyer['id'],
+                    'seller_user_id' => (int) $test->creator_user_id,
+                    'gross_amount' => number_format($grossAmount, 2, '.', ''),
+                    'platform_fee_amount' => number_format($platformFeeAmount, 2, '.', ''),
+                    'seller_net_amount' => number_format($sellerNetAmount, 2, '.', ''),
+                    'currency' => $currency,
+                    'payment_provider' => $paymentProvider,
+                    'payment_reference' => sprintf(
+                        'seed-test-purchase-%d-%d-%d',
+                        $purchaseYear,
+                        (int) $buyer['id'],
+                        (int) $test->id,
+                    ),
+                    'payment_status' => PaymentStatus::Paid->value,
+                    'purchased_at' => $purchasedAt,
+                    'created_at' => $purchasedAt,
+                    'updated_at' => $purchasedAt,
+                ];
+            }
+        }
+
+        $this->insertInChunks('test_purchases', $purchaseRows);
+        $this->rebuildAdminFinancialStats([
+            self::PREVIOUS_TEST_YEAR,
+            self::CURRENT_TEST_YEAR,
+        ]);
+    }
+
+    private function findPurchasableTestForBuyer(array $tests, int $buyerUserId, array $usedTestIds, int $startIndex): object
+    {
+        $count = count($tests);
+
+        for ($attempt = 0; $attempt < $count; $attempt++) {
+            $candidate = $tests[($startIndex + $attempt) % $count];
+
+            if ((int) $candidate->creator_user_id === $buyerUserId) {
+                continue;
+            }
+
+            if (in_array((int) $candidate->id, $usedTestIds, true)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        throw new RuntimeException('تعذر العثور على اختبار مدفوع مناسب لتوليد عملية شراء.');
     }
 
     private function buildArabicReviewText(int $rating, int $testIndex, int $reviewOffset): string
@@ -1034,6 +1191,386 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             $nextLevel,
             $generalFallback,
         ], $index);
+    }
+
+    private function testTimestampsForIndex(int $index): array
+    {
+        $year = $index <= self::TESTS_PER_SEEDED_YEAR
+            ? self::CURRENT_TEST_YEAR
+            : self::PREVIOUS_TEST_YEAR;
+
+        $yearIndex = (($index - 1) % self::TESTS_PER_SEEDED_YEAR) + 1;
+        $month = ((($yearIndex * 19) + ((int) floor(($yearIndex - 1) / 2) * 11)) % 12) + 1;
+        $daysInMonth = CarbonImmutable::create($year, $month, 1)->daysInMonth;
+        $day = (($yearIndex * 11) % ($daysInMonth - 3)) + 1;
+        $hour = 8 + (($yearIndex * 5) % 10);
+        $minute = ($yearIndex * 13) % 60;
+
+        $createdAt = CarbonImmutable::create($year, $month, $day, $hour, $minute);
+        $publishedAt = $createdAt->addDays(2);
+        $updatedAt = $publishedAt->addHours(6);
+
+        return [
+            'created_at' => $createdAt,
+            'updated_at' => $updatedAt,
+            'verified_at' => $createdAt->addHours(2),
+            'completed_at' => $createdAt->addHours(6),
+            'last_login_at' => $updatedAt->addHours(3),
+            'published_at' => $publishedAt,
+        ];
+    }
+
+    private function rebuildAdminYearlyTestActivityMonthStats(array $years): void
+    {
+        $now = CarbonImmutable::now();
+        $stats = [];
+
+        foreach ($years as $year) {
+            foreach (range(1, 12) as $month) {
+                $stats[$year][$month] = [
+                    'year' => $year,
+                    'month_no' => $month,
+                    'published_tests_count' => 0,
+                    'likes_count' => 0,
+                    'reviews_count' => 0,
+                    'downloads_count' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+
+        foreach ($this->monthlyCounts('test', 'published_at', $years) as $row) {
+            $stats[(int) $row->year][(int) $row->month_no]['published_tests_count'] = (int) $row->aggregate_count;
+        }
+
+        foreach ($this->monthlyCounts('test_likes', 'created_at', $years) as $row) {
+            $stats[(int) $row->year][(int) $row->month_no]['likes_count'] = (int) $row->aggregate_count;
+        }
+
+        foreach ($this->monthlyCounts('test_reviews', 'created_at', $years) as $row) {
+            $stats[(int) $row->year][(int) $row->month_no]['reviews_count'] = (int) $row->aggregate_count;
+        }
+
+        foreach ($this->monthlyCounts('test_download_logs', 'created_at', $years) as $row) {
+            $stats[(int) $row->year][(int) $row->month_no]['downloads_count'] = (int) $row->aggregate_count;
+        }
+
+        $rows = [];
+
+        foreach ($stats as $months) {
+            foreach ($months as $monthStats) {
+                $rows[] = $monthStats;
+            }
+        }
+
+        DB::table('admin_yearly_test_activity_month_stats')->upsert(
+            $rows,
+            ['year', 'month_no'],
+            [
+                'published_tests_count',
+                'likes_count',
+                'reviews_count',
+                'downloads_count',
+                'updated_at',
+            ],
+        );
+    }
+
+    private function rebuildGeneratedUserStats(array $userIds): void
+    {
+        if ($userIds === []) {
+            return;
+        }
+
+        $now = CarbonImmutable::now();
+
+        $summaryRows = DB::table('users')
+            ->join('roles', 'roles.id', '=', 'users.role_id')
+            ->whereIn('users.id', $userIds)
+            ->where('roles.name', SystemRole::Mobile_User->value)
+            ->whereNotNull('users.onboarding_completed_at')
+            ->selectRaw('YEAR(users.onboarding_completed_at) as year')
+            ->selectRaw('COUNT(*) as total_completed_mobile_users')
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN users.gender = ? THEN 1 ELSE 0 END), 0) as male_completed_mobile_users',
+                [Gender::Male->value]
+            )
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN users.gender = ? THEN 1 ELSE 0 END), 0) as female_completed_mobile_users',
+                [Gender::Female->value]
+            )
+            ->groupByRaw('YEAR(users.onboarding_completed_at)')
+            ->get()
+            ->map(fn($row): array => [
+                'year' => (int) $row->year,
+                'total_completed_mobile_users' => (int) $row->total_completed_mobile_users,
+                'male_completed_mobile_users' => (int) $row->male_completed_mobile_users,
+                'female_completed_mobile_users' => (int) $row->female_completed_mobile_users,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])
+            ->values()
+            ->all();
+
+        $years = array_values(array_unique(array_column($summaryRows, 'year')));
+        sort($years);
+
+        if ($summaryRows !== []) {
+            DB::table('user_stats_summary')->upsert(
+                $summaryRows,
+                ['year'],
+                [
+                    'total_completed_mobile_users',
+                    'male_completed_mobile_users',
+                    'female_completed_mobile_users',
+                    'updated_at',
+                ],
+            );
+        }
+
+        if ($years === []) {
+            return;
+        }
+
+        $sourceStats = [];
+
+        foreach ($years as $year) {
+            foreach (DiscoverySource::cases() as $source) {
+                $sourceStats[$year][$source->value] = [
+                    'year' => $year,
+                    'discovery_source' => $source->value,
+                    'completed_mobile_users_count' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+
+        $sourceCounts = DB::table('user_onboarding_profiles')
+            ->whereIn('user_id', $userIds)
+            ->whereNotNull('discovery_source')
+            ->whereIn(DB::raw('YEAR(created_at)'), $years)
+            ->selectRaw('YEAR(created_at) as year, discovery_source, COUNT(*) as aggregate_count')
+            ->groupByRaw('YEAR(created_at), discovery_source')
+            ->get();
+
+        foreach ($sourceCounts as $row) {
+            $sourceStats[(int) $row->year][(string) $row->discovery_source]['completed_mobile_users_count'] = (int) $row->aggregate_count;
+        }
+
+        $sourceRows = [];
+
+        foreach ($sourceStats as $yearStats) {
+            foreach ($yearStats as $sourceRow) {
+                $sourceRows[] = $sourceRow;
+            }
+        }
+
+        DB::table('user_stats_by_discovery_source')->upsert(
+            $sourceRows,
+            ['year', 'discovery_source'],
+            [
+                'completed_mobile_users_count',
+                'updated_at',
+            ],
+        );
+    }
+
+    private function rebuildAdminFinancialStats(array $years): void
+    {
+        $now = CarbonImmutable::now();
+        $paidStatus = PaymentStatus::Paid->value;
+        $yearlyStats = [];
+        $monthlyStats = [];
+
+        foreach ($years as $year) {
+            $yearlyStats[$year] = [
+                'year' => $year,
+                'sold_purchase_count' => 0,
+                'distinct_sold_tests_count' => 0,
+                'gross_sales_amount' => number_format(0, 2, '.', ''),
+                'users_profit_amount' => number_format(0, 2, '.', ''),
+                'platform_net_profit_amount' => number_format(0, 2, '.', ''),
+                'average_monthly_sales_amount' => number_format(0, 2, '.', ''),
+                'average_monthly_platform_profit_amount' => number_format(0, 2, '.', ''),
+                'most_purchased_test_id' => null,
+                'most_purchased_test_purchase_count' => 0,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+
+            foreach (range(1, 12) as $month) {
+                $monthlyStats[$year][$month] = [
+                    'year' => $year,
+                    'month_no' => $month,
+                    'sold_purchase_count' => 0,
+                    'distinct_sold_tests_count' => 0,
+                    'gross_sales_amount' => number_format(0, 2, '.', ''),
+                    'users_profit_amount' => number_format(0, 2, '.', ''),
+                    'platform_net_profit_amount' => number_format(0, 2, '.', ''),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+
+        $annualRows = DB::table('test_purchases')
+            ->where('payment_status', $paidStatus)
+            ->whereNotNull('purchased_at')
+            ->whereIn(DB::raw('YEAR(purchased_at)'), $years)
+            ->selectRaw('YEAR(purchased_at) as year')
+            ->selectRaw('COUNT(*) as sold_purchase_count')
+            ->selectRaw('COUNT(DISTINCT test_id) as distinct_sold_tests_count')
+            ->selectRaw('COALESCE(SUM(gross_amount), 0) as gross_sales_amount')
+            ->selectRaw('COALESCE(SUM(seller_net_amount), 0) as users_profit_amount')
+            ->selectRaw('COALESCE(SUM(platform_fee_amount), 0) as platform_net_profit_amount')
+            ->groupByRaw('YEAR(purchased_at)')
+            ->get();
+
+        foreach ($annualRows as $row) {
+            $year = (int) $row->year;
+
+            $yearlyStats[$year]['sold_purchase_count'] = (int) $row->sold_purchase_count;
+            $yearlyStats[$year]['distinct_sold_tests_count'] = (int) $row->distinct_sold_tests_count;
+            $yearlyStats[$year]['gross_sales_amount'] = $this->money($row->gross_sales_amount);
+            $yearlyStats[$year]['users_profit_amount'] = $this->money($row->users_profit_amount);
+            $yearlyStats[$year]['platform_net_profit_amount'] = $this->money($row->platform_net_profit_amount);
+            $yearlyStats[$year]['average_monthly_sales_amount'] = $this->divideMoneyBy12($row->gross_sales_amount);
+            $yearlyStats[$year]['average_monthly_platform_profit_amount'] = $this->divideMoneyBy12($row->platform_net_profit_amount);
+        }
+
+        foreach ($years as $year) {
+            $mostPurchasedTest = DB::table('test_purchases')
+                ->where('payment_status', $paidStatus)
+                ->whereNotNull('purchased_at')
+                ->whereYear('purchased_at', $year)
+                ->select('test_id')
+                ->selectRaw('COUNT(*) as purchase_count')
+                ->groupBy('test_id')
+                ->orderByDesc('purchase_count')
+                ->orderBy('test_id')
+                ->first();
+
+            $yearlyStats[$year]['most_purchased_test_id'] = $mostPurchasedTest?->test_id;
+            $yearlyStats[$year]['most_purchased_test_purchase_count'] = (int) ($mostPurchasedTest?->purchase_count ?? 0);
+        }
+
+        DB::table('admin_yearly_financial_stats')->upsert(
+            array_values($yearlyStats),
+            ['year'],
+            [
+                'sold_purchase_count',
+                'distinct_sold_tests_count',
+                'gross_sales_amount',
+                'users_profit_amount',
+                'platform_net_profit_amount',
+                'average_monthly_sales_amount',
+                'average_monthly_platform_profit_amount',
+                'most_purchased_test_id',
+                'most_purchased_test_purchase_count',
+                'updated_at',
+            ],
+        );
+
+        $monthlyRows = DB::table('test_purchases')
+            ->where('payment_status', $paidStatus)
+            ->whereNotNull('purchased_at')
+            ->whereIn(DB::raw('YEAR(purchased_at)'), $years)
+            ->selectRaw('YEAR(purchased_at) as year, MONTH(purchased_at) as month_no')
+            ->selectRaw('COUNT(*) as sold_purchase_count')
+            ->selectRaw('COUNT(DISTINCT test_id) as distinct_sold_tests_count')
+            ->selectRaw('COALESCE(SUM(gross_amount), 0) as gross_sales_amount')
+            ->selectRaw('COALESCE(SUM(seller_net_amount), 0) as users_profit_amount')
+            ->selectRaw('COALESCE(SUM(platform_fee_amount), 0) as platform_net_profit_amount')
+            ->groupByRaw('YEAR(purchased_at), MONTH(purchased_at)')
+            ->get();
+
+        foreach ($monthlyRows as $row) {
+            $year = (int) $row->year;
+            $month = (int) $row->month_no;
+
+            $monthlyStats[$year][$month]['sold_purchase_count'] = (int) $row->sold_purchase_count;
+            $monthlyStats[$year][$month]['distinct_sold_tests_count'] = (int) $row->distinct_sold_tests_count;
+            $monthlyStats[$year][$month]['gross_sales_amount'] = $this->money($row->gross_sales_amount);
+            $monthlyStats[$year][$month]['users_profit_amount'] = $this->money($row->users_profit_amount);
+            $monthlyStats[$year][$month]['platform_net_profit_amount'] = $this->money($row->platform_net_profit_amount);
+        }
+
+        $monthRows = [];
+
+        foreach ($monthlyStats as $months) {
+            foreach ($months as $monthStats) {
+                $monthRows[] = $monthStats;
+            }
+        }
+
+        DB::table('admin_yearly_financial_month_stats')->upsert(
+            $monthRows,
+            ['year', 'month_no'],
+            [
+                'sold_purchase_count',
+                'distinct_sold_tests_count',
+                'gross_sales_amount',
+                'users_profit_amount',
+                'platform_net_profit_amount',
+                'updated_at',
+            ],
+        );
+
+        DB::table('admin_yearly_test_sales_stats')
+            ->whereIn('year', $years)
+            ->delete();
+
+        $testSalesRows = DB::table('test_purchases')
+            ->where('payment_status', $paidStatus)
+            ->whereNotNull('purchased_at')
+            ->whereIn(DB::raw('YEAR(purchased_at)'), $years)
+            ->selectRaw('YEAR(purchased_at) as year, test_id')
+            ->selectRaw('COUNT(*) as purchase_count')
+            ->selectRaw('COALESCE(SUM(gross_amount), 0) as gross_sales_amount')
+            ->selectRaw('COALESCE(SUM(seller_net_amount), 0) as users_profit_amount')
+            ->selectRaw('COALESCE(SUM(platform_fee_amount), 0) as platform_net_profit_amount')
+            ->groupByRaw('YEAR(purchased_at), test_id')
+            ->get()
+            ->map(fn($row): array => [
+                'year' => (int) $row->year,
+                'test_id' => (int) $row->test_id,
+                'purchase_count' => (int) $row->purchase_count,
+                'gross_sales_amount' => $this->money($row->gross_sales_amount),
+                'users_profit_amount' => $this->money($row->users_profit_amount),
+                'platform_net_profit_amount' => $this->money($row->platform_net_profit_amount),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])
+            ->values()
+            ->all();
+
+        $this->insertInChunks('admin_yearly_test_sales_stats', $testSalesRows);
+    }
+
+    private function money(mixed $amount): string
+    {
+        return number_format((float) $amount, 2, '.', '');
+    }
+
+    private function divideMoneyBy12(mixed $amount): string
+    {
+        if (function_exists('bcdiv')) {
+            return bcdiv((string) $amount, '12', 2);
+        }
+
+        return number_format(((float) $amount) / 12, 2, '.', '');
+    }
+
+    private function monthlyCounts(string $table, string $dateColumn, array $years)
+    {
+        return DB::table($table)
+            ->selectRaw("YEAR({$dateColumn}) as year, MONTH({$dateColumn}) as month_no, COUNT(*) as aggregate_count")
+            ->whereNotNull($dateColumn)
+            ->whereIn(DB::raw("YEAR({$dateColumn})"), $years)
+            ->groupByRaw("YEAR({$dateColumn}), MONTH({$dateColumn})")
+            ->get();
     }
 
     private function timestampsForIndex(CarbonImmutable $now, int $index): array

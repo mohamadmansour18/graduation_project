@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments;
 
+use App\Events\TestPurchasePaid;
 use App\Repositories\Payments\PaymentAttemptRepository;
 use App\Repositories\Payments\TestPurchaseRepository;
 use Illuminate\Support\Facades\Log;
@@ -104,6 +105,12 @@ class StripeWebhookService
             'stripe_event_id' => $event->id,
             'checkout_session_id' => $session->id,
         ]);
+
+        TestPurchasePaid::dispatch(
+            (int) $updatedPurchase->id,
+            (int) $attempt->id,
+            (string) $event->id,
+        );
 
         /*
         |--------------------------------------------------------------------------

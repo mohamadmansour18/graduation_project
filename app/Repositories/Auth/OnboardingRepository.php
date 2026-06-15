@@ -12,6 +12,7 @@ use App\Models\UserOnboardingProfile;
 use App\Models\UserProfile;
 use App\Models\UserSchoolProfile;
 use App\Models\UserUniversityProfile;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -21,7 +22,7 @@ class OnboardingRepository
     public function findUserByEmail(string $email): ?User
     {
         return User::query()
-            ->select(['id', 'email', 'email_verified_at' , 'onboarding_completed_at'])
+            ->select(['id', 'email', 'email_verified_at' , 'onboarding_completed_at' , 'gender'])
             ->where('email', $email)
             ->first();
     }
@@ -126,12 +127,12 @@ class OnboardingRepository
         UserInterestSelection::query()->insert($rows);
     }
 
-    public function updateUserOnboardingCompletedAt(int $userId): void
+    public function updateUserOnboardingCompletedAt(int $userId , CarbonInterface $completedAt): void
     {
         User::query()
             ->whereKey($userId)
             ->update([
-                'onboarding_completed_at' => now(),
+                'onboarding_completed_at' => $completedAt,
                 'updated_at' => now(),
             ]);
     }

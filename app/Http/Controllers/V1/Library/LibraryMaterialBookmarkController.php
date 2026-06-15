@@ -4,7 +4,7 @@ namespace App\Http\Controllers\V1\Library;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Library\ListLibraryBookmarkedUsersRequest;
-use App\Http\Resources\LibraryBookmarkedUserResource;
+use App\Http\Resources\LibraryMaterial\LibraryBookmarkedUserResource;
 use App\Services\LibraryMaterial\LibraryMaterialBookmarkService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;

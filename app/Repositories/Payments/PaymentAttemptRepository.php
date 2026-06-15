@@ -150,11 +150,8 @@ class PaymentAttemptRepository
             ->exists();
     }
 
-    public function updateProviderReferencesIfMissing(
-        int $attemptId,
-        ?string $checkoutSessionId = null,
-        ?string $paymentIntentId = null
-    ): void {
+    public function updateProviderReferencesIfMissing(int $attemptId, ?string $checkoutSessionId = null, ?string $paymentIntentId = null): void
+    {
         $updates = [
             'updated_at' => now(),
         ];
