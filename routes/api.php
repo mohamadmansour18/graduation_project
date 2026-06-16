@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\V1\Admin\AuthDashboardController;
 use App\Http\Controllers\V1\Admin\HomeDashboardController;
+use App\Http\Controllers\V1\Admin\TestDashboardController;
 use App\Http\Controllers\V1\AiQuestionGeneration\AiQuestionGenerationController;
 use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
@@ -281,6 +282,10 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/test-yearly-activity' , [HomeDashboardController::class , 'yearlyTestActivity']);
                 Route::get('/library_stats' , [HomeDashboardController::class , 'usersAndLibraryStats']);
             });
+            Route::prefix('test-management')->group(function () {
+                Route::get('/management-board' , [TestDashboardController::class , 'managementBoard']);
+            });
+
         });
 
         Route::middleware(['jwt.auth.api' , 'role:owner'])->group(function () {

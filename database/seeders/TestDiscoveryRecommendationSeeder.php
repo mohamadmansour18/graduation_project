@@ -4,12 +4,15 @@ namespace Database\Seeders;
 
 use App\Enums\DifficultyLevel;
 use App\Enums\DiscoverySource;
+use App\Enums\Decision;
 use App\Enums\EducationLevel;
 use App\Enums\Gender;
 use App\Enums\Language;
 use App\Enums\PaymentStatus;
+use App\Enums\RevisionType;
 use App\Enums\SchoolStage;
 use App\Enums\SystemRole;
+use App\Enums\TestReviewRoundsTriggerType;
 use App\Enums\TargetLevel;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
@@ -29,6 +32,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
     private const int MOBILE_USERS_COUNT = 800;
     private const int TESTS_COUNT = 800;
     private const int TESTS_PER_SEEDED_YEAR = 400;
+    private const int MANAGEMENT_BOARD_WORKFLOW_TESTS_COUNT = 400;
     private const int CURRENT_TEST_YEAR = 2026;
     private const int PREVIOUS_TEST_YEAR = 2025;
     private const int INSERT_CHUNK_SIZE = 200;
@@ -98,7 +102,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                 $userId = (int) optional($persistedUsers->get($blueprint['user']['email']))->id;
 
                 if ($userId <= 0) {
-                    throw new RuntimeException('تعذر ربط user seeded مع السجل المحفوظ في قاعدة البيانات.');
+                    throw new RuntimeException('تعذر ربط المستخدم المولد مع السجل المحفوظ في قاعدة البيانات.');
                 }
 
                 $resolvedUsers[] = [
@@ -190,9 +194,34 @@ class TestDiscoveryRecommendationSeeder extends Seeder
 
                 $likesCount = $this->engagementCountForIndex($index, 11);
                 $bookmarksCount = $this->engagementCountForIndex($index, 17);
+                $downloadsCount = 3 + (($index * 4) % 120);
                 $participantsCount = 35 + (($index * 13) % 650);
                 $questionCount = $this->questionCountForIndex($index);
                 $previewQuestionCount = $this->previewQuestionCountFor($questionCount, $index);
+
+                $managementBoardScenario = $this->managementBoardScenarioForIndex($index, $timestamps['created_at']);
+                $reviewStatus = $managementBoardScenario['review_status'] ?? TestReviewStatus::Approved->value;
+                $currentApprovalVersion = $managementBoardScenario['current_approval_version'] ?? (1 + ($index % 3));
+                $publishedAt = $managementBoardScenario !== null && array_key_exists('published_at', $managementBoardScenario)
+                    ? $managementBoardScenario['published_at']
+                    : $timestamps['published_at'];
+                $lastContentUpdatedAt = $managementBoardScenario !== null && array_key_exists('last_content_updated_at', $managementBoardScenario)
+                    ? $managementBoardScenario['last_content_updated_at']
+                    : $timestamps['updated_at'];
+                $deletedAt = $managementBoardScenario['deleted_at'] ?? null;
+
+                if ($managementBoardScenario !== null && $reviewStatus !== TestReviewStatus::Approved->value) {
+                    $likesCount = 0;
+                    $bookmarksCount = 0;
+                    $downloadsCount = 0;
+                    $participantsCount = 0;
+                }
+
+                $price = $index % 4 === 0 ? null : number_format(4000 + (($index * 275) % 18000), 2, '.', '');
+
+                if (($managementBoardScenario['force_free'] ?? false) === true) {
+                    $price = null;
+                }
 
                 $testsRows[] = [
                     'creator_user_id' => $creator['id'],
@@ -207,27 +236,30 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                     'duration_seconds' => 900 + (($index % 9) * 300),
                     'pass_mark_percentage' => 50 + ($index % 31),
                     'language' => $language,
-                    'price' => $index % 4 === 0 ? null : number_format(4000 + (($index * 275) % 18000), 2, '.', ''),
+                    'price' => $price,
                     'target_level' => $targetLevel,
-                    'review_status' => TestReviewStatus::Approved->value,
-                    'current_approval_version' => 1 + ($index % 3),
-                    'published_at' => $timestamps['published_at'],
-                    'last_content_updated_at' => $timestamps['updated_at'],
+                    'review_status' => $reviewStatus,
+                    'current_approval_version' => $currentApprovalVersion,
+                    'published_at' => $publishedAt,
+                    'last_content_updated_at' => $lastContentUpdatedAt,
                     'question_count' => $questionCount,
                     'preview_question_count' => $previewQuestionCount,
                     'likes_count' => $likesCount,
                     'bookmarks_count' => $bookmarksCount,
-                    'downloads_count' => 3 + (($index * 4) % 120),
+                    'downloads_count' => $downloadsCount,
                     'reviews_count' => 0,
                     'participants_count' => $participantsCount,
                     'average_rating' => number_format(0, 2, '.', ''),
+                    'deleted_at' => $deletedAt,
                     'created_at' => $timestamps['created_at'],
                     'updated_at' => $timestamps['updated_at'],
                 ];
 
-                $creatorStats[$creator['id']]['published_tests_count'] = ($creatorStats[$creator['id']]['published_tests_count'] ?? 0) + 1;
-                $creatorStats[$creator['id']]['likes_sum'] = ($creatorStats[$creator['id']]['likes_sum'] ?? 0) + $likesCount;
-                $creatorStats[$creator['id']]['bookmarks_sum'] = ($creatorStats[$creator['id']]['bookmarks_sum'] ?? 0) + $bookmarksCount;
+                if ($reviewStatus === TestReviewStatus::Approved->value) {
+                    $creatorStats[$creator['id']]['published_tests_count'] = ($creatorStats[$creator['id']]['published_tests_count'] ?? 0) + 1;
+                    $creatorStats[$creator['id']]['likes_sum'] = ($creatorStats[$creator['id']]['likes_sum'] ?? 0) + $likesCount;
+                    $creatorStats[$creator['id']]['bookmarks_sum'] = ($creatorStats[$creator['id']]['bookmarks_sum'] ?? 0) + $bookmarksCount;
+                }
             }
 
             $this->insertInChunks('user_onboarding_profiles', $userOnboardingRows);
@@ -253,6 +285,11 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                 tests: $persistedTests->all(),
                 testBlueprints: $testsRows,
                 now: $now,
+            );
+
+            $this->seedTestManagementBoardWorkflow(
+                tests: $persistedTests->all(),
+                testBlueprints: $testsRows,
             );
 
             $this->seedTestEngagements(
@@ -493,6 +530,534 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         return "اختبار تدريبي في {$interestName} موجه لفئة {$targetLevel} بدرجة صعوبة {$difficulty} مع أسئلة متنوعة تساعد على تقييم الفهم بشكل عملي.";
     }
 
+
+    private function managementBoardScenarioForIndex(int $index, CarbonImmutable $createdAt): ?array
+    {
+        $workflowSequence = $this->managementBoardWorkflowSequenceForIndex($index);
+
+        if ($workflowSequence === null) {
+            return null;
+        }
+
+        $timeline = $this->managementBoardTimelineForTestCreatedAt($createdAt);
+        $scenario = ($workflowSequence - 1) % 8;
+
+        return match ($scenario) {
+            0 => [
+                'key' => 'new',
+                'review_status' => TestReviewStatus::New->value,
+                'current_approval_version' => 0,
+                'published_at' => null,
+                'last_content_updated_at' => $timeline['initial_status'],
+                'deleted_at' => null,
+            ],
+            1 => [
+                'key' => 'approved',
+                'review_status' => TestReviewStatus::Approved->value,
+                'current_approval_version' => 1,
+                'published_at' => $timeline['approved'],
+                'last_content_updated_at' => $timeline['approved'],
+                'deleted_at' => null,
+            ],
+            2 => [
+                'key' => 'deleted_from_new',
+                'review_status' => TestReviewStatus::Deleted->value,
+                'current_approval_version' => 0,
+                'published_at' => null,
+                'last_content_updated_at' => $timeline['deleted'],
+                'deleted_at' => $timeline['deleted'],
+            ],
+            3 => [
+                'key' => 'reported_after_approval',
+                'review_status' => TestReviewStatus::Reported->value,
+                'current_approval_version' => 1,
+                'published_at' => $timeline['approved'],
+                'last_content_updated_at' => $timeline['reported'],
+                'deleted_at' => null,
+                'force_free' => true,
+            ],
+            4 => [
+                'key' => 'needs_revision_waiting',
+                'review_status' => TestReviewStatus::NeedsRevision->value,
+                'current_approval_version' => 0,
+                'published_at' => null,
+                'last_content_updated_at' => $timeline['needs_revision'],
+                'deleted_at' => null,
+            ],
+            5 => [
+                'key' => 'under_review_after_revision',
+                'review_status' => TestReviewStatus::UnderReview->value,
+                'current_approval_version' => 0,
+                'published_at' => null,
+                'last_content_updated_at' => $timeline['under_review'],
+                'deleted_at' => null,
+            ],
+            6 => [
+                'key' => 'approved_after_revision',
+                'review_status' => TestReviewStatus::Approved->value,
+                'current_approval_version' => 1,
+                'published_at' => $timeline['approved_after_revision'],
+                'last_content_updated_at' => $timeline['approved_after_revision'],
+                'deleted_at' => null,
+            ],
+            7 => [
+                'key' => 'deleted_after_revision',
+                'review_status' => TestReviewStatus::Deleted->value,
+                'current_approval_version' => 0,
+                'published_at' => null,
+                'last_content_updated_at' => $timeline['deleted_after_revision'],
+                'deleted_at' => $timeline['deleted_after_revision'],
+            ],
+        };
+    }
+
+    private function managementBoardWorkflowSequenceForIndex(int $index): ?int
+    {
+        if ($index % 2 === 0) {
+            return null;
+        }
+
+        $workflowSequence = intdiv($index - 1, 2) + 1;
+
+        return $workflowSequence <= self::MANAGEMENT_BOARD_WORKFLOW_TESTS_COUNT
+            ? $workflowSequence
+            : null;
+    }
+
+    private function managementBoardTimelineForTestCreatedAt(CarbonImmutable $createdAt): array
+    {
+        $plannedPublishedAt = $createdAt->addDays(2);
+
+        return [
+            'round_started' => $createdAt->addMinutes(30),
+            'initial_status' => $createdAt->addHour(),
+            'needs_revision' => $createdAt->addHours(8),
+            'approved' => $plannedPublishedAt,
+            'deleted' => $createdAt->addHours(10),
+            'under_review' => $createdAt->addDay(),
+            'reported' => $plannedPublishedAt->addHours(6),
+            'approved_after_revision' => $plannedPublishedAt,
+            'deleted_after_revision' => $plannedPublishedAt->addHours(6),
+        ];
+    }
+
+    private function seedTestManagementBoardWorkflow(array $tests, array $testBlueprints): void
+    {
+        foreach ($tests as $offset => $test) {
+            $index = $offset + 1;
+            $testBlueprint = $testBlueprints[$offset] ?? null;
+
+            if ($testBlueprint === null) {
+                throw new RuntimeException('تعذر مطابقة بيانات لوحة إدارة الاختبارات مع الاختبار المحفوظ.');
+            }
+
+            if (($testBlueprint['test_type'] ?? null) !== TestType::Public->value) {
+                continue;
+            }
+
+            $scenario = $this->managementBoardScenarioForIndex($index, $testBlueprint['created_at']);
+
+            if ($scenario === null) {
+                continue;
+            }
+
+            $timeline = $this->managementBoardTimelineForTestCreatedAt($testBlueprint['created_at']);
+            $testId = (int) $test->id;
+            $creatorUserId = (int) $test->creator_user_id;
+
+            $initialRoundDecision = match ($scenario['key']) {
+                'new' => Decision::Pending->value,
+                'approved', 'reported_after_approval' => Decision::Approved->value,
+                'deleted_from_new' => Decision::Deleted->value,
+                'needs_revision_waiting',
+                'under_review_after_revision',
+                'approved_after_revision',
+                'deleted_after_revision' => Decision::Needs_Revision->value,
+            };
+
+            $initialRoundDecidedAt = match ($scenario['key']) {
+                'approved', 'reported_after_approval' => $timeline['approved'],
+                'deleted_from_new' => $timeline['deleted'],
+                'needs_revision_waiting',
+                'under_review_after_revision',
+                'approved_after_revision',
+                'deleted_after_revision' => $timeline['needs_revision'],
+                default => null,
+            };
+
+            $initialRoundId = $this->createSeedTestReviewRound(
+                testId: $testId,
+                roundNo: 1,
+                reviewerUserId: null,
+                triggerType: TestReviewRoundsTriggerType::Initial_Submission->value,
+                decision: $initialRoundDecision,
+                basedOnApprovalVersion: 0,
+                startedAt: $timeline['round_started'],
+                decidedAt: $initialRoundDecidedAt,
+            );
+
+            $this->createSeedTestStatusHistory(
+                testId: $testId,
+                testReviewRoundId: null,
+                fromStatus: null,
+                toStatus: TestReviewStatus::New->value,
+                changedByUserId: $creatorUserId,
+                note: 'تم إنشاء سجل الحالة الابتدائي للاختبار العام.',
+                changedAt: $timeline['initial_status'],
+            );
+
+            switch ($scenario['key']) {
+                case 'new':
+                    break;
+
+                case 'approved':
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $initialRoundId,
+                        fromStatus: TestReviewStatus::New->value,
+                        toStatus: TestReviewStatus::Approved->value,
+                        changedByUserId: null,
+                        note: 'تمت الموافقة على الاختبار من لوحة الإدارة.',
+                        changedAt: $timeline['approved'],
+                    );
+                    break;
+
+                case 'deleted_from_new':
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $initialRoundId,
+                        fromStatus: TestReviewStatus::New->value,
+                        toStatus: TestReviewStatus::Deleted->value,
+                        changedByUserId: null,
+                        note: 'تم حذف الاختبار أثناء المراجعة الابتدائية.',
+                        changedAt: $timeline['deleted'],
+                    );
+                    break;
+
+                case 'reported_after_approval':
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $initialRoundId,
+                        fromStatus: TestReviewStatus::New->value,
+                        toStatus: TestReviewStatus::Approved->value,
+                        changedByUserId: null,
+                        note: 'تمت الموافقة على الاختبار قبل وصول البلاغات إلى الحد المطلوب.',
+                        changedAt: $timeline['approved'],
+                    );
+
+                    $reportRoundId = $this->createSeedTestReviewRound(
+                        testId: $testId,
+                        roundNo: 2,
+                        reviewerUserId: null,
+                        triggerType: TestReviewRoundsTriggerType::Auto_Reported->value,
+                        decision: Decision::Pending->value,
+                        basedOnApprovalVersion: 1,
+                        startedAt: $timeline['reported']->subMinutes(5),
+                        decidedAt: null,
+                    );
+
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $reportRoundId,
+                        fromStatus: TestReviewStatus::Approved->value,
+                        toStatus: TestReviewStatus::Reported->value,
+                        changedByUserId: null,
+                        note: 'تم نقل الاختبار تلقائياً إلى حالة مبلغ عنه.',
+                        changedAt: $timeline['reported'],
+                    );
+                    break;
+
+                case 'needs_revision_waiting':
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $initialRoundId,
+                        fromStatus: TestReviewStatus::New->value,
+                        toStatus: TestReviewStatus::NeedsRevision->value,
+                        changedByUserId: null,
+                        note: 'تم طلب تعديل من المشرف.',
+                        changedAt: $timeline['needs_revision'],
+                    );
+
+                    $this->createSeedTestRevisionRequest(
+                        roundId: $initialRoundId,
+                        testId: $testId,
+                        createdByUserId: $creatorUserId,
+                        resolvedAt: null,
+                        problemNote: 'يرجى توضيح الهدف العلمي في وصف الاختبار.',
+                        createdAt: $timeline['needs_revision'],
+                    );
+                    break;
+
+                case 'under_review_after_revision':
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $initialRoundId,
+                        fromStatus: TestReviewStatus::New->value,
+                        toStatus: TestReviewStatus::NeedsRevision->value,
+                        changedByUserId: null,
+                        note: 'تم طلب تعديل من المشرف.',
+                        changedAt: $timeline['needs_revision'],
+                    );
+
+                    $revisionRequestId = $this->createSeedTestRevisionRequest(
+                        roundId: $initialRoundId,
+                        testId: $testId,
+                        createdByUserId: $creatorUserId,
+                        resolvedAt: $timeline['under_review'],
+                        problemNote: 'يرجى توضيح الهدف العلمي في وصف الاختبار.',
+                        createdAt: $timeline['needs_revision'],
+                    );
+
+                    $resubmissionRoundId = $this->createSeedTestReviewRound(
+                        testId: $testId,
+                        roundNo: 2,
+                        reviewerUserId: null,
+                        triggerType: TestReviewRoundsTriggerType::Owner_Resubmission->value,
+                        decision: Decision::Pending->value,
+                        basedOnApprovalVersion: 0,
+                        startedAt: $timeline['under_review'],
+                        decidedAt: null,
+                    );
+
+                    $this->createSeedTestRevisionChangeLog(
+                        roundId: $initialRoundId,
+                        testId: $testId,
+                        revisionRequestId: $revisionRequestId,
+                        beforeValue: 'وصف مختصر لا يوضح الهدف العلمي بشكل كاف.',
+                        afterValue: (string) $testBlueprint['description'],
+                        changedByUserId: $creatorUserId,
+                        changedAt: $timeline['under_review']->subMinutes(3),
+                    );
+
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $resubmissionRoundId,
+                        fromStatus: TestReviewStatus::NeedsRevision->value,
+                        toStatus: TestReviewStatus::UnderReview->value,
+                        changedByUserId: $creatorUserId,
+                        note: 'تمت إعادة إرسال الاختبار بعد تنفيذ التعديلات المطلوبة.',
+                        changedAt: $timeline['under_review'],
+                    );
+                    break;
+
+                case 'approved_after_revision':
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $initialRoundId,
+                        fromStatus: TestReviewStatus::New->value,
+                        toStatus: TestReviewStatus::NeedsRevision->value,
+                        changedByUserId: null,
+                        note: 'تم طلب تعديل من المشرف قبل الموافقة.',
+                        changedAt: $timeline['needs_revision'],
+                    );
+
+                    $revisionRequestId = $this->createSeedTestRevisionRequest(
+                        roundId: $initialRoundId,
+                        testId: $testId,
+                        createdByUserId: $creatorUserId,
+                        resolvedAt: $timeline['under_review'],
+                        problemNote: 'يرجى توضيح الهدف العلمي في وصف الاختبار.',
+                        createdAt: $timeline['needs_revision'],
+                    );
+
+                    $resubmissionRoundId = $this->createSeedTestReviewRound(
+                        testId: $testId,
+                        roundNo: 2,
+                        reviewerUserId: null,
+                        triggerType: TestReviewRoundsTriggerType::Owner_Resubmission->value,
+                        decision: Decision::Approved->value,
+                        basedOnApprovalVersion: 0,
+                        startedAt: $timeline['under_review'],
+                        decidedAt: $timeline['approved_after_revision'],
+                    );
+
+                    $this->createSeedTestRevisionChangeLog(
+                        roundId: $initialRoundId,
+                        testId: $testId,
+                        revisionRequestId: $revisionRequestId,
+                        beforeValue: 'وصف مختصر لا يوضح الهدف العلمي بشكل كاف.',
+                        afterValue: (string) $testBlueprint['description'],
+                        changedByUserId: $creatorUserId,
+                        changedAt: $timeline['under_review']->subMinutes(3),
+                    );
+
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $resubmissionRoundId,
+                        fromStatus: TestReviewStatus::NeedsRevision->value,
+                        toStatus: TestReviewStatus::UnderReview->value,
+                        changedByUserId: $creatorUserId,
+                        note: 'تمت إعادة إرسال الاختبار بعد تنفيذ التعديلات المطلوبة.',
+                        changedAt: $timeline['under_review'],
+                    );
+
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $resubmissionRoundId,
+                        fromStatus: TestReviewStatus::UnderReview->value,
+                        toStatus: TestReviewStatus::Approved->value,
+                        changedByUserId: null,
+                        note: 'تمت الموافقة على الاختبار بعد تعديل المالك.',
+                        changedAt: $timeline['approved_after_revision'],
+                    );
+                    break;
+
+                case 'deleted_after_revision':
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $initialRoundId,
+                        fromStatus: TestReviewStatus::New->value,
+                        toStatus: TestReviewStatus::NeedsRevision->value,
+                        changedByUserId: null,
+                        note: 'تم طلب تعديل من المشرف قبل الحذف.',
+                        changedAt: $timeline['needs_revision'],
+                    );
+
+                    $revisionRequestId = $this->createSeedTestRevisionRequest(
+                        roundId: $initialRoundId,
+                        testId: $testId,
+                        createdByUserId: $creatorUserId,
+                        resolvedAt: $timeline['under_review'],
+                        problemNote: 'يرجى توضيح الهدف العلمي في وصف الاختبار.',
+                        createdAt: $timeline['needs_revision'],
+                    );
+
+                    $resubmissionRoundId = $this->createSeedTestReviewRound(
+                        testId: $testId,
+                        roundNo: 2,
+                        reviewerUserId: null,
+                        triggerType: TestReviewRoundsTriggerType::Owner_Resubmission->value,
+                        decision: Decision::Deleted->value,
+                        basedOnApprovalVersion: 0,
+                        startedAt: $timeline['under_review'],
+                        decidedAt: $timeline['deleted_after_revision'],
+                    );
+
+                    $this->createSeedTestRevisionChangeLog(
+                        roundId: $initialRoundId,
+                        testId: $testId,
+                        revisionRequestId: $revisionRequestId,
+                        beforeValue: 'وصف مختصر لا يوضح الهدف العلمي بشكل كاف.',
+                        afterValue: (string) $testBlueprint['description'],
+                        changedByUserId: $creatorUserId,
+                        changedAt: $timeline['under_review']->subMinutes(3),
+                    );
+
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $resubmissionRoundId,
+                        fromStatus: TestReviewStatus::NeedsRevision->value,
+                        toStatus: TestReviewStatus::UnderReview->value,
+                        changedByUserId: $creatorUserId,
+                        note: 'تمت إعادة إرسال الاختبار بعد تنفيذ التعديلات المطلوبة.',
+                        changedAt: $timeline['under_review'],
+                    );
+
+                    $this->createSeedTestStatusHistory(
+                        testId: $testId,
+                        testReviewRoundId: $resubmissionRoundId,
+                        fromStatus: TestReviewStatus::UnderReview->value,
+                        toStatus: TestReviewStatus::Deleted->value,
+                        changedByUserId: null,
+                        note: 'تم حذف الاختبار بعد تعديل المالك.',
+                        changedAt: $timeline['deleted_after_revision'],
+                    );
+                    break;
+            }
+        }
+    }
+
+    private function createSeedTestReviewRound(
+        int $testId,
+        int $roundNo,
+        ?int $reviewerUserId,
+        string $triggerType,
+        string $decision,
+        int $basedOnApprovalVersion,
+        CarbonImmutable $startedAt,
+        ?CarbonImmutable $decidedAt,
+    ): int {
+        return (int) DB::table('test_review_rounds')->insertGetId([
+            'test_id' => $testId,
+            'round_no' => $roundNo,
+            'reviewer_user_id' => $reviewerUserId,
+            'trigger_type' => $triggerType,
+            'decision' => $decision,
+            'based_on_approval_version' => $basedOnApprovalVersion,
+            'started_at' => $startedAt,
+            'decided_at' => $decidedAt,
+            'created_at' => $startedAt,
+            'updated_at' => $decidedAt ?? $startedAt,
+        ]);
+    }
+
+    private function createSeedTestStatusHistory(
+        int $testId,
+        ?int $testReviewRoundId,
+        ?string $fromStatus,
+        string $toStatus,
+        ?int $changedByUserId,
+        string $note,
+        CarbonImmutable $changedAt,
+    ): void {
+        DB::table('test_status_histories')->insert([
+            'test_id' => $testId,
+            'test_review_round_id' => $testReviewRoundId,
+            'from_status' => $fromStatus,
+            'to_status' => $toStatus,
+            'changed_by_user_id' => $changedByUserId,
+            'note' => $note,
+            'created_at' => $changedAt,
+            'updated_at' => $changedAt,
+        ]);
+    }
+
+    private function createSeedTestRevisionRequest(
+        int $roundId,
+        int $testId,
+        int $createdByUserId,
+        ?CarbonImmutable $resolvedAt,
+        string $problemNote,
+        CarbonImmutable $createdAt,
+    ): int {
+        return (int) DB::table('test_revision_requests')->insertGetId([
+            'test_review_round_id' => $roundId,
+            'test_id' => $testId,
+            'revision_type' => RevisionType::TestDescription->value,
+            'target_question_id' => null,
+            'target_option_id' => null,
+            'created_by_user_id' => $createdByUserId,
+            'resolved_at' => $resolvedAt,
+            'problem_note' => $problemNote,
+            'created_at' => $createdAt,
+            'updated_at' => $resolvedAt ?? $createdAt,
+        ]);
+    }
+
+    private function createSeedTestRevisionChangeLog(
+        int $roundId,
+        int $testId,
+        int $revisionRequestId,
+        string $beforeValue,
+        string $afterValue,
+        int $changedByUserId,
+        CarbonImmutable $changedAt,
+    ): void {
+        DB::table('test_revision_change_logs')->insert([
+            'test_review_round_id' => $roundId,
+            'test_id' => $testId,
+            'revision_request_id' => $revisionRequestId,
+            'target_question_id' => null,
+            'target_option_id' => null,
+            'revision_type' => RevisionType::TestDescription->value,
+            'before_value' => $beforeValue,
+            'after_value' => $afterValue,
+            'changed_by_user_id' => $changedByUserId,
+            'created_at' => $changedAt,
+            'updated_at' => $changedAt,
+        ]);
+    }
+
     private function seedTestEngagements(array $tests, array $testBlueprints, array $users, CarbonImmutable $now): void
     {
         $bookmarkRows = [];
@@ -504,6 +1069,11 @@ class TestDiscoveryRecommendationSeeder extends Seeder
 
             if ($testBlueprint === null) {
                 throw new RuntimeException('تعذر مطابقة بيانات التفاعل مع الاختبار المحفوظ.');
+            }
+
+            if (($testBlueprint['review_status'] ?? null) !== TestReviewStatus::Approved->value
+                || ($testBlueprint['published_at'] ?? null) === null) {
+                continue;
             }
 
             $testIndex = $offset + 1;
@@ -685,6 +1255,11 @@ class TestDiscoveryRecommendationSeeder extends Seeder
 
             if ($testBlueprint === null) {
                 throw new RuntimeException('تعذر مطابقة بيانات المراجعة مع الاختبار المحفوظ.');
+            }
+
+            if (($testBlueprint['review_status'] ?? null) !== TestReviewStatus::Approved->value
+                || ($testBlueprint['published_at'] ?? null) === null) {
+                continue;
             }
 
             $testIndex = $offset + 1;

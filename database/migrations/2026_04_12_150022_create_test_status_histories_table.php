@@ -18,8 +18,6 @@ return new class extends Migration
             $table->foreignId('changed_by_user_id')->nullable()->constrained('users')->cascadeOnDelete();
             $table->text('note')->nullable();
             $table->timestamps();
-
-
         });
     }
 
