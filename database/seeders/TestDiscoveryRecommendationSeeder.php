@@ -1375,7 +1375,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         $purchaseRows = [];
         $currency = (string) config('payments.default_currency', 'usd');
         $paymentProvider = (string) config('payments.default_provider', 'stripe');
-        $platformFeePercent = (float) config('payments.platform_fee_percent', 20);
+        $platformFeePercent = (float) config('payments.platform_fee_percent', 10);
 
         foreach ($users as $offset => $buyer) {
             $buyerIndex = $offset + 1;

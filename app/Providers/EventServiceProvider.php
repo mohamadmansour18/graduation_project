@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Events\LibraryMaterialDeletedByOwner;
 use App\Events\LibraryMaterialLikeChanged;
+use App\Events\TestApproved;
 use App\Events\TestBookmarkStateChanged;
 use App\Events\TestDeleted;
 use App\Events\TestDownloaded;
@@ -15,6 +16,7 @@ use App\Events\UserOnboardingCompleted;
 use App\Listeners\UpdateAdminFinancialStatsAfterTestPurchase;
 use App\Listeners\UpdateAdminLibraryMaterialMonthlyStats;
 use App\Listeners\UpdateAdminLibraryOnMaterialDeleted;
+use App\Listeners\UpdatePublishedTestSummaryStats;
 use App\Listeners\UpdateTestBookmarkSummaryTables;
 use App\Listeners\UpdateTestDownloadSummaryTables;
 use App\Listeners\UpdateTestLikeSummaryTables;
@@ -76,6 +78,10 @@ class EventServiceProvider extends ServiceProvider
 
         UserOnboardingCompleted::class => [
             UpdateUserStatsSummaryAfterOnboardingCompleted::class,
+        ],
+
+        TestApproved::class => [
+            UpdatePublishedTestSummaryStats::class,
         ],
     ];
 

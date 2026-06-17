@@ -454,4 +454,67 @@ class TestException extends ApiException
             status: 404
         );
     }
+
+    public static function privateTestDoesNotNeedReview(): self
+    {
+        return new self(
+            title: '! لا يمكن تنفيذ العملية',
+            message: 'الاختبار الخاص لا يمر بدورة مراجعة ولا يمكن الموافقة عليه من لوحة التحكم',
+            status: 422
+        );
+    }
+
+    public static function testAlreadyApproved(): self
+    {
+        return new self(
+            title: '! لا يمكن الموافقة على الاختبار',
+            message: 'تمت الموافقة على هذا الاختبار مسبقاً',
+            status: 409
+        );
+    }
+
+    public static function deletedTestCannotBeApproved(): self
+    {
+        return new self(
+            title: '! لا يمكن الموافقة على الاختبار',
+            message: 'لا يمكن الموافقة على اختبار تم حذفه',
+            status: 409
+        );
+    }
+
+    public static function needsRevisionTestCannotBeApproved(): self
+    {
+        return new self(
+            title: '! لا يمكن الموافقة على الاختبار',
+            message: 'لا يمكن الموافقة على اختبار يحتاج إلى تعديل قبل أن يعيد المالك إرساله للمراجعة',
+            status: 422
+        );
+    }
+
+    public static function testStatusChangedByAnotherReviewer(): self
+    {
+        return new self(
+            title: '! تم تغيير حالة الاختبار',
+            message: 'تم تغيير حالة هذا الاختبار من قبل مشرف آخر، يرجى تحديث البيانات',
+            status: 409
+        );
+    }
+
+    public static function pendingReviewRoundNotFound(): self
+    {
+        return new self(
+            title: '! لا توجد جولة مراجعة مفتوحة',
+            message: 'لا توجد جولة مراجعة معلقة يمكن إغلاقها لهذا الاختبار',
+            status: 409
+        );
+    }
+
+    public static function testCannotBeApprovedFromCurrentStatus(string $status): self
+    {
+        return new self(
+            title: '! لا يمكن الموافقة على الاختبار',
+            message: "لا يمكن الموافقة على الاختبار من حالته الحالية: {$status}",
+            status: 422
+        );
+    }
 }

@@ -82,6 +82,13 @@ pdftotext -v
 pdfinfo -v
 
 ------------------
+{{ LARAVEL REVERB }}
+1- sail composer install
+2- sail down
+3- sail up -d --build
+4- sail artisan reverb:start --host=0.0.0.0 --port=8080 --debug
+
+------------------
 مراقبة log لحاوية ما :
 docker logs --tail 0 -f graduation_project_nerd-ollama-1
 

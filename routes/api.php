@@ -278,12 +278,20 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
         Route::middleware(['jwt.auth.api' , 'role:owner,supervisor'])->group(function () {
             Route::get('/logout' , [AuthController::class , 'logout']);
 
+            //HOME
             Route::prefix('home')->group(function () {
                 Route::get('/test-yearly-activity' , [HomeDashboardController::class , 'yearlyTestActivity']);
                 Route::get('/library_stats' , [HomeDashboardController::class , 'usersAndLibraryStats']);
             });
+
+            //TEST_MANAGEMENT
             Route::prefix('test-management')->group(function () {
                 Route::get('/management-board' , [TestDashboardController::class , 'managementBoard']);
+                Route::get('/management-board/details/{testId}' , [TestDashboardController::class , 'managementTestDetails']);
+
+                Route::middleware('idempotency')->group(function () {
+                    Route::post('/approve/{testId}' , [TestDashboardController::class , 'approveManagementTest']);
+                });
             });
 
         });
