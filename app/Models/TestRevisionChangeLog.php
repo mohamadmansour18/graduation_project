@@ -26,6 +26,7 @@ class TestRevisionChangeLog extends Model
         'before_value',
         'after_value',
         'changed_by_user_id',
+        'target_option_id'
     ];
 
     protected $casts = [
@@ -55,5 +56,10 @@ class TestRevisionChangeLog extends Model
     public function targetQuestion(): BelongsTo
     {
         return $this->belongsTo(TestQuestion::class, 'target_question_id');
+    }
+
+    public function targetOption(): BelongsTo
+    {
+        return $this->belongsTo(TestQuestionOption::class, 'target_option_id');
     }
 }

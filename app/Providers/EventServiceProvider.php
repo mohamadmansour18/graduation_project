@@ -6,6 +6,7 @@ use App\Events\LibraryMaterialDeletedByOwner;
 use App\Events\LibraryMaterialLikeChanged;
 use App\Events\TestApproved;
 use App\Events\TestBookmarkStateChanged;
+use App\Events\TestDashboardDeleted;
 use App\Events\TestDeleted;
 use App\Events\TestDownloaded;
 use App\Events\TestLikeStateChanged;
@@ -13,6 +14,7 @@ use App\Events\TestPurchasePaid;
 use App\Events\TestReviewStateChanged;
 use App\Events\UserDiscoverySourceSaved;
 use App\Events\UserOnboardingCompleted;
+use App\Listeners\DecreasePublishedTestSummaryStats;
 use App\Listeners\UpdateAdminFinancialStatsAfterTestPurchase;
 use App\Listeners\UpdateAdminLibraryMaterialMonthlyStats;
 use App\Listeners\UpdateAdminLibraryOnMaterialDeleted;
@@ -82,6 +84,10 @@ class EventServiceProvider extends ServiceProvider
 
         TestApproved::class => [
             UpdatePublishedTestSummaryStats::class,
+        ],
+
+        TestDashboardDeleted::class => [
+            DecreasePublishedTestSummaryStats::class,
         ],
     ];
 

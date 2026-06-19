@@ -46,6 +46,13 @@ class UpdatePublishedTestSummaryStats implements ShouldQueue
                 month: $month,
                 now: $now
             );
+
+            $this->incrementUserYearlyTestPublishMonthStats(
+                userId: $event->creatorUserId,
+                year: $year,
+                month: $month,
+                now: $now
+            );
         });
     }
 
@@ -137,6 +144,37 @@ class UpdatePublishedTestSummaryStats implements ShouldQueue
                 updated_at = VALUES(updated_at)
             ",
             [
+                $year,
+                $month,
+                $now,
+                $now,
+            ]
+        );
+    }
+
+    private function incrementUserYearlyTestPublishMonthStats(
+        int $userId,
+        int $year,
+        int $month,
+        mixed $now
+    ): void {
+        DB::statement(
+            "
+        INSERT INTO user_yearly_test_publish_month_stats (
+            user_id,
+            year,
+            month_no,
+            published_tests_count,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, 1, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            published_tests_count = published_tests_count + 1,
+            updated_at = VALUES(updated_at)
+        ",
+            [
+                $userId,
                 $year,
                 $month,
                 $now,

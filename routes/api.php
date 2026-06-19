@@ -288,9 +288,18 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             Route::prefix('test-management')->group(function () {
                 Route::get('/management-board' , [TestDashboardController::class , 'managementBoard']);
                 Route::get('/management-board/details/{testId}' , [TestDashboardController::class , 'managementTestDetails']);
+                Route::get('/questions/{testId}' , [TestDashboardController::class , 'content']);
+                Route::get('/questions-samples/{testId}' , [TestDashboardController::class , 'questionsSamples']);
+                Route::get('/reviews/{testId}' , [TestDashboardController::class , 'managementTestReviews']);
+                Route::get('/status-history/{tetsId}' , [TestDashboardController::class , 'managementTestStatusHistory']);
+                Route::get('/reports/{testId}' , [TestDashboardController::class , 'managementTestReports']);
 
                 Route::middleware('idempotency')->group(function () {
                     Route::post('/approve/{testId}' , [TestDashboardController::class , 'approveManagementTest']);
+                    Route::post('/delete/{testId}' , [TestDashboardController::class , 'deleteManagementTest']);
+                    Route::post('/need-revision/{testId}' , [TestDashboardController::class , 'requestManagementTestRevisions']);
+
+                    Route::delete('/delete/review/{reviewId}' , [TestDashboardController::class , 'deleteManagementTestReview']);
                 });
             });
 
@@ -298,6 +307,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
         Route::middleware(['jwt.auth.api' , 'role:owner'])->group(function () {
             Route::get('/financial-stats' , [HomeDashboardController::class , 'financialStats']);
+
         });
 
 

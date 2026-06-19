@@ -2,7 +2,7 @@
 
 namespace App\Events;
 
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
@@ -12,16 +12,17 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class TestReviewStateChanged implements ShouldDispatchAfterCommit
+class TestDashboardDeleted implements ShouldDispatchAfterCommit
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
-        public readonly int $test_id,
-        public readonly int $creator_user_id,
-        public readonly int $actor_user_id,
-        public readonly int $delta,
-        public readonly Carbon|string $effective_at,
+        public readonly int $testId,
+        public readonly int $creatorUserId,
+        public readonly CarbonImmutable $deletedAt,
+        public readonly ?int $publishedYear,
+        public readonly ?int $publishedMonth,
+        public readonly bool $shouldDecreasePublishCounters
     )
     {}
 

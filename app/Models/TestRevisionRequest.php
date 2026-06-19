@@ -27,6 +27,7 @@ class TestRevisionRequest extends Model
         'target_question_id',
         'created_by_user_id',
         'resolved_at',
+        'target_option_id',
         'problem_note',
     ];
 
@@ -58,5 +59,10 @@ class TestRevisionRequest extends Model
     public function revisionRequestTestRevisionChangeLogs(): HasMany
     {
         return $this->hasMany(TestRevisionChangeLog::class, 'revision_request_id');
+    }
+
+    public function targetOption(): BelongsTo
+    {
+        return $this->belongsTo(TestQuestionOption::class, 'target_option_id');
     }
 }

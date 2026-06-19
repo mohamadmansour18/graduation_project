@@ -517,4 +517,113 @@ class TestException extends ApiException
             status: 422
         );
     }
+
+    public static function privateTestCannotBeDeletedFromDashboard(): self
+    {
+        return new self(
+            title: '! لا يمكن حذف الاختبار',
+            message: 'الاختبار الخاص لا يظهر في لوحة مراجعة الاختبارات ولا يمكن حذفه من هنا',
+            status: 422
+        );
+    }
+
+    public static function deletedTestCannotBeDeletedAgain(): self
+    {
+        return new self(
+            title: '! لا يمكن حذف الاختبار',
+            message: 'تم حذف هذا الاختبار مسبقاً',
+            status: 409
+        );
+    }
+
+    public static function deletedTestCannotRequestRevisions(): self
+    {
+        return new self(
+            title: '! لا يمكن طلب تعديلات',
+            message: 'لا يمكن طلب تعديلات على اختبار تم حذفه',
+            status: 409
+        );
+    }
+
+    public static function approvedTestCannotRequestRevisions(): self
+    {
+        return new self(
+            title: '! لا يمكن طلب تعديلات',
+            message: 'لا يمكن طلب تعديلات على اختبار تمت الموافقة عليه إلا إذا دخل دورة مراجعة بسبب بلاغات',
+            status: 422
+        );
+    }
+
+    public static function underReviewTestCannotRequestRevisions(): self
+    {
+        return new self(
+            title: '! لا يمكن طلب تعديلات',
+            message: 'الاختبار قيد المراجعة بعد تعديل المستخدم، يمكنك فقط الموافقة عليه أو حذفه',
+            status: 422
+        );
+    }
+
+    public static function revisionRoundNotFound(): self
+    {
+        return new self(
+            title: '! جولة المراجعة غير موجودة',
+            message: 'لم يتم العثور على جولة مراجعة مناسبة لإضافة التعديلات',
+            status: 409
+        );
+    }
+
+    public static function onlyOriginalReviewerCanAddRevisions(): self
+    {
+        return new self(
+            title: '! لا يمكن إضافة التعديلات',
+            message: 'المشرف الذي طلب التعديلات أول مرة هو فقط من يمكنه إضافة تعديلات أخرى لهذه الجولة',
+            status: 403
+        );
+    }
+
+    public static function revisionRequestsLimitExceeded(int $remaining): self
+    {
+        return new self(
+            title: '! تجاوزت الحد المسموح',
+            message: "لا يمكن أن يتجاوز مجموع تعديلات الجولة 8 تعديلات. يمكنك إضافة {$remaining} فقط.",
+            status: 422
+        );
+    }
+
+    public static function questionPositionNotFound(int $position): self
+    {
+        return new self(
+            title: '! السؤال غير موجود',
+            message: "لا يوجد سؤال بالرقم {$position} ضمن هذا الاختبار",
+            status: 422
+        );
+    }
+
+    public static function optionPositionNotFound(int $questionPosition, int $optionPosition): self
+    {
+        return new self(
+            title: '! الإجابة غير موجودة',
+            message: "لا توجد إجابة رقم {$optionPosition} ضمن السؤال رقم {$questionPosition}",
+            status: 422
+        );
+    }
+
+    public static function testReviewNotFound(): self
+    {
+        return new self(
+            title: '! التعليق غير موجود',
+            message: 'لم يتم العثور على التعليق المطلوب',
+            status: 404
+        );
+    }
+
+    public static function privateTestReviewCannotBeManagedFromDashboard(): self
+    {
+        return new self(
+            title: '! لا يمكن تنفيذ العملية',
+            message: 'لا يمكن إدارة تعليقات اختبار خاص من لوحة مراجعة الاختبارات',
+            status: 422
+        );
+    }
+
 }

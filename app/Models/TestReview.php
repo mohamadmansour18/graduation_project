@@ -45,7 +45,7 @@ class TestReview extends Model
         return $this->hasOne(TestReviewFeedback::class, 'test_review_id');
     }
 
-    public function feedbacks()
+    public function feedbacks(): TestReview|\Illuminate\Database\Eloquent\Builder|HasMany
     {
         return $this->hasMany(TestReviewFeedback::class, 'test_review_id');
     }
