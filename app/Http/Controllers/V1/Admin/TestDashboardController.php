@@ -15,6 +15,7 @@ use App\Http\Resources\TestManagementReportsResource;
 use App\Http\Resources\TestManagementReviewsResource;
 use App\Http\Resources\TestManagementStatusHistoryResource;
 use App\Http\Resources\Tests\TestContentResource;
+use App\Services\Admin\TestAiEvaluation\TestAiEvaluationService;
 use App\Services\Admin\TestDashboardService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -165,4 +166,41 @@ class TestDashboardController extends Controller
         );
     }
 
+    public function requestAiEvaluation(int $test, TestAiEvaluationService $service): JsonResponse
+    {
+        $result = $service->create(
+            user: Auth::user(),
+            testId: $test
+        );
+
+        return $this->dataResponse(
+            data: $result,
+            title: '! تم استقبال طلب تقييم الاختبار بالذكاء الاصطناعي بنجاح',
+            statusCode: 202
+        );
+    }
+
+    public function aiEvaluationStatus(int $evaluation, TestAiEvaluationService $service): JsonResponse
+    {
+        $result = $service->show($evaluation);
+
+        return $this->dataResponse(
+            data: $result,
+            title: '! تم جلب حالة تقييم الاختبار بالذكاء الاصطناعي بنجاح'
+        );
+    }
+
+    public function updateManagementTestRevisionRequests(RequestTestRevisionsRequest $request, int $test, TestDashboardService $service): JsonResponse
+    {
+        $service->updateManagementTestRevisionRequests(
+            testId: $test,
+            reviewer: $request->user(),
+            revisions: $request->validated('revisions')
+        );
+
+        return $this->successResponse(
+            title: '! تم تعديل طلبات التعديل بنجاح',
+            message: 'تم حفظ قائمة التعديلات المطلوبة من المستخدم بنجاح'
+        );
+    }
 }

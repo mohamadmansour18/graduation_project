@@ -16,6 +16,7 @@ class CacheKeys
     public const string TAG_INTEREST_CATEGORIES = 'interest_categories';
     public const string TAG_TESTS = 'tests';
     public const string TAG_TEST_INTERESTS = 'test_interests';
+    public const string TAG_TEST_AI_EVALUATIONS = 'test_ai_evaluations';
     public const string TAG_PROFILE = 'profile';
     public const string TAG_USER_PROFILE = 'user_profile';
 
@@ -35,6 +36,11 @@ class CacheKeys
     public static function testPdfDownloadLock(int $testId): string
     {
         return "tests:{$testId}:pdf_download:lock";
+    }
+
+    public static function testAiEvaluation(int $testId, string $contentHash): string
+    {
+        return "tests:{$testId}:ai_evaluation:{$contentHash}";
     }
 
     public static function myBasicProfileInfo(int $userId): string
@@ -67,6 +73,15 @@ class CacheKeys
         ];
     }
 
+    public static function testAiEvaluationTags(int $testId): array
+    {
+        return [
+            self::TAG_TESTS,
+            self::TAG_TEST_AI_EVALUATIONS,
+            "test:{$testId}",
+        ];
+    }
+
     public static function myBasicProfileInfoTags(int $userId): array
     {
         return [
@@ -91,6 +106,17 @@ class CacheKeys
     public static function clearTestsByInterest(): void
     {
         Cache::tags(self::testsByInterestTags())->flush();
+    }
+
+    public static function clearTestAiEvaluation(int $testId, string $contentHash): void
+    {
+        Cache::tags(self::testAiEvaluationTags($testId))
+            ->forget(self::testAiEvaluation($testId, $contentHash));
+    }
+
+    public static function clearTestAiEvaluations(int $testId): void
+    {
+        Cache::tags(self::testAiEvaluationTags($testId))->flush();
     }
 
     public static function clearMyBasicProfileInfo(int $userId): void

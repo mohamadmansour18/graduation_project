@@ -12,11 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 class IdempotencyMiddleware
 {
     use ApiResponse;
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
+
     public function handle(Request $request, Closure $next): Response
     {
         if (! in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {

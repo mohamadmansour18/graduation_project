@@ -649,4 +649,54 @@ class TestDashboardRepository
             ->orderByDesc('id')
             ->cursorPaginate($perPage);
     }
+
+    public function findTestForRevisionRequestsUpdateWithLock(int $testId): ?Test
+    {
+        return Test::query()
+            ->withTrashed()
+            ->select([
+                'id',
+                'creator_user_id',
+                'test_type',
+                'review_status',
+                'deleted_at',
+            ])
+            ->whereKey($testId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function deleteRevisionRequestsForRound(int $roundId): void
+    {
+        TestRevisionRequest::query()
+            ->where('test_review_round_id', $roundId)
+            ->delete();
+    }
+
+
+    public function createRevisionRequests2(int $testId, int $roundId, int $createdByUserId, array $requests): Collection
+    {
+        $now = now();
+
+        $rows = array_map(function (array $request) use ($testId, $roundId, $createdByUserId, $now) {
+            return [
+                'test_review_round_id' => $roundId,
+                'test_id' => $testId,
+                'revision_type' => $request['revision_type'],
+                'target_question_id' => $request['target_question_id'],
+                'target_option_id' => $request['target_option_id'],
+                'created_by_user_id' => $createdByUserId,
+                'problem_note' => $request['problem_note'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }, $requests);
+
+        TestRevisionRequest::query()->insert($rows);
+
+        return TestRevisionRequest::query()
+            ->where('test_review_round_id', $roundId)
+            ->orderBy('id')
+            ->get();
+    }
 }

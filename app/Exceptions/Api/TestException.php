@@ -626,4 +626,22 @@ class TestException extends ApiException
         );
     }
 
+    public static function testMustBeNeedsRevisionToUpdateRevisionRequests(): self
+    {
+        return new self(
+            title: '! لا يمكن تعديل طلبات التعديل',
+            message: 'يمكن تعديل طلبات التعديل فقط عندما تكون حالة الاختبار يحتاج تعديل',
+            status: 422
+        );
+    }
+
+    public static function onlyOriginalReviewerCanUpdateRevisions(): self
+    {
+        return new self(
+            title: '! لا يمكن تعديل طلبات التعديل',
+            message: 'المشرف الذي طلب التعديلات أول مرة هو فقط من يمكنه تعديلها',
+            status: 403
+        );
+    }
+
 }

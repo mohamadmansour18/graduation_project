@@ -23,8 +23,7 @@ class TestDashboardService
     public function __construct(
         private readonly TestDashboardRepository $repository
     )
-    {
-    }
+    {}
 
     public function getManagementBoard(?string $date = null): array
     {
@@ -822,4 +821,68 @@ class TestDashboardService
             'reports' => $reportsPaginator,
         ];
     }
+
+    /////////////////////////////////////////////////////////////
+
+    public function updateManagementTestRevisionRequests(int $testId, User $reviewer, array $revisions): void
+    {
+        DB::transaction(function () use ($testId, $reviewer, $revisions) {
+            $test = $this->repository->findTestForRevisionRequestsUpdateWithLock($testId);
+
+            if (! $test) {
+                throw TestException::NotFound();
+            }
+
+            $this->ensureCanUpdateRevisionRequests($test);
+
+            $round = $this->repository->findLatestNeedsRevisionRoundForTestWithLock($test->id);
+
+            if (! $round) {
+                throw TestException::revisionRoundNotFound();
+            }
+
+            if ((int) $round->reviewer_user_id !== (int) $reviewer->id) {
+                throw TestException::onlyOriginalReviewerCanUpdateRevisions();
+            }
+
+            $normalizedRequests = $this->normalizeRevisionRequests(
+                testId: $test->id,
+                revisions: $revisions
+            );
+
+            $this->repository->deleteRevisionRequestsForRound($round->id);
+
+            $this->repository->createRevisionRequests(
+                testId: $test->id,
+                roundId: $round->id,
+                createdByUserId: $reviewer->id,
+                requests: $normalizedRequests
+            );
+
+            Log::channel('audit')->info('test_revision_requests_updated_from_dashboard', [
+                'test_id' => $test->id,
+                'review_round_id' => $round->id,
+                'reviewer_user_id' => $reviewer->id,
+                'revision_requests_count' => count($normalizedRequests),
+            ]);
+        });
+    }
+
+    private function ensureCanUpdateRevisionRequests(Test $test): void
+    {
+        if ($this->isPrivateTest($test)) {
+            throw TestException::privateTestDoesNotNeedReview();
+        }
+
+        if ($test->trashed()) {
+            throw TestException::deletedTestCannotRequestRevisions();
+        }
+
+        $status = $this->normalizeStatus($test->review_status);
+
+        if ($status !== TestReviewStatus::NeedsRevision) {
+            throw TestException::testMustBeNeedsRevisionToUpdateRevisionRequests();
+        }
+    }
+
 }

@@ -293,11 +293,14 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/reviews/{testId}' , [TestDashboardController::class , 'managementTestReviews']);
                 Route::get('/status-history/{tetsId}' , [TestDashboardController::class , 'managementTestStatusHistory']);
                 Route::get('/reports/{testId}' , [TestDashboardController::class , 'managementTestReports']);
+                Route::get('/ai-evaluation/status/{evaluationId}' , [TestDashboardController::class , 'aiEvaluationStatus']);
 
                 Route::middleware('idempotency')->group(function () {
                     Route::post('/approve/{testId}' , [TestDashboardController::class , 'approveManagementTest']);
                     Route::post('/delete/{testId}' , [TestDashboardController::class , 'deleteManagementTest']);
                     Route::post('/need-revision/{testId}' , [TestDashboardController::class , 'requestManagementTestRevisions']);
+                    Route::put('/update/need-revision/{testId}' , [TestDashboardController::class , 'updateManagementTestRevisionRequests']);
+                    Route::post('/ai-evaluation/{testId}' , [TestDashboardController::class , 'requestAiEvaluation']);
 
                     Route::delete('/delete/review/{reviewId}' , [TestDashboardController::class , 'deleteManagementTestReview']);
                 });

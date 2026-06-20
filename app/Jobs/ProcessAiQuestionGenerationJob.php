@@ -33,56 +33,23 @@ class ProcessAiQuestionGenerationJob implements ShouldQueue
     ): void
     {
 
-        Log::channel('errors')->info('AI question generation job started.', [
-            'generation_request_id' => $this->generationRequestId,
-        ]);
-
         $generationRequest = $repository->findWithAssetsById($this->generationRequestId);
 
         if (! $generationRequest) {
-            Log::channel('errors')->warning('AI question generation request not found.', [
-                'generation_request_id' => $this->generationRequestId,
-            ]);
             return;
         }
 
-        Log::channel('errors')->info('AI question generation request loaded.', [
-            'generation_request_id' => $generationRequest->id,
-            'status' => $generationRequest->status,
-            'assets_count' => $generationRequest->assets->count(),
-        ]);
-
         if ($generationRequest->status !== 'Pending') {
-            Log::channel('errors')->warning('AI question generation job skipped because request is not pending.', [
-                'generation_request_id' => $generationRequest->id,
-                'status' => $generationRequest->status,
-            ]);
             return;
         }
 
         $repository->markAsProcessing($generationRequest);
 
-        Log::channel('errors')->info('AI question generation request marked as processing.', [
-            'generation_request_id' => $generationRequest->id,
-        ]);
-
         try {
-            Log::channel('errors')->info('AI question generation provider orchestration started.', [
-                'generation_request_id' => $generationRequest->id,
-            ]);
 //            $provider = $providerManager->default();
 //
 //            $result = $provider->generate($generationRequest);
             $result = $providerOrchestrator->generate($generationRequest);
-
-            Log::channel('errors')->info('AI question generation provider orchestration finished.', [
-                'generation_request_id' => $generationRequest->id,
-                'provider' => $result['provider'] ?? null,
-                'model' => $result['model'] ?? null,
-                'questions_count' => isset($result['questions']) && is_array($result['questions'])
-                    ? count($result['questions'])
-                    : null,
-            ]);
 
             $repository->markAsCompleted(
                 generationRequest: $generationRequest,
@@ -91,24 +58,11 @@ class ProcessAiQuestionGenerationJob implements ShouldQueue
                 model: $result['model']
             );
 
-            Log::channel('errors')->info('AI question generation request marked as completed.', [
-                'generation_request_id' => $generationRequest->id,
-            ]);
-
             $fileStorageService->deleteStoredAssets(
                 $generationRequest->fresh('assets')
             );
 
-            Log::channel('errors')->info('AI question generation stored assets deleted.', [
-                'generation_request_id' => $generationRequest->id,
-            ]);
-
         } catch (\Throwable $exception) {
-
-            Log::channel('errors')->error('AI question generation job failed.', [
-                'generation_request_id' => $this->generationRequestId,
-                'error' => $exception->getMessage(),
-            ]);
 
             $generationRequest = $repository->findWithAssetsById($this->generationRequestId);
 
@@ -129,12 +83,6 @@ class ProcessAiQuestionGenerationJob implements ShouldQueue
                     failureCode: $failureCode,
                     failureMessage: $failureMessage
                 );
-
-                Log::channel('errors')->info('AI question generation request marked as failed.', [
-                    'generation_request_id' => $generationRequest->id,
-                    'failure_code' => $failureCode,
-                    'failure_message' => $failureMessage,
-                ]);
             }
 
             throw $exception;
