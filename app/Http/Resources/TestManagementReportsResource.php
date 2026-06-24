@@ -40,7 +40,8 @@ class TestManagementReportsResource extends JsonResource
                                 'name' => $report->user?->name,
                                 'avatar' => ImageProcessor::urlOrDefault(
                                     $report->user?->userProfile?->avatar_path,
-                                    'defaults/User_Avatar_Default.svg'
+                                    'defaults/default-avatar.svg',
+                                    $report->user?->userProfile?->avatar_disk,
                                 ),
                                 'is_academically_verified' => (bool) ($report->user?->is_academically_verified ?? false),
                             ],

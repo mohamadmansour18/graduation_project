@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\V1\Admin\AuthDashboardController;
 use App\Http\Controllers\V1\Admin\HomeDashboardController;
+use App\Http\Controllers\V1\Admin\LibraryDashboardController;
 use App\Http\Controllers\V1\Admin\TestDashboardController;
 use App\Http\Controllers\V1\AiQuestionGeneration\AiQuestionGenerationController;
 use App\Http\Controllers\V1\Auth\AuthController;
@@ -306,6 +307,14 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 });
             });
 
+            //LIBRARY
+            Route::prefix('library-management')->group(function () {
+                Route::get('/library-materials', [LibraryDashboardController::class, 'libraryMaterials']);
+                Route::get('/search' , [LibraryDashboardController::class , 'search']);
+                Route::get('/library-materials/details/{materialId}' , [LibraryDashboardController::class , 'showLibraryMaterial']);
+                Route::get('/reports/{materialId}' , [LibraryDashboardController::class, 'libraryMaterialReports']);
+                Route::get('/status-history/{materialId}' , [LibraryDashboardController::class, 'libraryMaterialStatusHistory']);
+            });
         });
 
         Route::middleware(['jwt.auth.api' , 'role:owner'])->group(function () {
@@ -327,3 +336,5 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
 TODO: تعديل اختبار فيه مشكلة لازم تشوفها وتحلها
  * */
+
+//TODO: لاازم عند انشاء المحتوى ان تمر الصور او الملفات بعملية معالجة استباقية

@@ -4,8 +4,11 @@ namespace Database\Seeders;
 
 use App\Enums\Asset_type;
 use App\Enums\Gender;
+use App\Enums\LibraryDecision;
 use App\Enums\LibraryMaterialContentKind;
 use App\Enums\LibraryMaterialReviewStatus;
+use App\Enums\LibraryReportReason;
+use App\Enums\LibraryTriggerType;
 use App\Enums\SystemRole;
 use App\Enums\TargetLevel;
 use App\Enums\VisibilityType;
@@ -24,6 +27,7 @@ class LibraryMaterialArabicSeeder extends Seeder
     private const int MATERIALS_PER_SEEDED_YEAR = 200;
     private const int CURRENT_MATERIAL_YEAR = 2026;
     private const int PREVIOUS_MATERIAL_YEAR = 2025;
+    private const int REPORTED_MATERIALS_COUNT = 150;
     private const string USER_EMAIL_DOMAIN = 'library.seed.nerd.local';
     private const string MATERIAL_TITLE_PREFIX = 'مكتبة نيرد';
 
@@ -87,6 +91,9 @@ class LibraryMaterialArabicSeeder extends Seeder
                 $this->insertUserInteractions('library_material_bookmarks', $libraryMaterialId, $bookmarkUserIds, $timestamps);
                 $this->insertUserInteractions('library_material_download_logs', $libraryMaterialId, $downloadUserIds, $timestamps);
             }
+
+            $this->insertMaterialReports($usersByEmail);
+            $this->insertMaterialReviewWorkflows();
 
             $this->rebuildAdminYearlyLibraryMaterialActivityMonthStats([
                 self::PREVIOUS_MATERIAL_YEAR,
@@ -217,6 +224,226 @@ class LibraryMaterialArabicSeeder extends Seeder
         }
 
         return array_values(array_unique($picked));
+    }
+
+    private function insertMaterialReports(array $usersByEmail): void
+    {
+        $materials = DB::table('library_material')
+            ->select(['id', 'creator_user_id', 'current_approval_version', 'published_at'])
+            ->where('title', 'like', self::MATERIAL_TITLE_PREFIX . '%')
+            ->inRandomOrder()
+            ->limit(self::REPORTED_MATERIALS_COUNT)
+            ->get();
+
+        $userIds = array_map(
+            static fn(object $user): int => (int) $user->id,
+            array_values($usersByEmail),
+        );
+        $reasons = array_column(LibraryReportReason::cases(), 'value');
+        $reportRows = [];
+        $counterRows = [];
+
+        foreach ($materials as $material) {
+            $availablePairs = [];
+
+            foreach ($userIds as $userId) {
+                if ($userId === (int) $material->creator_user_id) {
+                    continue;
+                }
+
+                foreach ($reasons as $reason) {
+                    $availablePairs[] = [
+                        'user_id' => $userId,
+                        'reason' => $reason,
+                    ];
+                }
+            }
+
+            $selectedPairs = collect($availablePairs)
+                ->shuffle()
+                ->take(random_int(10, 20))
+                ->values();
+            $reportedAt = CarbonImmutable::parse($material->published_at);
+            $reasonCounters = [];
+
+            foreach ($selectedPairs as $offset => $pair) {
+                $reportTimestamp = $reportedAt->addMinutes($offset + 1);
+
+                $reportRows[] = [
+                    'library_material_id' => (int) $material->id,
+                    'user_id' => $pair['user_id'],
+                    'approval_version' => (int) $material->current_approval_version,
+                    'reason' => $pair['reason'],
+                    'description' => 'بلاغ تجريبي على المحتوى المنشور.',
+                    'reported_at' => $reportTimestamp,
+                    'created_at' => $reportTimestamp,
+                    'updated_at' => $reportTimestamp,
+                ];
+
+                $reasonCounters[$pair['reason']] = ($reasonCounters[$pair['reason']] ?? 0) + 1;
+            }
+
+            foreach ($reasonCounters as $reason => $reportersCount) {
+                $counterRows[] = [
+                    'library_material_id' => (int) $material->id,
+                    'approval_version' => (int) $material->current_approval_version,
+                    'reason' => $reason,
+                    'reporters_count' => $reportersCount,
+                    'created_at' => $reportedAt,
+                    'updated_at' => $reportedAt,
+                ];
+            }
+        }
+
+        foreach (array_chunk($reportRows, 500) as $chunk) {
+            DB::table('library_material_reports')->insert($chunk);
+        }
+
+        foreach (array_chunk($counterRows, 500) as $chunk) {
+            DB::table('library_report_reason_counters')->insert($chunk);
+        }
+    }
+
+    private function insertMaterialReviewWorkflows(): void
+    {
+        $adminUserIds = DB::table('users')
+            ->join('roles', 'roles.id', '=', 'users.role_id')
+            ->whereBetween('users.id', [1, 15])
+            ->whereIn('roles.name', [
+                SystemRole::Owner->value,
+                SystemRole::Supervisor->value,
+            ])
+            ->orderBy('users.id')
+            ->pluck('users.id')
+            ->map(static fn(mixed $userId): int => (int) $userId)
+            ->all();
+
+        if ($adminUserIds === []) {
+            throw new RuntimeException('تعذر العثور على مشرف أو مالك ضمن المستخدمين ذوي المعرفات من 1 إلى 15.');
+        }
+
+        $materials = DB::table('library_material')
+            ->select([
+                'id',
+                'creator_user_id',
+                'review_status',
+                'current_approval_version',
+                'created_at',
+                'published_at',
+            ])
+            ->where('title', 'like', self::MATERIAL_TITLE_PREFIX . '%')
+            ->orderBy('id')
+            ->get();
+
+        $reportedAtByMaterialId = DB::table('library_material_reports')
+            ->whereIn('library_material_id', $materials->pluck('id'))
+            ->selectRaw('library_material_id, MAX(reported_at) as reported_at')
+            ->groupBy('library_material_id')
+            ->get()
+            ->keyBy('library_material_id');
+
+        $roundRows = [];
+        $historyRows = [];
+
+        foreach ($materials as $offset => $material) {
+            if (
+                $material->review_status !== LibraryMaterialReviewStatus::Approved->value
+                || (int) $material->current_approval_version !== 1
+            ) {
+                continue;
+            }
+
+            $materialId = (int) $material->id;
+            $creatorUserId = (int) $material->creator_user_id;
+            $adminUserId = $adminUserIds[$offset % count($adminUserIds)];
+            $createdAt = CarbonImmutable::parse($material->created_at);
+            $approvedAt = CarbonImmutable::parse($material->published_at);
+            $initialRoundStartedAt = $createdAt->addMinutes(30);
+
+            $roundRows[] = [
+                'library_material_id' => $materialId,
+                'round_no' => 1,
+                'reviewer_user_id' => $adminUserId,
+                'trigger_type' => LibraryTriggerType::Initial_Submission->value,
+                'decision' => LibraryDecision::Approved->value,
+                'based_on_approval_version' => 0,
+                'started_at' => $initialRoundStartedAt,
+                'decided_at' => $approvedAt,
+                'created_at' => $initialRoundStartedAt,
+                'updated_at' => $approvedAt,
+            ];
+
+            $historyRows[] = [
+                'library_material_id' => $materialId,
+                'from_status' => null,
+                'to_status' => LibraryMaterialReviewStatus::New->value,
+                'changed_by_user_id' => $creatorUserId,
+                'note' => 'تم إرسال المحتوى العام للمراجعة.',
+                'created_at' => $createdAt,
+                'updated_at' => $createdAt,
+            ];
+
+            $historyRows[] = [
+                'library_material_id' => $materialId,
+                'from_status' => LibraryMaterialReviewStatus::New->value,
+                'to_status' => LibraryMaterialReviewStatus::Approved->value,
+                'changed_by_user_id' => $adminUserId,
+                'note' => 'تمت الموافقة على المحتوى من المشرف.',
+                'created_at' => $approvedAt,
+                'updated_at' => $approvedAt,
+            ];
+
+            $reportedMaterial = $reportedAtByMaterialId->get($materialId);
+
+            if ($reportedMaterial === null) {
+                continue;
+            }
+
+            $reportedAt = CarbonImmutable::parse($reportedMaterial->reported_at);
+            $reportDecisionAt = $reportedAt->addHours(2);
+            $reportAdminUserId = $adminUserIds[($offset + 1) % count($adminUserIds)];
+
+            $roundRows[] = [
+                'library_material_id' => $materialId,
+                'round_no' => 2,
+                'reviewer_user_id' => $reportAdminUserId,
+                'trigger_type' => LibraryTriggerType::Auto_Report->value,
+                'decision' => LibraryDecision::Approved->value,
+                'based_on_approval_version' => 1,
+                'started_at' => $reportedAt,
+                'decided_at' => $reportDecisionAt,
+                'created_at' => $reportedAt,
+                'updated_at' => $reportDecisionAt,
+            ];
+
+            $historyRows[] = [
+                'library_material_id' => $materialId,
+                'from_status' => LibraryMaterialReviewStatus::Approved->value,
+                'to_status' => LibraryMaterialReviewStatus::Reported->value,
+                'changed_by_user_id' => null,
+                'note' => 'تم نقل المحتوى تلقائياً إلى حالة مبلغ عنه.',
+                'created_at' => $reportedAt,
+                'updated_at' => $reportedAt,
+            ];
+
+            $historyRows[] = [
+                'library_material_id' => $materialId,
+                'from_status' => LibraryMaterialReviewStatus::Reported->value,
+                'to_status' => LibraryMaterialReviewStatus::Approved->value,
+                'changed_by_user_id' => $reportAdminUserId,
+                'note' => 'تمت الموافقة على المحتوى مرة أخرى بعد مراجعة البلاغات.',
+                'created_at' => $reportDecisionAt,
+                'updated_at' => $reportDecisionAt,
+            ];
+        }
+
+        foreach (array_chunk($roundRows, 500) as $chunk) {
+            DB::table('library_material_review_rounds')->insert($chunk);
+        }
+
+        foreach (array_chunk($historyRows, 500) as $chunk) {
+            DB::table('library_material_status_histories')->insert($chunk);
+        }
     }
 
     private function materialTimestampsForIndex(int $index): array

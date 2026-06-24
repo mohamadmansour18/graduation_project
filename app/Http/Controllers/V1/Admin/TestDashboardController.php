@@ -4,11 +4,14 @@ namespace App\Http\Controllers\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DeleteManagementTestRequest;
+use App\Http\Requests\Admin\ListDashboardLibraryMaterialsRequest;
 use App\Http\Requests\Admin\RequestTestRevisionsRequest;
 use App\Http\Requests\Admin\TestManagementBoardRequest;
 use App\Http\Requests\Admin\TestManagementReportsRequest;
 use App\Http\Requests\Admin\TestManagementReviewsRequest;
+use App\Http\Requests\Library\SearchLibraryMaterialRequest;
 use App\Http\Resources\Admin\TestManagementBoardResource;
+use App\Http\Resources\DashboardLibraryMaterialDetailsResource;
 use App\Http\Resources\TestDashboardContentResource;
 use App\Http\Resources\TestManagementDetailsResource;
 use App\Http\Resources\TestManagementReportsResource;
@@ -17,6 +20,7 @@ use App\Http\Resources\TestManagementStatusHistoryResource;
 use App\Http\Resources\Tests\TestContentResource;
 use App\Services\Admin\TestAiEvaluation\TestAiEvaluationService;
 use App\Services\Admin\TestDashboardService;
+use App\Services\LibraryMaterial\LibraryMaterialService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -203,4 +207,5 @@ class TestDashboardController extends Controller
             message: 'تم حفظ قائمة التعديلات المطلوبة من المستخدم بنجاح'
         );
     }
+
 }

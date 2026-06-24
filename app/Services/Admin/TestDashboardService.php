@@ -9,10 +9,14 @@ use App\Events\TestManagementRevisionRequested;
 use App\Events\TestManagementStatusChanged;
 use App\Events\TestReviewStateChanged;
 use App\Exceptions\Api\TestException;
+use App\Http\Resources\LibraryMaterialListResource;
+use App\Http\Resources\Profile\MyLibraryMaterialListResource;
+use App\Models\LibraryMaterial;
 use App\Models\Test;
 use App\Models\TestReviewRound;
 use App\Models\User;
 use App\Repositories\Admin\TestDashboardRepository;
+use App\Repositories\Library\LibraryMaterialRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +25,7 @@ use Illuminate\Support\Facades\Log;
 class TestDashboardService
 {
     public function __construct(
-        private readonly TestDashboardRepository $repository
+        private readonly TestDashboardRepository $repository,
     )
     {}
 
@@ -852,7 +856,7 @@ class TestDashboardService
 
             $this->repository->deleteRevisionRequestsForRound($round->id);
 
-            $this->repository->createRevisionRequests(
+            $this->repository->createRevisionRequests2(
                 testId: $test->id,
                 roundId: $round->id,
                 createdByUserId: $reviewer->id,
@@ -884,5 +888,6 @@ class TestDashboardService
             throw TestException::testMustBeNeedsRevisionToUpdateRevisionRequests();
         }
     }
+
 
 }

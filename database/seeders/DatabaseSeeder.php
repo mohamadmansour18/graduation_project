@@ -16,8 +16,8 @@ class DatabaseSeeder extends Seeder
             SystemRoleSeeder::class,
             InterestCategorySeeder::class,
             InterestSeeder::class,
-            TestDiscoveryRecommendationSeeder::class,
             DashboardUsersSeeder::class,
+            TestDiscoveryRecommendationSeeder::class,
             LibraryMaterialArabicSeeder::class,
         ]);
     }

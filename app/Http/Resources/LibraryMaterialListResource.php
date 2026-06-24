@@ -1,15 +1,19 @@
 <?php
 
-namespace App\Http\Resources\Profile;
+namespace App\Http\Resources;
 
 use App\Helpers\DateProcessor;
 use App\Helpers\ImageProcessor;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class MyLibraryMaterialListResource extends JsonResource
+class LibraryMaterialListResource extends JsonResource
 {
-
+    /**
+     * Transform the resource into an array.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         $defaultPath = '';
@@ -33,8 +37,6 @@ class MyLibraryMaterialListResource extends JsonResource
 
             'like_count' => (int) $this->like_count,
             'published_at' => DateProcessor::fromTimestamp($this->created_at),
-
-            'viewer_has_bookmarked' => (bool) $this->viewer_has_bookmarked,
         ];
     }
 }
