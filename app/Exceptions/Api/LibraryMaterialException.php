@@ -122,4 +122,49 @@ class LibraryMaterialException extends ApiException
         );
     }
 
+    public static function alreadyApproved(): self
+    {
+        return new self(
+            title: '! فشل الموافقة على المحتوى',
+            message: 'لا يمكن الموافقة على هذا المحتوى لأنه موافق عليه بالفعل',
+            status: 409
+        );
+    }
+
+    public static function deletedMaterialCannotBeApproved(): self
+    {
+        return new self(
+            title: '! فشل الموافقة على المحتوى',
+            message: 'لا يمكن الموافقة على محتوى تم حذفه',
+            status: 409
+        );
+    }
+
+    public static function invalidStatusForApproval(): self
+    {
+        return new self(
+            title: '! فشل الموافقة على المحتوى',
+            message: 'لا يمكن الموافقة على المحتوى في حالته الحالية',
+            status: 422
+        );
+    }
+
+    public static function noOpenReviewRound(): self
+    {
+        return new self(
+            title: '! فشل الموافقة على المحتوى',
+            message: 'لا توجد جولة مراجعة مفتوحة لهذا المحتوى',
+            status: 409
+        );
+    }
+
+    public static function alreadyDeleted(): self
+    {
+        return new self(
+            title: '! فشل حذف المحتوى',
+            message: 'لا يمكن حذف هذا المحتوى لأنه محذوف بالفعل',
+            status: 409
+        );
+    }
+
 }

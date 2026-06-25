@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Events\LibraryMaterialDeletedByOwner;
+use App\Events\LibraryMaterialFirstApproved;
 use App\Events\LibraryMaterialLikeChanged;
+use App\Events\LibraryMaterialPublishedDeleted;
 use App\Events\TestApproved;
 use App\Events\TestBookmarkStateChanged;
 use App\Events\TestDashboardDeleted;
@@ -15,6 +17,8 @@ use App\Events\TestReviewStateChanged;
 use App\Events\UserDiscoverySourceSaved;
 use App\Events\UserOnboardingCompleted;
 use App\Listeners\DecreasePublishedTestSummaryStats;
+use App\Listeners\DecrementPublishedLibraryMaterialsMonthlyStat;
+use App\Listeners\IncrementPublishedLibraryMaterialsMonthlyStat;
 use App\Listeners\UpdateAdminFinancialStatsAfterTestPurchase;
 use App\Listeners\UpdateAdminLibraryMaterialMonthlyStats;
 use App\Listeners\UpdateAdminLibraryOnMaterialDeleted;
@@ -88,6 +92,14 @@ class EventServiceProvider extends ServiceProvider
 
         TestDashboardDeleted::class => [
             DecreasePublishedTestSummaryStats::class,
+        ],
+
+        LibraryMaterialFirstApproved::class => [
+            IncrementPublishedLibraryMaterialsMonthlyStat::class,
+        ],
+
+        LibraryMaterialPublishedDeleted::class => [
+            DecrementPublishedLibraryMaterialsMonthlyStat::class,
         ],
     ];
 

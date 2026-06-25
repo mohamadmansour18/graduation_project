@@ -17,7 +17,15 @@ class ListDashboardLibraryMaterialsRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'sort_by' => ['nullable', Rule::in(['latest', 'id', 'type', 'most_liked'])],
+            'sort_by' => ['nullable', Rule::in([
+                'latest',
+                'id',
+                'type',
+                'most_liked',
+                'new',
+                'approved',
+                'reported',
+            ])],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
             'cursor' => ['nullable', 'string'],
         ];

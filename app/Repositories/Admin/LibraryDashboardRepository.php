@@ -2,12 +2,15 @@
 
 namespace App\Repositories\Admin;
 
+use App\Enums\Decision;
 use App\Enums\LibraryMaterialReviewStatus;
 use App\Enums\VisibilityType;
 use App\Models\LibraryMaterial;
 use App\Models\LibraryMaterialReport;
+use App\Models\LibraryMaterialReviewRound;
 use App\Models\LibraryMaterialStatusHistory;
 use App\Models\LibraryReportReasonCounter;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -15,6 +18,12 @@ class LibraryDashboardRepository
 {
     public function paginateApprovedMaterials(string $sortBy, int $perPage): CursorPaginator
     {
+        $reviewStatus = match ($sortBy) {
+            'new' => LibraryMaterialReviewStatus::New->value,
+            'reported' => LibraryMaterialReviewStatus::Reported->value,
+            default => LibraryMaterialReviewStatus::Approved->value,
+        };
+
         $query = LibraryMaterial::query()
             ->select([
                 'id',
@@ -32,10 +41,14 @@ class LibraryDashboardRepository
                 'firstAsset:id,library_material_id,storage_path,position',
                 'interests:id,name',
             ])
-            ->where('review_status', LibraryMaterialReviewStatus::Approved->value)
+            ->where('review_status', $reviewStatus)
             ->where('visibility_type', VisibilityType::Public->value);
 
         match ($sortBy) {
+            'new', 'approved', 'reported' => $query
+                ->orderByDesc('created_at')
+                ->orderByDesc('id'),
+
             'id' => $query->orderByDesc('id'),
 
             'type' => $query
@@ -188,4 +201,64 @@ class LibraryDashboardRepository
             ->orderByDesc('id')
             ->get();
     }
+
+
+    public function findMaterialForUpdateOrFail(int $libraryMaterialId): LibraryMaterial
+    {
+        return LibraryMaterial::query()
+            ->select([
+                'id',
+                'review_status',
+                'current_approval_version',
+                'published_at',
+            ])
+            ->whereKey($libraryMaterialId)
+            ->lockForUpdate()
+            ->firstOrFail();
+    }
+
+    public function findOpenReviewRoundForUpdate(int $libraryMaterialId): ?LibraryMaterialReviewRound
+    {
+        return LibraryMaterialReviewRound::query()
+            ->where('library_material_id', $libraryMaterialId)
+            ->where('decision', Decision::Pending->value)
+            ->orderByDesc('round_no')
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function approveOpenRound(LibraryMaterialReviewRound $round, int $reviewerUserId, CarbonInterface $decidedAt): void
+    {
+        $round->forceFill([
+            'reviewer_user_id' => $reviewerUserId,
+            'decision' => Decision::Approved->value,
+            'decided_at' => $decidedAt,
+        ])->save();
+    }
+
+    public function approveMaterial(LibraryMaterial $material, int $approvalVersion, CarbonInterface $publishedAt): void
+    {
+        $material->forceFill([
+            'review_status' => LibraryMaterialReviewStatus::Approved->value,
+            'current_approval_version' => $approvalVersion,
+            'published_at' => $publishedAt,
+        ])->save();
+    }
+
+    public function createStatusHistory(int $libraryMaterialId, string $fromStatus, string $toStatus, int $changedByUserId, string $note): LibraryMaterialStatusHistory
+    {
+        return LibraryMaterialStatusHistory::query()->create([
+            'library_material_id' => $libraryMaterialId,
+            'from_status' => $fromStatus,
+            'to_status' => $toStatus,
+            'changed_by_user_id' => $changedByUserId,
+            'note' => $note,
+        ]);
+    }
+
+    public function forceDeleteMaterial(LibraryMaterial $material): void
+    {
+        $material->forceDelete();
+    }
+
 }

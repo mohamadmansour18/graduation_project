@@ -314,6 +314,11 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/library-materials/details/{materialId}' , [LibraryDashboardController::class , 'showLibraryMaterial']);
                 Route::get('/reports/{materialId}' , [LibraryDashboardController::class, 'libraryMaterialReports']);
                 Route::get('/status-history/{materialId}' , [LibraryDashboardController::class, 'libraryMaterialStatusHistory']);
+
+                Route::middleware('idempotency')->group(function () {
+                    Route::post('/approve/{materialId}' , [LibraryDashboardController::class , 'approveLibraryMaterial']);
+                    Route::post('/delete/{materialId}' , [LibraryDashboardController::class , 'deleteLibraryMaterial']);
+                });
             });
         });
 

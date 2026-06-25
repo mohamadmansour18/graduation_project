@@ -4,6 +4,7 @@ namespace App\Http\Controllers\V1\Admin;
 
 use App\Http\Requests\Admin\ListDashboardLibraryMaterialsRequest;
 use App\Http\Requests\Admin\ListLibraryMaterialReportsRequest;
+use App\Http\Requests\DeleteLibraryMaterialRequest;
 use App\Http\Requests\Library\SearchLibraryMaterialRequest;
 use App\Http\Resources\DashboardLibraryMaterialDetailsResource;
 use App\Http\Resources\DashboardLibraryMaterialReportsResource;
@@ -78,6 +79,31 @@ class LibraryDashboardController
         return $this->dataResponse(
             data: new DashboardLibraryMaterialStatusHistoryResource($result),
             title: '! تم جلب سجل الحالة بنجاح'
+        );
+    }
+
+    public function approveLibraryMaterial(int $libraryMaterialId, LibraryDashboardService $service): JsonResponse
+    {
+        $service->approve(
+            user: request()->user(),
+            libraryMaterialId: $libraryMaterialId
+        );
+
+        return $this->successResponse(
+            message: '! تمت الموافقة على نشر المحتوى بنجاح'
+        );
+    }
+
+    public function deleteLibraryMaterial(DeleteLibraryMaterialRequest $request ,int $libraryMaterialId, LibraryDashboardService $service): JsonResponse
+    {
+        $service->delete(
+            user: request()->user(),
+            libraryMaterialId: $libraryMaterialId,
+            deleteReason: $request->validated('delete_reason')
+        );
+
+        return $this->successResponse(
+            message: '! تم حذف المحتوى بنجاح'
         );
     }
 }
