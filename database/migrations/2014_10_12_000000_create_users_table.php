@@ -21,6 +21,7 @@ return new class extends Migration
             $table->enum('gender' , array_column(Gender::cases(), 'value'));
             $table->boolean('is_academically_verified')->default(false);
             $table->timestamp('academically_verified_at')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
     }

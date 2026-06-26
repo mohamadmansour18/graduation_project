@@ -4,6 +4,7 @@ use App\Http\Controllers\V1\Admin\AuthDashboardController;
 use App\Http\Controllers\V1\Admin\HomeDashboardController;
 use App\Http\Controllers\V1\Admin\LibraryDashboardController;
 use App\Http\Controllers\V1\Admin\TestDashboardController;
+use App\Http\Controllers\V1\Admin\UserDashboardController;
 use App\Http\Controllers\V1\AiQuestionGeneration\AiQuestionGenerationController;
 use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
@@ -320,11 +321,49 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::post('/delete/{materialId}' , [LibraryDashboardController::class , 'deleteLibraryMaterial']);
                 });
             });
+
+            //USER_MANAGEMENT
+            Route::prefix('user-management')->group(function () {
+                Route::get('/users' , [UserDashboardController::class , 'users']);
+                Route::get('/search' , [UserDashboardController::class , 'searchUsers']);
+                Route::get('/list-bans' , [UserDashboardController::class , 'bannedUsers']);
+
+                Route::get('/user-details/overview/{userId}' , [UserDashboardController::class , 'showUserProfile']);
+                Route::get('/user-details/academic-certificate/{userId}' , [PublicProfileController::class , 'academicCertificate']);
+                Route::get('/user-details/test/{userId}' , [UserDashboardController::class , 'showUserTests']);
+                Route::get('/user-details/material/{userId}' , [UserDashboardController::class , 'showUserLibraryMaterials']);
+                Route::get('/user-details/folder/{userId}' , [UserDashboardController::class , 'showUserFolders']);
+                Route::get('/folder-details/{folderId}' , [PublicProfileController::class , 'folderContent']);
+
+                Route::get('/followers/{userId}', [PublicProfileController::class, 'followers']); //يلي متابعيني
+                Route::get('/following/{userId}', [PublicProfileController::class, 'following']); //يلي انا متابعهن
+
+                Route::get('/ban-history/{userId}', [UserDashboardController::class, 'userBanHistory']);
+
+                Route::get('/supervisor-profiles/{supervisorId}' , [UserDashboardController::class, 'showSupervisor']);
+
+                Route::middleware('idempotency')->group(function () {
+                    Route::post('/ban-user/{userId}' , [UserDashboardController::class , 'banUser']);
+
+                    Route::post('/update/photo/{userId}' , [MyProfileController::class, 'updatePhoto']);
+                    Route::delete('/delete/photo/{userId}' , [MyProfileController::class, 'deletePhoto']);
+
+                    Route::post('/update/profile-details/{userId}' , [UserDashboardController::class , 'updateMyDashboardProfile']);
+                    Route::post('/update/password' , [UserDashboardController::class , 'updateMyDashboardPassword']);
+                });
+            });
         });
 
         Route::middleware(['jwt.auth.api' , 'role:owner'])->group(function () {
             Route::get('/financial-stats' , [HomeDashboardController::class , 'financialStats']);
 
+            Route::get('/academic-verification-requests/show' , [UserDashboardController::class , 'academicVerificationRequests']);
+            Route::get('/academic-verification-requests/assets/{verificationRequestId}' , [UserDashboardController::class , 'showAcademicVerificationAsset']);
+
+            Route::middleware('idempotency')->group(function () {
+                Route::post('/add/supervisors' , [UserDashboardController::class , 'storeSupervisor']);
+                Route::delete('/delete/supervisor/{supervisorId}' , [UserDashboardController::class , 'deleteSupervisor']);
+            });
         });
 
 

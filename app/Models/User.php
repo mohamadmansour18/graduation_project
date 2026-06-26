@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
@@ -16,7 +17,7 @@ use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
-    use HasApiTokens, HasFactory, Notifiable, Billable;
+    use HasApiTokens, HasFactory, Notifiable, Billable , SoftDeletes;
 
 
     protected $table = 'users';
@@ -309,5 +310,15 @@ class User extends Authenticatable implements JWTSubject
     public function aiQuestionGenerationRequests(): HasMany
     {
         return $this->hasMany(AiQuestionGenerationRequest::class , 'user_id');
+    }
+
+    public function activeBan(): HasOne
+    {
+        return $this->hasOne(UserBan::class)
+            ->whereNull('lifted_at')
+            ->where(function ($query) {
+                $query->whereNull('ends_at')
+                    ->orWhere('ends_at', '>', now());
+            });
     }
 }

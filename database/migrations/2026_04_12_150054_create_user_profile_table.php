@@ -12,7 +12,7 @@ return new class extends Migration
         Schema::create('user_profile', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->unique()->constrained('users')->cascadeOnDelete();
-            $table->string('phone')->nullable();
+            $table->string('phone')->unique()->nullable();
             $table->date('birth_date')->nullable();
             $table->string('avatar_disk')->nullable();
             $table->string('avatar_path')->nullable();
