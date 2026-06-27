@@ -531,7 +531,11 @@ class TestDashboardRepository
                         ->orderByDesc('id');
                 },
 
-                'testStatusHistories.changedByUser:id,role_id,name',
+                'testStatusHistories.changedByUser' => function ($query) {
+                    $query->withTrashed()
+                        ->select(['id', 'role_id', 'name']);
+                },
+
                 'testStatusHistories.changedByUser.role:id,name',
                 'testStatusHistories.changedByUser.userProfile:id,user_id,avatar_path,avatar_disk',
 
@@ -549,7 +553,10 @@ class TestDashboardRepository
                     ]);
                 },
 
-                'testStatusHistories.reviewRound.reviewerUser:id,role_id,name',
+                'testStatusHistories.reviewRound.reviewerUser' => function ($query) {
+                    $query->withTrashed()
+                        ->select(['id', 'role_id', 'name']);
+                },
                 'testStatusHistories.reviewRound.reviewerUser.role:id,name',
                 'testStatusHistories.reviewRound.reviewerUser.userProfile:id,user_id,avatar_path',
 

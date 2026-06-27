@@ -93,4 +93,29 @@ class DashboardUserException extends ApiException
             status: 422
         );
     }
+    public static function cannotDeleteLastScientificInterest(string $usageType): self
+    {
+        $message = match ($usageType) {
+            'user' => 'لا يمكن حذف هذا التصنيف لأنه التصنيف العلمي الوحيد لدى مستخدم واحد على الأقل',
+            'test' => 'لا يمكن حذف هذا التصنيف لأنه التصنيف العلمي الوحيد لاختبار واحد على الأقل',
+            'library_material' => 'لا يمكن حذف هذا التصنيف لأنه التصنيف العلمي الوحيد لمحتوى علمي واحد على الأقل',
+            default => 'لا يمكن حذف هذا التصنيف العلمي لأنه مستخدم كتصنيف وحيد داخل النظام',
+        };
+
+        return new self(
+            title: '! لا يمكن حذف التصنيف العلمي',
+            message: $message,
+            status: 409
+        );
+    }
+
+    public static function cannotDeleteCategoryWithOnlyOneInterest(): self
+    {
+        return new self(
+            title: '! لا يمكن حذف عنوان التصنيف العلمي',
+            message: 'لا يمكن حذف عنوان يحتوي على تصنيف علمي واحد فقط',
+            status: 409
+        );
+    }
+
 }

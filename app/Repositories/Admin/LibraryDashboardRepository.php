@@ -192,7 +192,10 @@ class LibraryDashboardRepository
                 'created_at',
             ])
             ->with([
-                'changedByUser:id,name,role_id',
+                'changedByUser' => function ($query) {
+                    $query->withTrashed()
+                        ->select(['id', 'role_id', 'name']);
+                },
                 'changedByUser.role:id,name',
                 'changedByUser.userProfile:id,user_id,avatar_path,avatar_disk',
             ])

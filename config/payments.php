@@ -7,7 +7,7 @@ return [
     'default_currency' => env('PAYMENT_DEFAULT_CURRENCY', 'usd'),
 
 
-    'platform_fee_percent' => (float) env('PAYMENT_PLATFORM_FEE_PERCENT', 10),
+    'platform_fee_percent' => (float) env('PAYMENT_PLATFORM_FEE_PERCENT', 20),
 
     'checkout_session_expires_after_minutes' => (int) env(
         'PAYMENT_CHECKOUT_SESSION_EXPIRES_AFTER_MINUTES',

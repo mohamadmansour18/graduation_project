@@ -20,6 +20,9 @@ class Interest extends Model
     protected $fillable = [
         'interest_category_id',
         'name',
+        'storage_disk',
+        'icon_svg',
+        'color'
     ];
 
 

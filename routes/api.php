@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\V1\Admin\AllocationDashboardController;
 use App\Http\Controllers\V1\Admin\AuthDashboardController;
 use App\Http\Controllers\V1\Admin\HomeDashboardController;
 use App\Http\Controllers\V1\Admin\LibraryDashboardController;
+use App\Http\Controllers\V1\Admin\PaidDashboardController;
 use App\Http\Controllers\V1\Admin\TestDashboardController;
 use App\Http\Controllers\V1\Admin\UserDashboardController;
 use App\Http\Controllers\V1\AiQuestionGeneration\AiQuestionGenerationController;
@@ -355,14 +357,33 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
         });
 
         Route::middleware(['jwt.auth.api' , 'role:owner'])->group(function () {
+           //HOME
             Route::get('/financial-stats' , [HomeDashboardController::class , 'financialStats']);
 
+            //USER_MANAGEMENT
             Route::get('/academic-verification-requests/show' , [UserDashboardController::class , 'academicVerificationRequests']);
             Route::get('/academic-verification-requests/assets/{verificationRequestId}' , [UserDashboardController::class , 'showAcademicVerificationAsset']);
+
+            //PAID_MANAGEMENT
+            Route::get('/sales' , [PaidDashboardController::class , 'salesHistory']);
+
+            //ALLOCATION
+            Route::get('/statistics' , [AllocationDashboardController::class , 'ownerStatistics']);
+
+            Route::get('/scientific-interests' , [AllocationDashboardController::class , 'scientificInterests']);
+            Route::get('/scientific-interest-categories' , [AllocationDashboardController::class , 'scientificInterestCategories']);
 
             Route::middleware('idempotency')->group(function () {
                 Route::post('/add/supervisors' , [UserDashboardController::class , 'storeSupervisor']);
                 Route::delete('/delete/supervisor/{supervisorId}' , [UserDashboardController::class , 'deleteSupervisor']);
+
+                Route::post('/add/scientific-interests' , [AllocationDashboardController::class , 'storeScientificInterest']);
+                Route::post('/update/scientific-interests/{interestId}' , [AllocationDashboardController::class , 'updateScientificInterest']);
+                Route::delete('/delete/scientific-interests/{interestId}' ,[AllocationDashboardController::class , 'deleteScientificInterest']);
+
+                Route::post('/add/scientific-interests-categories' , [AllocationDashboardController::class , 'storeScientificInterestCategory']);
+                Route::post('/update/scientific-interests-categories/{categoryId}' , [AllocationDashboardController::class , 'updateScientificInterestCategory']);
+                Route::delete('/delete/scientific-interests-categories/{categoryId}' ,[AllocationDashboardController::class , 'deleteScientificInterestCategory']);
             });
         });
 
@@ -381,4 +402,3 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 TODO: تعديل اختبار فيه مشكلة لازم تشوفها وتحلها
  * */
 
-//TODO: لاازم عند انشاء المحتوى ان تمر الصور او الملفات بعملية معالجة استباقية

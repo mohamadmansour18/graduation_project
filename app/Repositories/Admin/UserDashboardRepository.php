@@ -28,6 +28,25 @@ class UserDashboardRepository
 {
     public function paginateUsersForDashboard(string $type, string $sortBy, int $perPage): CursorPaginator
     {
+        $banStatusSubquery = DB::table('users as ban_users')
+            ->select('ban_users.id as user_id')
+            ->selectRaw("
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM user_bans
+                    WHERE user_bans.user_id = ban_users.id
+                      AND user_bans.lifted_at IS NULL
+                      AND (
+                            user_bans.ends_at IS NULL
+                            OR user_bans.ends_at > CURRENT_TIMESTAMP
+                          )
+                )
+                THEN 1
+                ELSE 0
+            END AS is_banned
+        ");
+
         $query = User::query()
             ->select([
                 'users.id',
@@ -41,12 +60,13 @@ class UserDashboardRepository
                 'user_profile.avatar_disk',
                 'user_profile.avatar_path',
                 'user_profile.governorate',
+                'ban_status.is_banned',
             ])
             ->join('roles', 'roles.id', '=', 'users.role_id')
             ->leftJoin('user_profile', 'user_profile.user_id', '=', 'users.id')
-            ->withExists([
-                'activeBan as is_banned',
-            ]);
+            ->joinSub($banStatusSubquery, 'ban_status', function ($join) {
+                $join->on('ban_status.user_id', '=', 'users.id');
+            });
 
         $this->applyUserTypeFilter($query, $type);
         $this->applySorting($query, $sortBy);
@@ -84,7 +104,7 @@ class UserDashboardRepository
                 ->orderBy('users.id'),
 
             'account_status' => $query
-                ->orderByDesc('is_banned')
+                ->orderByDesc('ban_status.is_banned')
                 ->orderBy('users.id'),
 
             default => $query
@@ -512,7 +532,10 @@ class UserDashboardRepository
                 'created_at',
             ])
             ->with([
-                'imposedByUser:id,name,role_id',
+                'imposedByUser'=> function ($query) {
+                    $query->withTrashed()
+                        ->select(['id', 'role_id', 'name']);
+                },
                 'imposedByUser.userProfile:user_id,avatar_path,avatar_disk',
                 'imposedByUser.role:id,name',
             ])
