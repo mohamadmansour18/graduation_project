@@ -572,7 +572,7 @@ study_plan_subject(
 study_task(
   id, study_plan_id, study_plan_subject_id, task_group_uuid,
   title, description, start_date, end_date, start_time,
-  duration_minutes_per_day, deadline_at,
+  duration_seconds_per_day, deadline_at,
   reminder_offset_minutes, priority enum, status enum,
   completed_at, missed_at, repeat_pattern enum,
   recurrence_end_date
@@ -580,7 +580,7 @@ study_task(
 
 study_task_occurrence(
   id, study_task_id, study_plan_id, occurrence_date,
-  scheduled_start_time, scheduled_end_time, duration_minutes
+  scheduled_start_time, scheduled_end_time, duration_second
 )
 
 study_task_subtask(

@@ -14,6 +14,7 @@ class AuthRepository
         return User::query()
             ->with([
                 'role:id,name',
+                'userProfile:id,user_id,avatar_disk,avatar_path',
             ])
             ->where('email', $email)
             ->first();

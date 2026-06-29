@@ -20,8 +20,7 @@ return new class extends Migration
             $table->unsignedInteger('missed_tasks_count')->default(0);
             $table->timestamps();
 
-            $table->unique(['study_plan_id', 'year']);
-            $table->unique(['user_id', 'year']);
+            $table->unique(['user_id', 'study_plan_id', 'year']);
         });
     }
 

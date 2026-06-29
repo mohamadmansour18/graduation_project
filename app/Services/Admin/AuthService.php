@@ -3,6 +3,7 @@
 namespace App\Services\Admin;
 
 use App\Exceptions\Api\AuthenticationException;
+use App\Helpers\ImageProcessor;
 use App\Jobs\SendFailedLoginAlertJob;
 use App\Repositories\Admin\AuthRepository;
 use Illuminate\Support\Facades\Hash;
@@ -37,6 +38,7 @@ class AuthService
                 'id' => $user->id,
                 'name' => $user->name,
                 'role' => $user->role->name,
+                'photo' => ImageProcessor::urlOrDefault($user->userProfile?->avatar_path , 'defaults/default-avatar.svg' , $user->userProfile?->avatar_disk),
             ],
             'token' => $token,
             'expires_in' => JWTAuth::factory()->getTTL() * 60,
