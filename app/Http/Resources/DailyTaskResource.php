@@ -21,7 +21,6 @@ class DailyTaskResource extends JsonResource
             'id' => (int) $this->id,
             'occurrence_id' => (int) $this->occurrence_id,
 
-            // رقم عرض فقط، وليس id من الداتابيز
             'task_number' => $this->task_number ?? null,
 
             'title' => $this->title,

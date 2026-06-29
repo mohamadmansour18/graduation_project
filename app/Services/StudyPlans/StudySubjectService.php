@@ -50,4 +50,20 @@ class StudySubjectService
         return $this->studySubjectRepository->getUserSubjects($userId);
     }
 
+    public function getPlanSubjectsOptions(int $userId, int $studyPlanId): array
+    {
+        $planExists = $this->studySubjectRepository->existsPlanForUser(
+            userId: $userId,
+            studyPlanId: $studyPlanId
+        );
+
+        if (! $planExists) {
+            throw StudyPlanException::planNotFound();
+        }
+
+        return $this->studySubjectRepository->getPlanSubjectsOptions(
+            studyPlanId: $studyPlanId
+        );
+    }
+
 }

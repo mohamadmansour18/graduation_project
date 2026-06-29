@@ -26,6 +26,8 @@ use App\Http\Controllers\V1\Profile\PublicProfileController;
 use App\Http\Controllers\V1\StudyPlans\DailyTaskController;
 use App\Http\Controllers\V1\StudyPlans\StudyPlanController;
 use App\Http\Controllers\V1\StudyPlans\StudySubjectController;
+use App\Http\Controllers\V1\StudyPlans\StudyTaskController;
+use App\Http\Controllers\V1\StudyPlans\StudyTaskSubtaskController;
 use App\Http\Controllers\V1\TestDiscovery\HomeTestDiscoveryController;
 use App\Http\Controllers\V1\TestDiscovery\LabTestDiscoveryController;
 use App\Http\Controllers\V1\Tests\LabController;
@@ -264,16 +266,32 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
             //STUDY_PLAN
             Route::prefix('study-plans')->group(function () {
-                Route::get('/daily-tasks/overview', [DailyTaskController::class, 'overview']);
+                Route::get('/daily-tasks/overview'           , [DailyTaskController::class, 'overview']);
 
-                Route::get('/study-subjects' , [StudySubjectController::class , 'show']);
-                Route::get('/study-plans', [StudyPlanController::class, 'show']);
+                Route::get('/study-subjects'                 , [StudySubjectController::class , 'show']);
+                Route::get('/subjects-related-plan/{studyPlanId}', [StudySubjectController::class, 'planSubjectsOptions']);
+
+                Route::get('/study-plans'                    , [StudyPlanController::class, 'show']);
+                Route::get('/details/overview/{studyPlanId}' , [StudyPlanController::class, 'showDetails']);
+                Route::get('/details/tasks/{studyPlanId}'    , [StudyPlanController::class, 'showTasks']);
+
+                Route::get('/study-plans/{studyPlanId}/tasks/{taskId}/details' , [StudyTaskController::class, 'details']);
 
                 Route::middleware(['idempotency' , 'throttle:3,5'])->group(function () {
-                    Route::post('/create', [StudyPlanController::class, 'store']);
+                    Route::post('/create' , [StudyPlanController::class, 'store']);
 
                     Route::post('/create/study-subjects' , [StudySubjectController::class , 'store']);
                     Route::delete('/delete/study-subjects/{subjectId}' , [StudySubjectController::class , 'destroy']);
+
+                    Route::post('/update/study-plan/{studyPlanId}' , [StudyPlanController::class, 'update']);
+                    Route::delete('/delete/study-plan/{studyPlanId}' , [StudyPlanController::class, 'destroy']);
+
+                    Route::post('/create/task/{studyPlanId}' , [StudyTaskController::class, 'store']);
+                    Route::post('/update/task/{studyPlanId}/{taskId}' , [StudyTaskController::class, 'update']);
+                    Route::delete('/delete/task/{studyPlanId}/{taskId}' , [StudyTaskController::class, 'destroy']);
+
+                    Route::patch('/study-plans/{studyPlanId}/tasks/{taskId}/subtasks/{subtaskId}/complete' , [StudyTaskSubtaskController::class , 'completeSubtask']);
+                    Route::patch('/study-plans/{studyPlanId}/tasks/{taskId}/subtasks/{subtaskId}/un-complete', [StudyTaskSubtaskController::class, 'unCompleteSubtask']);
                 });
             });
         });

@@ -7,6 +7,7 @@ use App\Events\LibraryMaterialFirstApproved;
 use App\Events\LibraryMaterialLikeChanged;
 use App\Events\LibraryMaterialPublishedDeleted;
 use App\Events\StudyPlanCreated;
+use App\Events\StudyPlanDeleted;
 use App\Events\TestApproved;
 use App\Events\TestBookmarkStateChanged;
 use App\Events\TestDashboardDeleted;
@@ -20,6 +21,7 @@ use App\Events\UserOnboardingCompleted;
 use App\Listeners\CreateYearlyStudyPlanStats;
 use App\Listeners\DecreasePublishedTestSummaryStats;
 use App\Listeners\DecrementPublishedLibraryMaterialsMonthlyStat;
+use App\Listeners\DeleteYearlyStudyPlanStats;
 use App\Listeners\IncrementPublishedLibraryMaterialsMonthlyStat;
 use App\Listeners\UpdateAdminFinancialStatsAfterTestPurchase;
 use App\Listeners\UpdateAdminLibraryMaterialMonthlyStats;
@@ -106,6 +108,10 @@ class EventServiceProvider extends ServiceProvider
 
         StudyPlanCreated::class => [
             CreateYearlyStudyPlanStats::class,
+        ],
+
+        StudyPlanDeleted::class => [
+            DeleteYearlyStudyPlanStats::class,
         ],
     ];
 

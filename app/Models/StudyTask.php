@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Priority;
 use App\Enums\RepeatPattern;
 use App\Enums\StudyTaskStatus;
+use App\Enums\TaskStatus;
 use App\Models\StudyPlan;
 use App\Models\StudyPlanSubject;
 use App\Models\StudyTaskOccurrence;
@@ -46,7 +47,7 @@ class StudyTask extends Model
         'duration_minutes_per_day' => 'integer',
         'deadline_at' => 'datetime',
         'reminder_offset_minutes' => 'integer',
-        'status' => StudyTaskStatus::class,
+        'status' => TaskStatus::class,
         'completed_at' => 'datetime',
         'missed_at' => 'datetime',
         'repeat_pattern' => RepeatPattern::class,

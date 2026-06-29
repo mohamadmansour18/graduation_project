@@ -48,4 +48,17 @@ class StudySubjectController extends Controller
 
         return $this->dataResponse($subjects);
     }
+
+    public function planSubjectsOptions(int $studyPlanId,): JsonResponse
+    {
+        $subjects = $this->studySubjectService->getPlanSubjectsOptions(
+            userId: request()->user()->id,
+            studyPlanId: $studyPlanId
+        );
+
+        return $this->dataResponse(
+            data: $subjects,
+            title: '! تم جلب مواد الخطة بنجاح'
+        );
+    }
 }

@@ -2,10 +2,16 @@
 
 namespace App\Services\StudyPlans;
 
+use App\Enums\StudyTaskStatus;
+use App\Enums\TaskStatus;
 use App\Events\StudyPlanCreated;
+use App\Events\StudyPlanDeleted;
 use App\Exceptions\Api\StudyPlanException;
+use App\Http\Resources\StudyPlanDetailsResource;
 use App\Http\Resources\StudyPlanOverviewResource;
+use App\Http\Resources\StudyPlanTasksGroupedResource;
 use App\Repositories\StudyPlans\StudyPlanRepository;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -95,5 +101,285 @@ class StudyPlanService
             'plans_count' => $plans->count(),
             'plans' => StudyPlanOverviewResource::collection($plans),
         ];
+    }
+
+    public function getPlanDetails(int $userId, int $studyPlanId): StudyPlanDetailsResource
+    {
+        $plan = $this->studyPlanRepository->findPlanDetailsForUser($userId, $studyPlanId);
+
+        if (! $plan) {
+            throw StudyPlanException::planNotFound();
+        }
+
+        return new StudyPlanDetailsResource($plan);
+    }
+
+    public function getPlanTasks(int $userId, int $studyPlanId): StudyPlanTasksGroupedResource
+    {
+        if (! $this->studyPlanRepository->existsForUser($userId, $studyPlanId)) {
+            throw StudyPlanException::planNotFound();
+        }
+
+        $now = now();
+
+        $occurrences = $this->studyPlanRepository
+            ->getPlanTaskOccurrencesGroupedData($studyPlanId)
+            ->values();
+
+        $tasks = $occurrences
+            ->groupBy('id')
+            ->map(function ($taskOccurrences) {
+                $firstOccurrence = $taskOccurrences->first();
+                $lastOccurrence = $taskOccurrences->last();
+
+                $startDateTime = Carbon::parse(
+                    $firstOccurrence->occurrence_date->toDateString() . ' ' . $firstOccurrence->scheduled_start_time
+                );
+
+                $endDateTime = Carbon::parse(
+                    $lastOccurrence->occurrence_date->toDateString() . ' ' . $lastOccurrence->scheduled_end_time
+                );
+
+                $firstOccurrence->occurrence_ids = $taskOccurrences
+                    ->pluck('occurrence_id')
+                    ->values();
+
+                $firstOccurrence->occurrences_count = $taskOccurrences->count();
+
+                $firstOccurrence->start_date = $firstOccurrence->occurrence_date;
+                $firstOccurrence->end_date = $lastOccurrence->occurrence_date;
+
+                $firstOccurrence->range_start_datetime = $startDateTime;
+                $firstOccurrence->range_end_datetime = $endDateTime;
+
+                return $firstOccurrence;
+            })
+            ->values()
+            ->sortBy('range_start_datetime')
+            ->values()
+            ->map(function ($task, int $index) {
+                $task->task_number = $index + 1;
+
+                return $task;
+            });
+
+        $completed = $tasks
+            ->where('status', TaskStatus::Completed->value)
+            ->values();
+
+        $old = $tasks
+            ->filter(function ($item) use ($now) {
+                if ($item->status === TaskStatus::Completed->value) {
+                    return false;
+                }
+
+                return $item->range_end_datetime->lt($now);
+            })
+            ->values();
+
+        $upcoming = $tasks
+            ->filter(function ($item) use ($now) {
+                if ($item->status === TaskStatus::Completed->value) {
+                    return false;
+                }
+
+                return $item->range_end_datetime->gte($now);
+            })
+            ->values();
+
+        return new StudyPlanTasksGroupedResource([
+            'old' => $old,
+            'upcoming' => $upcoming,
+            'completed' => $completed,
+        ]);
+    }
+
+    public function updateStudyPlan(int $userId, int $studyPlanId, array $data): void
+    {
+        DB::transaction(function () use ($userId, $studyPlanId, $data) {
+            $studyPlan = $this->studyPlanRepository->findForUserForUpdate($userId, $studyPlanId);
+
+            if (! $studyPlan) {
+                throw StudyPlanException::planNotFound();
+            }
+
+            $updateData = [];
+
+            if (array_key_exists('title', $data)) {
+                $updateData['title'] = $data['title'];
+            }
+
+            if (array_key_exists('emoji', $data)) {
+                $updateData['emoji'] = $data['emoji'];
+            }
+
+            $this->validateAndFillDatesIfProvided($studyPlan, $data, $updateData);
+            $this->validateAndFillDailyHoursIfProvided($studyPlan, $data, $updateData);
+            $this->handleDefaultFlagIfProvided($userId, $studyPlan, $data, $updateData);
+            $this->handleSubjectsIfProvided($userId, $studyPlan, $data, $updateData);
+
+            if (! empty($updateData)) {
+                $this->studyPlanRepository->updatePlan($studyPlan, $updateData);
+            }
+        });
+    }
+
+    public function deleteStudyPlan(int $userId, int $studyPlanId): void
+    {
+        DB::transaction(function () use ($userId, $studyPlanId) {
+            $studyPlan = $this->studyPlanRepository->findForUserForUpdate($userId, $studyPlanId);
+
+            if (! $studyPlan) {
+                throw StudyPlanException::planNotFound();
+            }
+
+            $deletedPlanWasDefault = (bool) $studyPlan->is_default;
+
+            if ($deletedPlanWasDefault) {
+                $replacementPlan = $this->studyPlanRepository->findReplacementDefaultPlan(
+                    userId: $userId,
+                    excludedStudyPlanId: $studyPlanId
+                );
+
+                if ($replacementPlan) {
+                    $replacementPlan->update(['is_default' => true]);
+                }
+            }
+
+            $this->studyPlanRepository->forceDeletePlan($studyPlan);
+
+            DB::afterCommit(function () use ($userId, $studyPlanId) {
+                StudyPlanDeleted::dispatch(
+                    $userId,
+                    $studyPlanId
+                );
+            });
+        });
+    }
+
+    private function validateAndFillDatesIfProvided($studyPlan, array $data, array &$updateData): void
+    {
+        if (! array_key_exists('start_date', $data) && ! array_key_exists('end_date', $data)) {
+            return;
+        }
+
+        $newStartDate = array_key_exists('start_date', $data)
+            ? Carbon::parse($data['start_date'])->startOfDay()
+            : Carbon::parse($studyPlan->start_date)->startOfDay();
+
+        $newEndDate = array_key_exists('end_date', $data)
+            ? Carbon::parse($data['end_date'])->startOfDay()
+            : Carbon::parse($studyPlan->end_date)->startOfDay();
+
+        if ($newStartDate->lt(today())) {
+            throw StudyPlanException::startDateCannotBePast();
+        }
+
+        if ($newEndDate->lte($newStartDate)) {
+            throw StudyPlanException::invalidPlanDateRange();
+        }
+
+        $durationDays = $newStartDate->diffInDays($newEndDate);
+
+        if ($durationDays < 1 || $durationDays > 365) {
+            throw StudyPlanException::invalidPlanDuration();
+        }
+
+        if ($this->studyPlanRepository->hasTasksOutsideDateRange(
+            studyPlanId: $studyPlan->id,
+            newStartDate: $newStartDate->toDateString(),
+            newEndDate: $newEndDate->toDateString()
+        )) {
+            throw StudyPlanException::tasksOutsideNewPlanDateRange();
+        }
+
+        $updateData['start_date'] = $newStartDate->toDateString();
+        $updateData['end_date'] = $newEndDate->toDateString();
+    }
+
+    private function validateAndFillDailyHoursIfProvided($studyPlan, array $data, array &$updateData): void
+    {
+        if (! array_key_exists('daily_study_hours', $data)) {
+            return;
+        }
+
+        $newDailyStudySeconds = ((int) $data['daily_study_hours']) * 60 * 60;
+        $maxDailyScheduledSeconds = $this->studyPlanRepository->maxDailyScheduledSeconds($studyPlan->id);
+
+        if ($maxDailyScheduledSeconds > $newDailyStudySeconds) {
+            throw StudyPlanException::dailyStudyHoursBreakExistingTasks();
+        }
+
+        $updateData['daily_study_minutes'] = ((int) $data['daily_study_hours']) * 60;
+    }
+
+    private function handleDefaultFlagIfProvided(int $userId, $studyPlan, array $data, array &$updateData): void
+    {
+        if (! array_key_exists('is_default', $data)) {
+            return;
+        }
+
+        $requestedDefaultValue = (bool) $data['is_default'];
+
+        if ($requestedDefaultValue === true) {
+            if ((bool) $studyPlan->is_default) {
+                throw StudyPlanException::alreadyDefaultPlan();
+            }
+
+            $this->studyPlanRepository->unsetDefaultPlansForUser($userId);
+            $updateData['is_default'] = true;
+
+            return;
+        }
+
+        if ($requestedDefaultValue === false && (bool) $studyPlan->is_default) {
+            throw StudyPlanException::cannotUnsetDefaultPlan();
+        }
+    }
+
+    private function handleSubjectsIfProvided(int $userId, $studyPlan, array $data, array &$updateData): void
+    {
+        if (! array_key_exists('subject_ids', $data)) {
+            return;
+        }
+
+        $subjectIds = array_values($data['subject_ids']);
+
+        $ownedSubjectsCount = $this->studyPlanRepository->countUserSubjectsByIds(
+            userId: $userId,
+            subjectIds: $subjectIds
+        );
+
+        if ($ownedSubjectsCount !== count($subjectIds)) {
+            throw StudyPlanException::someSubjectsDoNotBelongToUser2();
+        }
+
+        $currentPlanSubjects = $this->studyPlanRepository->getPlanSubjects($studyPlan->id);
+
+        $currentSubjectIds = $currentPlanSubjects
+            ->pluck('study_subject_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $removedSubjectIds = array_diff($currentSubjectIds, $subjectIds);
+
+        if (! empty($removedSubjectIds)) {
+            $removedPlanSubjectIds = $currentPlanSubjects
+                ->whereIn('study_subject_id', $removedSubjectIds)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if ($this->studyPlanRepository->hasTasksForPlanSubjectIds($removedPlanSubjectIds)) {
+                throw StudyPlanException::cannotRemoveSubjectHasTasks();
+            }
+        }
+
+        $this->studyPlanRepository->syncPlanSubjects(
+            studyPlanId: $studyPlan->id,
+            subjectIds: $subjectIds
+        );
+
+        $updateData['subjects_count'] = count($subjectIds);
     }
 }

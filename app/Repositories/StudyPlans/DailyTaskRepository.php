@@ -43,7 +43,7 @@ class DailyTaskRepository
             ->get([
                 'occurrence.occurrence_date',
                 DB::raw('COUNT(*) as total_tasks'),
-                DB::raw("SUM(CASE WHEN task.status = 'completed' THEN 1 ELSE 0 END) as completed_tasks"),
+                DB::raw("SUM(CASE WHEN task.status = 'تم انجازها' THEN 1 ELSE 0 END) as completed_tasks"),
             ])
             ->keyBy(fn ($item) => (string) $item->occurrence_date);
     }
