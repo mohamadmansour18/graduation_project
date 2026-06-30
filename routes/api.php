@@ -23,6 +23,9 @@ use App\Http\Controllers\V1\Payments\TestPaymentController;
 use App\Http\Controllers\V1\Profile\FollowController;
 use App\Http\Controllers\V1\Profile\MyProfileController;
 use App\Http\Controllers\V1\Profile\PublicProfileController;
+use App\Http\Controllers\V1\Settings\AcademicVerificationController;
+use App\Http\Controllers\V1\Settings\SettingsController;
+use App\Http\Controllers\V1\Settings\UserSalesController;
 use App\Http\Controllers\V1\StudyPlans\DailyTaskController;
 use App\Http\Controllers\V1\StudyPlans\StudyPlanController;
 use App\Http\Controllers\V1\StudyPlans\StudySubjectController;
@@ -107,6 +110,14 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/all-interests' , [HomeController::class , 'scientificInterests']);
                 Route::get('/test-by-interest/{interestId}' , [HomeController::class , 'testsByInterest']);
                 Route::post('/search-test-by-interest' , [HomeController::class , 'searchTests'])->middleware('throttle:api-search');
+
+                Route::get('/users/search', [HomeController::class, 'searchUsers']);
+                Route::get('/users/search-history', [HomeController::class, 'searchHistory']);
+
+                Route::middleware('idempotency')->group(function () {
+                    Route::delete('/users/search-history', [HomeController::class, 'clearSearchHistory']);
+                    Route::delete('/users/search-history/{historyId}', [HomeController::class, 'deleteSearchHistoryItem']);
+                });
             });
 
             //LABORATORY
@@ -298,6 +309,23 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::patch('/study-plans/{studyPlanId}/tasks/{taskId}/un-complete', [StudyTaskController::class, 'unCompleteTask']);
                 });
             });
+
+            //SETTINGS
+            Route::prefix('settings')->group(function () {
+                Route::get('/status/certificate-request', [AcademicVerificationController::class, 'status']);
+                Route::get('/sold-tests', [UserSalesController::class, 'soldTests']);
+
+                Route::middleware(['idempotency' , 'throttle:3,5'])->group(function () {
+                    Route::patch('/task-reminders/enable', [SettingsController::class, 'enableTaskReminders']);
+                    Route::patch('/task-reminders/disable', [SettingsController::class, 'disableTaskReminders']);
+                    Route::post('/date-time', [SettingsController::class, 'updateDateTimeSettings']);
+                    Route::post('/theme-mode', [SettingsController::class, 'updateThemeMode']);
+
+                    Route::post('/create/certificate-request', [AcademicVerificationController::class, 'submit']);
+                    Route::post('/certificate-visibility', [AcademicVerificationController::class, 'updateCertificateVisibility']);
+                    Route::delete('/cancel/certificate-request', [AcademicVerificationController::class, 'cancel']);
+                });
+            });
         });
 
 
@@ -385,6 +413,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::middleware('idempotency')->group(function () {
                     Route::post('/ban-user/{userId}' , [UserDashboardController::class , 'banUser']);
+                    Route::post('/lift-ban/{userId}' , [UserDashboardController::class , 'liftBan']);
 
                     Route::post('/update/photo/{userId}' , [MyProfileController::class, 'updatePhoto']);
                     Route::delete('/delete/photo/{userId}' , [MyProfileController::class, 'deletePhoto']);

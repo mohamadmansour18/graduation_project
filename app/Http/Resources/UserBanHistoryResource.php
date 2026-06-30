@@ -40,6 +40,7 @@ class UserBanHistoryResource extends JsonResource
                 : DateProcessor::fromTimestamp($this->ends_at),
 
             'is_active_now' => $this->isActiveNow(),
+            'ban_status' => $this->banStatus(),
         ];
     }
 
@@ -58,5 +59,26 @@ class UserBanHistoryResource extends JsonResource
         }
 
         return $this->ends_at !== null && $this->ends_at->isFuture();
+    }
+
+    private function banStatus(): string
+    {
+        if ($this->lifted_at !== null) {
+            return 'expired';
+        }
+
+        if ($this->starts_at && $this->starts_at->isFuture()) {
+            return 'future';
+        }
+
+        if ($this->ban_type->value === BanType::Permanent->value) {
+            return 'active';
+        }
+
+        if ($this->ends_at !== null && $this->ends_at->isFuture()) {
+            return 'active';
+        }
+
+        return 'expired';
     }
 }

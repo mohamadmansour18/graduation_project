@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->enum('status' , array_column(\App\Enums\Status::cases(), 'value'))->default(\App\Enums\Status::PENDING->value);
             $table->timestamp('submitted_at');
+            $table->boolean('show_certificate_publicly')->default(false);
             $table->foreignId('reviewer_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('reviewed_at')->nullable();
             $table->text('rejection_reason')->nullable();

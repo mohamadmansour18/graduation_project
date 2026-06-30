@@ -2,9 +2,13 @@
 
 namespace App\Repositories\Home;
 
+use App\Enums\SystemRole;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
 use App\Helpers\ImageProcessor;
+use App\Models\User;
+use App\Models\UserSearchHistory;
+use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -174,5 +178,77 @@ class HomeRepository
         );
 
         return $paginator;
+    }
+
+    public function searchMobileUsers(int $viewerUserId, string $query, int $perPage): CursorPaginator
+    {
+        $safeSearch = addcslashes(trim($query), '%_\\');
+
+        return User::query()
+            ->select([
+                'id',
+                'name',
+                'role_id',
+                'is_academically_verified',
+            ])
+            ->whereHas('role', function ($q) {
+                $q->where('name', SystemRole::Mobile_User->value);
+            })
+            ->where('id', '!=', $viewerUserId)
+            ->where('name', 'like', $safeSearch . '%')
+            ->with([
+                'userProfile:id,user_id,avatar_path,avatar_disk',
+                'userOnboardingProfile:id,user_id,education_level',
+            ])
+            ->withExists([
+                'followedUserFollows as viewer_is_following' => function ($q) use ($viewerUserId) {
+                    $q->where('follower_user_id', $viewerUserId);
+                },
+            ])
+            ->orderBy('id')
+            ->cursorPaginate($perPage);
+    }
+
+    public function storeSearchQuery(int $userId, string $query): \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Eloquent\Model
+    {
+        $history = UserSearchHistory::query()
+            ->where('user_id', $userId)
+            ->where('query', $query)
+            ->first();
+
+        if ($history) {
+            $history->touch();
+
+            return $history;
+        }
+
+        return UserSearchHistory::query()->create([
+            'user_id' => $userId,
+            'query' => $query,
+        ]);
+    }
+
+    public function getLatestSearchHistories(int $userId, int $limit = 20): Collection
+    {
+        return UserSearchHistory::query()
+            ->where('user_id', $userId)
+            ->latest('updated_at')
+            ->limit($limit)
+            ->get(['id', 'query']);
+    }
+
+    public function forceDeleteAllHistories(int $userId): int
+    {
+        return UserSearchHistory::query()
+            ->where('user_id', $userId)
+            ->forceDelete();
+    }
+
+    public function forceDeleteHistoryById(int $userId, int $historyId): int
+    {
+        return UserSearchHistory::query()
+            ->where('user_id', $userId)
+            ->whereKey($historyId)
+            ->forceDelete();
     }
 }

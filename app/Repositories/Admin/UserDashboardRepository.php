@@ -610,4 +610,28 @@ class UserDashboardRepository
         ])->save();
     }
 
+    public function getLatestLiftableBanForUserWithLock(int $userId): ?UserBan
+    {
+        return UserBan::query()
+            ->where('user_id', $userId)
+            ->whereNull('lifted_at')
+            ->where(function ($query) {
+                $query->where('ban_type', BanType::Permanent->value)
+                    ->orWhere(function ($query) {
+                        $query->where('ban_type', BanType::Temporary->value)
+                            ->where('ends_at', '>', now());
+                    });
+            })
+            ->latest('id')
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function liftBan(UserBan $ban, int $liftedByUserId): bool
+    {
+        return $ban->update([
+            'lifted_by_user_id' => $liftedByUserId,
+            'lifted_at' => now(),
+        ]);
+    }
 }

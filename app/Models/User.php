@@ -33,6 +33,7 @@ class User extends Authenticatable implements JWTSubject
         'gender',
         'is_academically_verified',
         'academically_verified_at',
+        'academic_verification_cancel_count'
     ];
 
     protected $hidden = [
@@ -237,6 +238,12 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(UserAcademicVerificationRequest::class, 'user_id');
     }
 
+    public function latestAcademicVerificationRequest()
+    {
+        return $this->hasOne(UserAcademicVerificationRequest::class, 'user_id')
+            ->latestOfMany();
+    }
+
     public function reviewerUserAcademicVerificationRequests(): HasMany
     {
         return $this->hasMany(UserAcademicVerificationRequest::class, 'reviewer_user_id');
@@ -310,6 +317,11 @@ class User extends Authenticatable implements JWTSubject
     public function aiQuestionGenerationRequests(): HasMany
     {
         return $this->hasMany(AiQuestionGenerationRequest::class , 'user_id');
+    }
+
+    public function searchHistories(): HasMany
+    {
+        return $this->hasMany(UserSearchHistory::class , 'user_id');
     }
 
     public function activeBan(): HasOne

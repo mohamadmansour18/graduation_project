@@ -118,4 +118,13 @@ class DashboardUserException extends ApiException
         );
     }
 
+    public static function userHasNoActiveBan(): self
+    {
+        return new self(
+            title: '! فشل رفع الحظر',
+            message: 'لا يمكن رفع الحظر لأن المستخدم لا يملك حظراً فعالاً',
+            status: 409
+        );
+    }
+
 }

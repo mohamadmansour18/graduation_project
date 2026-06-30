@@ -23,9 +23,11 @@ class UserAcademicVerificationRequest extends Model
         'reviewer_user_id',
         'reviewed_at',
         'rejection_reason',
+        'show_certificate_publicly',
     ];
 
     protected $casts = [
+        'show_certificate_publicly' => 'boolean',
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
         'status'=> Status::class,

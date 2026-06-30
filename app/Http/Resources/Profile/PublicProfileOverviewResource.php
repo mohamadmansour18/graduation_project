@@ -23,6 +23,7 @@ class PublicProfileOverviewResource extends JsonResource
         $stats = $user->userProfileStat;
         $profile = $user->userProfile;
         $onboarding = $user->userOnboardingProfile;
+        $userAcademic = $user->latestAcademicVerificationRequest;
 
         $totalReviews = (int) ($stats?->total_test_reviews_received ?? 0);
 
@@ -40,6 +41,7 @@ class PublicProfileOverviewResource extends JsonResource
             ],
 
             'basic_info' => [
+                'show_certificate_publicly'=> (bool) ($userAcademic?->show_certificate_publicly ?? false),
                 'education_level' => $onboarding->education_level,
                 'governorate' => $profile?->governorate ?? "لم يتم التحديد",
                 'gender' => $user->gender,

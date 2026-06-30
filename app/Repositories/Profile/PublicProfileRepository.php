@@ -41,6 +41,7 @@ class PublicProfileRepository
                 'userOnboardingProfile:id,user_id,education_level',
                 'userInterestSelections:id,user_id,interest_id,slot_no',
                 'userInterestSelections.interest:id,name,interest_category_id',
+                'latestAcademicVerificationRequest:user_academic_verification_requests.id,user_academic_verification_requests.user_id,user_academic_verification_requests.show_certificate_publicly',
             ])
             ->withExists([
                 'followedUserFollows as viewer_is_following' => fn ($query) =>

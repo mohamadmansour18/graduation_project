@@ -237,4 +237,16 @@ class UserDashboardController extends Controller
             message: 'تم حفظ كلمة المرور الجديدة بنجاح'
         );
     }
+
+    public function liftBan(int $userId, UserDashboardService $dashboardUserService): JsonResponse
+    {
+        $dashboardUserService->liftUserBan(
+            targetUserId: $userId,
+            adminUserId: \Auth::id()
+        );
+
+        return $this->successResponse(
+            message: 'تم رفع الحظر عن المستخدم بنجاح'
+        );
+    }
 }

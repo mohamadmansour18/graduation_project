@@ -188,7 +188,7 @@ class UserDashboardService
                 throw DashboardUserException::userAlreadyBanned();
             }
 
-            $isPermanent = (bool) $data['is_permanent'];
+            $isPermanent = (int) $data['is_permanent'];
 
             if ($isPermanent) {
                 $startsAt = now();
@@ -329,5 +329,28 @@ class UserDashboardService
             'action' => 'dashboard.profile.password.update',
             'admin_id' => $user->id,
         ]);
+    }
+
+    public function liftUserBan(int $targetUserId, int $adminUserId): void
+    {
+        DB::transaction(function () use ($targetUserId, $adminUserId) {
+            $ban = $this->repository
+                ->getLatestLiftableBanForUserWithLock($targetUserId);
+
+            if (! $ban) {
+                throw DashboardUserException::userHasNoActiveBan();
+            }
+
+            $this->repository->liftBan(
+                ban: $ban,
+                liftedByUserId: $adminUserId
+            );
+
+            Log::channel('audit')->info('User ban lifted', [
+                'target_user_id' => $targetUserId,
+                'lifted_by_user_id' => $adminUserId,
+                'ban_id' => $ban->id,
+            ]);
+        });
     }
 }

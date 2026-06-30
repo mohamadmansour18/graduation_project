@@ -5,6 +5,7 @@ namespace App\Services\Home;
 use App\Exceptions\Api\InterestException;
 use App\Helpers\DateProcessor;
 use App\Helpers\ImageProcessor;
+use App\Http\Resources\UserSearchResultResource;
 use App\Repositories\Home\HomeRepository;
 use App\Services\Cache\CacheKeys;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -12,8 +13,8 @@ use Illuminate\Support\Facades\Cache;
 
 class HomeService
 {
-    private const HOME_CATEGORIES_LIMIT = 8;
-    private const TOP_TEST_CREATORS_LIMIT = 5;
+    private const int HOME_CATEGORIES_LIMIT = 8;
+    private const int TOP_TEST_CREATORS_LIMIT = 5;
 
     public function __construct(
         private readonly HomeRepository $homeRepository
@@ -111,5 +112,51 @@ class HomeService
         );
 
         return $paginator;
+    }
+
+    public function searchUsers(int $viewerUserId, string $query, int $perPage): array
+    {
+        $this->homeRepository->storeSearchQuery(
+            userId: $viewerUserId,
+            query: $query
+        );
+
+        $paginator = $this->homeRepository->searchMobileUsers(
+            viewerUserId: $viewerUserId,
+            query: $query,
+            perPage: $perPage
+        );
+
+        return [
+            'users' => UserSearchResultResource::collection($paginator->items()),
+            'meta' => [
+                'per_page' => $paginator->perPage(),
+                'next_cursor' => optional($paginator->nextCursor())->encode(),
+                'previous_cursor' => optional($paginator->previousCursor())->encode(),
+                'has_more_pages' => $paginator->hasMorePages(),
+            ],
+        ];
+    }
+
+    public function getSearchHistory(int $userId): array
+    {
+        $histories = $this->homeRepository->getLatestSearchHistories($userId);
+
+        return [
+            'histories' => $histories,
+        ];
+    }
+
+    public function clearSearchHistory(int $userId): void
+    {
+        $this->homeRepository->forceDeleteAllHistories($userId);
+    }
+
+    public function deleteSearchHistoryItem(int $userId, int $historyId): void
+    {
+        $this->homeRepository->forceDeleteHistoryById(
+            userId: $userId,
+            historyId: $historyId
+        );
     }
 }
