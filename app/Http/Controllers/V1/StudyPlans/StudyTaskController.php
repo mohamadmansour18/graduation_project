@@ -70,4 +70,43 @@ class StudyTaskController extends Controller
             title: '! تم جلب بيانات المهمة بنجاح'
         );
     }
+
+    public function markAsInProgress(int $studyPlanId, int $taskId,): JsonResponse
+    {
+        $this->studyTaskService->markTaskAsInProgress(
+            userId: request()->user()->id,
+            studyPlanId: $studyPlanId,
+            taskId: $taskId
+        );
+
+        return $this->successResponse(
+            message: 'تم تغيير حالة المهمة إلى قيد المعالجة بنجاح'
+        );
+    }
+
+    public function markAsCompleted(int $studyPlanId, int $taskId,): JsonResponse
+    {
+        $this->studyTaskService->markTaskAsCompleted(
+            userId: request()->user()->id,
+            studyPlanId: $studyPlanId,
+            taskId: $taskId
+        );
+
+        return $this->successResponse(
+            message: 'تم تغيير حالة المهمة إلى تم إنجازها بنجاح'
+        );
+    }
+
+    public function unCompleteTask(int $studyPlanId, int $taskId,): JsonResponse
+    {
+        $this->studyTaskService->unCompleteTask(
+            userId: request()->user()->id,
+            studyPlanId: $studyPlanId,
+            taskId: $taskId
+        );
+
+        return $this->successResponse(
+            message: 'تم إلغاء إنجاز المهمة بنجاح'
+        );
+    }
 }

@@ -763,4 +763,118 @@ class StudyTaskService
 
         return $task;
     }
+
+    public function markTaskAsInProgress(int $userId, int $studyPlanId, int $taskId): void
+    {
+        DB::transaction(function () use ($userId, $studyPlanId, $taskId) {
+            $plan = $this->studyTaskRepository->findPlanForUserForUpdate(
+                userId: $userId,
+                studyPlanId: $studyPlanId
+            );
+
+            if (! $plan) {
+                throw StudyPlanException::planNotFound();
+            }
+
+            $task = $this->studyTaskRepository->findTaskForPlanForUpdate(
+                studyPlanId: $studyPlanId,
+                taskId: $taskId
+            );
+
+            if (! $task) {
+                throw StudyPlanException::taskNotFound();
+            }
+
+            if ($task->status->value !== TaskStatus::TODO->value) {
+                throw StudyPlanException::taskMustBeTodoToStartProcessing();
+            }
+
+            $this->studyTaskRepository->updateTaskStatus(
+                task: $task,
+                status: TaskStatus::In_Progress->value,
+                completedAt: null,
+                missedAt: null
+            );
+
+            $this->studyTaskRepository->refreshPlanCounters($studyPlanId);
+        });
+    }
+
+    public function markTaskAsCompleted(int $userId, int $studyPlanId, int $taskId): void
+    {
+        DB::transaction(function () use ($userId, $studyPlanId, $taskId) {
+            $plan = $this->studyTaskRepository->findPlanForUserForUpdate(
+                userId: $userId,
+                studyPlanId: $studyPlanId
+            );
+
+            if (! $plan) {
+                throw StudyPlanException::planNotFound();
+            }
+
+            $task = $this->studyTaskRepository->findTaskForPlanForUpdate(
+                studyPlanId: $studyPlanId,
+                taskId: $taskId
+            );
+
+            if (! $task) {
+                throw StudyPlanException::taskNotFound();
+            }
+
+            if ($task->status->value !== TaskStatus::In_Progress->value) {
+                throw StudyPlanException::taskMustBeInProgressToComplete();
+            }
+
+            $now = now()->toDateTimeString();
+
+            $this->studyTaskRepository->updateTaskStatus(
+                task: $task,
+                status: TaskStatus::Completed->value,
+                completedAt: $now,
+                missedAt: null
+            );
+
+            $this->studyTaskRepository->completeAllSubtasksForTask($task->id);
+
+            $this->studyTaskRepository->refreshPlanCounters($studyPlanId);
+        });
+    }
+
+    public function unCompleteTask(int $userId, int $studyPlanId, int $taskId): void
+    {
+        DB::transaction(function () use ($userId, $studyPlanId, $taskId) {
+            $plan = $this->studyTaskRepository->findPlanForUserForUpdate(
+                userId: $userId,
+                studyPlanId: $studyPlanId
+            );
+
+            if (! $plan) {
+                throw StudyPlanException::planNotFound();
+            }
+
+            $task = $this->studyTaskRepository->findTaskForPlanForUpdate(
+                studyPlanId: $studyPlanId,
+                taskId: $taskId
+            );
+
+            if (! $task) {
+                throw StudyPlanException::taskNotFound();
+            }
+
+            if ($task->status->value !== TaskStatus::Completed->value) {
+                throw StudyPlanException::taskMustBeCompletedToUncomplete();
+            }
+
+            $this->studyTaskRepository->updateTaskStatus(
+                task: $task,
+                status: TaskStatus::TODO->value,
+                completedAt: null,
+                missedAt: null
+            );
+
+            $this->studyTaskRepository->unCompleteAllSubtasksForTask($task->id);
+
+            $this->studyTaskRepository->refreshPlanCounters($studyPlanId);
+        });
+    }
 }

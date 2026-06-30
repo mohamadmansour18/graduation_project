@@ -346,4 +346,37 @@ class  StudyTaskRepository
             })
             ->count();
     }
+
+    public function updateTaskStatus(StudyTask $task, string $status, ?string $completedAt = null, ?string $missedAt = null): void
+    {
+        $task->update([
+            'status' => $status,
+            'completed_at' => $completedAt,
+            'missed_at' => $missedAt,
+        ]);
+    }
+
+    public function completeAllSubtasksForTask(int $taskId): void
+    {
+        StudyTaskSubtask::query()
+            ->where('study_task_id', $taskId)
+            ->where('is_completed', false)
+            ->update([
+                'is_completed' => true,
+                'completed_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function unCompleteAllSubtasksForTask(int $taskId): void
+    {
+        StudyTaskSubtask::query()
+            ->where('study_task_id', $taskId)
+            ->where('is_completed', true)
+            ->update([
+                'is_completed' => false,
+                'completed_at' => null,
+                'updated_at' => now(),
+            ]);
+    }
 }

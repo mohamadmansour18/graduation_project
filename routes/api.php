@@ -292,6 +292,10 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                     Route::patch('/study-plans/{studyPlanId}/tasks/{taskId}/subtasks/{subtaskId}/complete' , [StudyTaskSubtaskController::class , 'completeSubtask']);
                     Route::patch('/study-plans/{studyPlanId}/tasks/{taskId}/subtasks/{subtaskId}/un-complete', [StudyTaskSubtaskController::class, 'unCompleteSubtask']);
+
+                    Route::patch('/study-plans/{studyPlanId}/tasks/{taskId}/start', [StudyTaskController::class, 'markAsInProgress']);
+                    Route::patch('/study-plans/{studyPlanId}/tasks/{taskId}/complete', [StudyTaskController::class, 'markAsCompleted']);
+                    Route::patch('/study-plans/{studyPlanId}/tasks/{taskId}/un-complete', [StudyTaskController::class, 'unCompleteTask']);
                 });
             });
         });

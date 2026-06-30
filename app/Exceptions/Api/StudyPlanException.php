@@ -254,4 +254,31 @@ class StudyPlanException extends ApiException
             status: 404
         );
     }
+
+    public static function taskMustBeTodoToStartProcessing(): self
+    {
+        return new self(
+            title: '! فشل تغيير حالة المهمة',
+            message: 'لا يمكن نقل المهمة إلى قيد المعالجة إلا إذا كانت حالتها للقيام',
+            status: 422
+        );
+    }
+
+    public static function taskMustBeInProgressToComplete(): self
+    {
+        return new self(
+            title: '! فشل تغيير حالة المهمة',
+            message: 'لا يمكن تعليم المهمة كمنجزة إلا إذا كانت حالتها قيد المعالجة',
+            status: 422
+        );
+    }
+
+    public static function taskMustBeCompletedToUnComplete(): self
+    {
+        return new self(
+            title: '! فشل تغيير حالة المهمة',
+            message: 'لا يمكن إلغاء إنجاز المهمة إلا إذا كانت حالتها تم إنجازها',
+            status: 422
+        );
+    }
 }
