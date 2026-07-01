@@ -17,3 +17,5 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+/storage/app/firebase/web-service-account.json
+/storage/app/firebase/mobile-service-account.json

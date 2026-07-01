@@ -1,13 +1,14 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Auth;
 
 use App\Enums\Gender;
+use App\Http\Requests\ApiFormRequest;
 use App\Rules\AllowedEmailDomain;
 use App\Rules\ArabicOnly;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
 use Illuminate\Validation\Rules\Password;
+
 class RegisterRequest extends ApiFormRequest
 {
     protected $stopOnFirstFailure = true;

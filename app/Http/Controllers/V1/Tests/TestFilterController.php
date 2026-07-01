@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\V1\Tests;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\FilterTestsRequest;
+use App\Http\Requests\Tests\FilterTestsRequest;
 use App\Http\Resources\Tests\FilteredTestResource;
 use App\Services\Tests\TestFilterService;
 use App\Trait\ApiResponse;

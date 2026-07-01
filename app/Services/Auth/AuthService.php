@@ -13,6 +13,7 @@ use App\Jobs\SendFailedLoginAlertJob;
 use App\Jobs\SendOtpMailJob;
 use App\Models\Role;
 use App\Repositories\Auth\AuthRepository;
+use App\Services\Notifications\FcmTokenService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,8 @@ use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 class AuthService
 {
     public function __construct(
-        protected AuthRepository $authRepository
+        protected AuthRepository $authRepository,
+        private readonly FcmTokenService $fcmTokenService
     ){}
 
     public function register(array $data):array
@@ -122,6 +124,18 @@ class AuthService
 
         //refresh last login at
         $this->authRepository->updateLastLoginAt($user->id);
+
+        if (! empty($data['fcm_token'])) {
+            $this->fcmTokenService->upsertForUser(
+                user: $user,
+                token: $data['fcm_token'],
+                platform: $data['fcm_platform'],
+                firebaseProject: $data['firebase_project'],
+                deviceId: $data['device_id'] ?? null,
+                deviceName: $data['device_name'] ?? null,
+                userAgent: $data['user_agent'] ?? null,
+            );
+        }
 
         return [
             'user' => [

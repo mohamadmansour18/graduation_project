@@ -3,6 +3,7 @@
 namespace App\Repositories\Tests;
 
 use App\Enums\Decision;
+use App\Enums\SystemRole;
 use App\Enums\TestReviewRoundsTriggerType;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
@@ -103,5 +104,15 @@ class TestCreationRepository
             'to_status' => TestReviewStatus::New->value,
             'changed_by_user_id' => $userId,
         ]);
+    }
+
+    public function getDashboardSupervisorIds(): array
+    {
+        return User::query()
+            ->whereHas('role', function ($query) {
+                $query->whereIn('name', [SystemRole::Owner->value , SystemRole::Supervisor->value]);
+            })
+            ->pluck('id')
+            ->all();
     }
 }

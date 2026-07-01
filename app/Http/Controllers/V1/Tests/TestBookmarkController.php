@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\V1\Tests;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ListTestBookmarkedUsersRequest;
+use App\Http\Requests\Tests\ListTestBookmarkedUsersRequest;
 use App\Http\Resources\Tests\TestBookmarkedUserResource;
 use App\Services\Tests\TestBookmarkService;
 use App\Trait\ApiResponse;

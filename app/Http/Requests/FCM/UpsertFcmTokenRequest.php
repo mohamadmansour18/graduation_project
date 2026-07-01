@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\Admin;
+namespace App\Http\Requests\FCM;
 
 use App\Http\Requests\ApiFormRequest;
 
-class LoginRequest extends ApiFormRequest
+class UpsertFcmTokenRequest extends ApiFormRequest
 {
     protected $stopOnFirstFailure = true;
 
@@ -16,10 +16,7 @@ class LoginRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email:rfc' ],
-            'password' => ['required', 'string' , 'min:8'],
-
-            'fcm_token' => ['nullable', 'string'],
+            'fcm_token' => ['required', 'string'],
             'device_id' => ['nullable', 'string', 'max:255'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ];
@@ -28,16 +25,12 @@ class LoginRequest extends ApiFormRequest
     public function messages(): array
     {
         return [
-            'email.required' => 'حقل البريد الإلكتروني مطلوب',
-            'email.string' => 'حقل البريد الإلكتروني غير صالح',
-            'email.email' => 'صيغة البريد الإلكتروني غير صحيحة',
-            'password.required' => 'كلمة المرور مطلوبة',
-            'password.string' => 'كلمة المرور غير صالحة',
-            'password.min' => 'كلمة المرور غير صحيحة',
-
+            'fcm_token.required' => 'رمز الإشعارات مطلوب',
             'fcm_token.string' => 'رمز الإشعارات غير صالح',
+
             'device_id.string' => 'معرّف الجهاز غير صالح',
             'device_id.max' => 'معرّف الجهاز طويل جدًا',
+
             'device_name.string' => 'اسم الجهاز غير صالح',
             'device_name.max' => 'اسم الجهاز طويل جدًا',
         ];

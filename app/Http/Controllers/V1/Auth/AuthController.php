@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\V1\Auth;
 
+use App\Enums\FirebaseProject;
+use App\Enums\NotificationPlatform;
 use App\Exceptions\Jwt\TokenMissingException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LoginRequest;
-use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\Auth\LogoutRequest;
+use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\VerifyEmailOtpRequest;
 use App\Http\Requests\Reset_Password\RequestPasswordResetOtpRequest;
-use App\Http\Requests\VerifyEmailOtpRequest;
 use App\Services\Auth\AuthService;
+use App\Services\Notifications\FcmTokenService;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
@@ -38,6 +43,9 @@ class AuthController extends Controller
             ...$request->validated(),
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
+
+            'fcm_platform' => NotificationPlatform::Mobile->value,
+            'firebase_project' => FirebaseProject::Mobile->value,
         ];
 
         $data = $this->authService->login($payLoad);
@@ -84,12 +92,35 @@ class AuthController extends Controller
         );
     }
 
-    public function logout(): JsonResponse
+    public function logout(LogoutRequest $request , FcmTokenService $fcmTokenService): JsonResponse
     {
+        $user = auth('api')->user();
+
+        if ($user) {
+            if ($request->filled('fcm_token')) {
+                $fcmTokenService->revokeForUserByToken(
+                    user: $user,
+                    token: $request->input('fcm_token'),
+                    firebaseProject: 'mobile',
+                );
+            } elseif ($request->filled('device_id')) {
+                $fcmTokenService->revokeForUserByDeviceId(
+                    user: $user,
+                    deviceId: $request->input('device_id'),
+                    firebaseProject: 'mobile',
+                );
+            } else {
+                Log::info('Logout without FCM token or device id', [
+                    'user_id' => $user->id,
+                    'firebase_project' => 'mobile',
+                ]);
+            }
+        }
+
         auth('api')->logout();
 
         return $this->successResponse(
-            message :"تم تسجيل الخروج من حسابك بنجاح ، شكرا لاستخدامك تطبيق نيرد"
+            message: "تم تسجيل الخروج من حسابك بنجاح ، شكرا لاستخدامك تطبيق نيرد"
         );
     }
 }

@@ -6,13 +6,15 @@ use App\Exceptions\Api\AuthenticationException;
 use App\Helpers\ImageProcessor;
 use App\Jobs\SendFailedLoginAlertJob;
 use App\Repositories\Admin\AuthRepository;
+use App\Services\Notifications\FcmTokenService;
 use Illuminate\Support\Facades\Hash;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 class AuthService
 {
     public function __construct(
-        private readonly AuthRepository $authRepository
+        private readonly AuthRepository $authRepository,
+        private readonly FcmTokenService $fcmTokenService
     )
     {}
     public function login(array $data):array
@@ -32,6 +34,18 @@ class AuthService
 
         //refresh last login at
         $this->authRepository->updateLastLoginAt($user->id);
+
+        if (! empty($data['fcm_token'])) {
+            $this->fcmTokenService->upsertForUser(
+                user: $user,
+                token: $data['fcm_token'],
+                platform: $data['fcm_platform'],
+                firebaseProject: $data['firebase_project'],
+                deviceId: $data['device_id'] ?? null,
+                deviceName: $data['device_name'] ?? null,
+                userAgent: $data['user_agent'] ?? null,
+            );
+        }
 
         return [
             'user' => [

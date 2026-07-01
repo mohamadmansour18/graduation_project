@@ -2,30 +2,32 @@
 
 namespace App\Services\Tests;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
 use App\Exceptions\Api\TestException;
 use App\Models\User;
 use App\Repositories\Tests\TestCreationRepository;
+use App\Services\Notifications\NotificationCenter;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class TestCreationService
 {
-
     private const int MAX_PENDING_PUBLIC_TESTS_FOR_VERIFIED_USER = 3;
     private const int MAX_PENDING_PUBLIC_TESTS_FOR_UNVERIFIED_USER = 1;
     private const int MAX_PRIVATE_TESTS_PER_DAY = 5;
 
     public function __construct(
-        private readonly TestCreationRepository $repository
+        private readonly TestCreationRepository $repository,
+//        private readonly NotificationCenter $notificationCenter
     ) {}
 
     /**
      * @throws TestException
      * @throws Throwable
      */
-    public function create(User $user, array $data): void
+    public function create(User $user, array $data , ): void
     {
         $isPublic = $data['test_type'] === TestType::Public->value;
         $isPrivate = $data['test_type'] === TestType::Private->value;
@@ -114,6 +116,29 @@ class TestCreationService
                     test: $test,
                     userId: $user->id
                 );
+
+//                $supervisorIds = $this->repository->getDashboardSupervisorIds();
+//
+//                if (! empty($supervisorIds)) {
+//                    $payload = NotificationPayload::make(
+//                        title: 'اختبار جديد بانتظار المراجعة',
+//                        body: "قام {$user->name} بإنشاء اختبار جديد بعنوان: {$test->title}",
+//                        metadata: [
+//                            'type' => 'test_created_requires_review',
+//                            'resource_type' => 'test',
+//                            'resource_id' => $test->id,
+//                            'screen' => 'dashboard_test_review_details',
+//                            'action' => 'open_test_review',
+//                            'creator_id' => $user->id,
+//                            'test_title' => $test->title,
+//                        ],
+//                    );
+//
+//                    $this->notificationCenter->sendToWeb(
+//                        userIds: $supervisorIds,
+//                        payload: $payload,
+//                    );
+//                }
             }
         });
     }

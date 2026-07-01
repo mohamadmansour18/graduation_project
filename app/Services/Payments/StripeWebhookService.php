@@ -2,9 +2,14 @@
 
 namespace App\Services\Payments;
 
+use App\DTOs\Notifications\NotificationPayload;
+use App\Enums\PaymentStatus;
 use App\Events\TestPurchasePaid;
+use App\Helpers\BuildActor;
+use App\Helpers\ImageProcessor;
 use App\Repositories\Payments\PaymentAttemptRepository;
 use App\Repositories\Payments\TestPurchaseRepository;
+use App\Services\Notifications\NotificationCenter;
 use Illuminate\Support\Facades\Log;
 use Stripe\Event;
 
@@ -13,6 +18,7 @@ class StripeWebhookService
     public function __construct(
         private readonly PaymentAttemptRepository $paymentAttemptRepository,
         private readonly TestPurchaseRepository $testPurchaseRepository,
+        private readonly NotificationCenter $notificationCenter,
     )
     {}
 
@@ -84,10 +90,14 @@ class StripeWebhookService
             return;
         }
 
-        $updatedPurchase = $this->testPurchaseRepository->markAsPaidFromAttempt(
+        $wasAlreadyPaid = $purchase->payment_status === PaymentStatus::Paid->value;
+
+        $paymentResult = $this->testPurchaseRepository->markAsPaidFromAttempt(
             purchase: $purchase,
             attempt: $attempt,
         );
+
+        $updatedPurchase = $paymentResult['purchase'];
 
         Log::channel('audit')->info('Test purchase paid successfully', [
             'action' => 'test_purchase_paid',
@@ -112,29 +122,13 @@ class StripeWebhookService
             (string) $event->id,
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | مكان استدعاء Event الإشعارات لاحقًا
-        |--------------------------------------------------------------------------
-        |
-        | هنا أصبح test_purchases مدفوعًا بالفعل، وبالتالي has_purchased
-        | في API تفاصيل الاختبار سيصبح true.
-        |
-        | مثال لاحقًا:
-        |
-        | TestPurchasePaid::dispatch($updatedPurchase, $attempt);
-        |
-        | Listeners مقترحة:
-        | - SendPurchaseSuccessNotificationToBuyer
-        | - SendNewTestSaleNotificationToSeller
-        | - UpdateFinancialStatsAfterTestPurchase
-        |
-        | اجعل هذه الـ Listeners queued حتى لا نبطئ webhook response.
-        |
-        | قواعد مشروعك تنصح باستخدام Events/Listeners للآثار الجانبية المنفصلة،
-        | واستخدام Queues للأعمال غير الحرجة التي لا يجب أن تؤخر الاستجابة.
-        |
-        */
+        if ($paymentResult['was_marked_as_paid_now'] === true) {
+            $this->sendPurchasePaidNotifications(
+                purchase: $updatedPurchase,
+                attempt: $attempt,
+                stripeEventId: (string)$event->id,
+            );
+        }
     }
 
     private function handleCheckoutSessionExpired(Event $event): void
@@ -262,4 +256,77 @@ class StripeWebhookService
 
         return null;
     }
+
+    private function sendPurchasePaidNotifications(object $purchase, object $attempt, string $stripeEventId,): void
+    {
+        $testLabel = "الاختبار رقم {$purchase->test_id}";
+
+        $buyerPayload = NotificationPayload::make(
+            title: 'تمت عملية الشراء بنجاح',
+            body: "تم شراء {$testLabel} بنجاح، يمكنك الآن الوصول إلى الاختبار.",
+            metadata: [
+                'category' => 'payment',
+
+                'presentation' => [
+                    'mode' => 'system',
+                    'floor_color' => '#FFF2E7',
+                    'icon' => ImageProcessor::urlOrDefault('system-notification/wallet.svg' , 'defaults/notification.svg' , 'public'),
+                ],
+
+                'actor' => null,
+
+                'navigation' => [
+                    'screen' => 'public_test_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'test_id' => (int) $purchase->test_id,
+                ],
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $purchase->buyer_user_id,
+            payload: $buyerPayload,
+        );
+
+
+        $sellerUserId = $purchase->seller_user_id ?? null;
+
+        if (! empty($sellerUserId) && (int) $sellerUserId !== (int) $purchase->buyer_user_id) {
+
+            $sellerPayload = NotificationPayload::make(
+                title: 'تم شراء اختبارك',
+                body: "قام مستخدم بشراء {$testLabel}.",
+                metadata: [
+                    'category' => 'payment',
+
+                    'presentation' => [
+                        'mode' => 'user',
+                        'icon' => null,
+                        'color' => null,
+                    ],
+                    'actor' => BuildActor::buildUserActor($sellerUserId),
+
+                    'navigation' => [
+                        'screen' => 'my_test_details',
+                        'action' => 'open',
+                    ],
+
+                    'params' => [
+                        'test_id' => (int) $purchase->test_id,
+                        'buyer_user_id' => (int) $purchase->buyer_user_id,
+                    ],
+                ],
+            );
+
+            $this->notificationCenter->sendToUser(
+                userId: (int) $sellerUserId,
+                payload: $sellerPayload,
+            );
+        }
+    }
+
+
 }

@@ -167,11 +167,19 @@ class TestPurchaseRepository
                 ->first();
 
             if (! $lockedPurchase) {
-                return $purchase;
+                return [
+                    'purchase' => $purchase,
+                    'was_already_paid' => false,
+                    'was_marked_as_paid_now' => false,
+                ];
             }
 
             if ($lockedPurchase->payment_status === \App\Enums\Payments\PaymentStatus::Paid->value) {
-                return $lockedPurchase;
+                return [
+                    'purchase' => $lockedPurchase,
+                    'was_already_paid' => true,
+                    'was_marked_as_paid_now' => false,
+                ];
             }
 
             DB::table('test_purchases')
@@ -184,9 +192,15 @@ class TestPurchaseRepository
                     'updated_at' => now(),
                 ]);
 
-            return DB::table('test_purchases')
+            $updatedPurchase = DB::table('test_purchases')
                 ->where('id', $lockedPurchase->id)
                 ->first();
+
+            return [
+                'purchase' => $updatedPurchase,
+                'was_already_paid' => false,
+                'was_marked_as_paid_now' => true,
+            ];
         });
     }
 

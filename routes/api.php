@@ -1,5 +1,6 @@
 <?php
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Http\Controllers\V1\Admin\AllocationDashboardController;
 use App\Http\Controllers\V1\Admin\AuthDashboardController;
 use App\Http\Controllers\V1\Admin\HomeDashboardController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\V1\AiQuestionGeneration\AiQuestionGenerationController;
 use App\Http\Controllers\V1\Auth\AuthController;
 use App\Http\Controllers\V1\Auth\OnboardingController;
 use App\Http\Controllers\V1\Auth\PasswordResetController;
+use App\Http\Controllers\V1\FcmTokenController;
 use App\Http\Controllers\V1\Folders\TestFolderController;
 use App\Http\Controllers\V1\Home\HomeController;
 use App\Http\Controllers\V1\Library\LibraryMaterialBookmarkController;
@@ -44,7 +46,9 @@ use App\Http\Controllers\V1\Tests\TestReportReviewController;
 use App\Http\Controllers\V1\Tests\TestReviewController;
 use App\Http\Controllers\V1\Tests\TestRevisionRequestController;
 use App\Http\Controllers\V1\Webhooks\StripeWebhookController;
+use App\Services\Notifications\NotificationCenter;
 use Illuminate\Support\Facades\Route;
+use Kreait\Laravel\Firebase\Facades\Firebase;
 
 /*
 |--------------------------------------------------------------------------
@@ -99,7 +103,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
         Route::middleware(['jwt.auth.api', 'role:mobile_user'])->group(function () {
 
-            Route::get('/logout' , [AuthController::class , 'logout']);
+            Route::post('/logout' , [AuthController::class , 'logout']);
 
             //HOME
             Route::prefix('home')->group(function () {
@@ -326,6 +330,11 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::delete('/cancel/certificate-request', [AcademicVerificationController::class, 'cancel']);
                 });
             });
+
+            //NOTIFICATION
+            Route::prefix('notification')->group(function () {
+                Route::post('/fcm-token', [FcmTokenController::class, 'upsertMobile']);
+            });
         });
 
 
@@ -347,7 +356,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
         });
 
         Route::middleware(['jwt.auth.api' , 'role:owner,supervisor'])->group(function () {
-            Route::get('/logout' , [AuthController::class , 'logout']);
+            Route::post('/logout' , [AuthDashboardController::class , 'logout']);
 
             //HOME
             Route::prefix('home')->group(function () {
@@ -422,6 +431,11 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::post('/update/password' , [UserDashboardController::class , 'updateMyDashboardPassword']);
                 });
             });
+
+            //NOTIFICATION
+            Route::prefix('notification')->group(function () {
+                Route::post('/fcm-token', [FcmTokenController::class, 'upsertWeb']);
+            });
         });
 
         Route::middleware(['jwt.auth.api' , 'role:owner'])->group(function () {
@@ -461,6 +475,34 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
 
 });
+
+Route::get('/test-fcm', function (NotificationCenter $fcm) {
+    try {
+        $payload = NotificationPayload::make(
+                        title: 'اختبار جديد بانتظار المراجعة',
+                        body: "هذا الاشعار تجريبي يا صديقي",
+                        metadata: [
+                            'type' => 'http://localhost/storage/defaults/default-avatar.svg',
+                            'resource_type' => 'test',
+                            'screen' => 'dashboard_test_review_details',
+                        ]);
+        $fcm->sendToWeb(
+            11,
+            $payload,
+        );
+        return "تمت العملية بنجاح";
+    }catch (\Exception $e)
+    {
+        return response()->json([
+            'title' => "خطا اتصال من الشبكة!",
+            'body' => $e->getMessage(),
+        ], 422);
+    }
+});
+
+
+
+
 
 /*
  * TODO :
