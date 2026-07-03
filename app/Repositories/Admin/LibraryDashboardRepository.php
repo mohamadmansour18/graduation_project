@@ -10,6 +10,7 @@ use App\Models\LibraryMaterialReport;
 use App\Models\LibraryMaterialReviewRound;
 use App\Models\LibraryMaterialStatusHistory;
 use App\Models\LibraryReportReasonCounter;
+use App\Models\UserFollow;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -262,6 +263,17 @@ class LibraryDashboardRepository
     public function forceDeleteMaterial(LibraryMaterial $material): void
     {
         $material->forceDelete();
+    }
+
+    public function getFollowerUserIds(int $creatorUserId): array
+    {
+        return UserFollow::query()
+            ->where('followed_user_id', $creatorUserId)
+            ->pluck('follower_user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
 }

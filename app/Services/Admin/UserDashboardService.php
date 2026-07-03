@@ -2,12 +2,16 @@
 
 namespace App\Services\Admin;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Enums\BanType;
 use App\Exceptions\Api\DashboardUserException;
 use App\Exceptions\Api\ProfileException;
+use App\Helpers\ImageProcessor;
+use App\Jobs\SendSupervisorAccountCreatedMailJob;
 use App\Models\User;
 use App\Models\UserAcademicVerificationRequest;
 use App\Repositories\Admin\UserDashboardRepository;
+use App\Services\Notifications\NotificationCenter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Crypt;
@@ -20,7 +24,8 @@ use Illuminate\Support\Traits\EnumeratesValues;
 class UserDashboardService
 {
     public function __construct(
-        private readonly UserDashboardRepository $repository
+        private readonly UserDashboardRepository $repository,
+        private readonly NotificationCenter $notificationCenter,
     ) {}
 
     public function listUsers(string $type, string $sortBy = 'created_at', int $perPage = 20): \Illuminate\Pagination\CursorPaginator
@@ -43,7 +48,7 @@ class UserDashboardService
 
     public function createSupervisor(User $owner, array $data): void
     {
-        DB::transaction(function () use ($owner, $data) {
+        $supervisor = DB::transaction(function () use ($owner, $data) {
             $supervisorRole = $this->repository->findRoleByName('supervisor');
 
             if (! $supervisorRole) {
@@ -71,7 +76,11 @@ class UserDashboardService
                 'owner_id' => $owner->id,
                 'supervisor_id' => $supervisor->id,
             ]);
+
+            return $supervisor;
         });
+
+        SendSupervisorAccountCreatedMailJob::dispatch($supervisor, $owner)->afterCommit();
     }
 
     public function listBannedUsers(string $tab = 'all'): array|Collection|\LaravelIdea\Helper\App\Models\_IH_UserBan_C
@@ -179,7 +188,9 @@ class UserDashboardService
 
     public function banUser(User $owner, int $targetUserId, array $data): void
     {
-        DB::transaction(function () use ($owner, $targetUserId, $data) {
+        $notificationPayload = null;
+
+        DB::transaction(function () use ($owner, $targetUserId, $data, &$notificationPayload) {
             $hasActiveBan = $this->repository->hasActiveBanForUserWithLock(
                 userId: $targetUserId,
             );
@@ -207,7 +218,7 @@ class UserDashboardService
                 $banType = BanType::Temporary->value;
             }
 
-            $this->repository->createUserBan([
+            $ban = $this->repository->createUserBan([
                 'user_id' => $targetUserId,
                 'imposed_by_user_id' => $owner->id,
                 'ban_type' => $banType,
@@ -216,6 +227,17 @@ class UserDashboardService
                 'ends_at' => $endsAt,
             ]);
 
+            $notificationPayload = [
+                'ban_id' => (int) $ban->id,
+                'target_user_id' => (int) $targetUserId,
+                'imposed_by_user_id' => (int) $owner->id,
+                'ban_type' => $banType,
+                'reason' => $data['reason'],
+                'starts_at' => $startsAt?->toDateTimeString(),
+                'ends_at' => $endsAt?->toDateTimeString(),
+            ];
+
+
             Log::channel('audit')->info('User banned from dashboard', [
                 'action' => 'dashboard.users.ban',
                 'owner_id' => $owner->id,
@@ -223,6 +245,10 @@ class UserDashboardService
                 'ban_type' => $banType,
             ]);
         });
+
+        if ($notificationPayload !== null) {
+            $this->sendUserBannedNotification($notificationPayload);
+        }
     }
 
     public function getUserBanHistory(int $userId): \Illuminate\Support\Collection|EnumeratesValues
@@ -333,7 +359,9 @@ class UserDashboardService
 
     public function liftUserBan(int $targetUserId, int $adminUserId): void
     {
-        DB::transaction(function () use ($targetUserId, $adminUserId) {
+        $notificationPayload = null;
+
+        DB::transaction(function () use ($targetUserId, $adminUserId, &$notificationPayload) {
             $ban = $this->repository
                 ->getLatestLiftableBanForUserWithLock($targetUserId);
 
@@ -346,11 +374,112 @@ class UserDashboardService
                 liftedByUserId: $adminUserId
             );
 
+            $notificationPayload = [
+                'ban_id' => (int) $ban->id,
+                'target_user_id' => (int) $targetUserId,
+                'lifted_by_user_id' => (int) $adminUserId,
+                'ban_type' => $ban->ban_type,
+                'ban_reason' => $ban->reason,
+                'starts_at' => $ban->starts_at?->toDateTimeString(),
+                'ends_at' => $ban->ends_at?->toDateTimeString(),
+                'lifted_at' => now()->toDateTimeString(),
+            ];
+
             Log::channel('audit')->info('User ban lifted', [
                 'target_user_id' => $targetUserId,
                 'lifted_by_user_id' => $adminUserId,
                 'ban_id' => $ban->id,
             ]);
         });
+
+        if ($notificationPayload !== null) {
+            $this->sendUserBanLiftedNotification($notificationPayload);
+        }
+    }
+
+    private function sendUserBannedNotification(array $data): void
+    {
+        $isPermanent = $data['ban_type'] === BanType::Permanent->value;
+
+        $title = $isPermanent
+            ? 'تم حظر حسابك بشكل دائم'
+            : 'تم حظر حسابك مؤقتًا';
+
+        $body = $isPermanent
+            ? "تم حظر حسابك بشكل دائم. السبب: {$data['reason']}"
+            : "تم حظر حسابك مؤقتًا حتى تاريخ {$data['ends_at']}. السبب: {$data['reason']}";
+
+        $payload = NotificationPayload::make(
+            title: $title,
+            body: $body,
+            metadata: [
+                'type' => 'user_banned',
+                'category' => 'moderation',
+
+                'presentation' => [
+                    'mode' => 'system',
+                    'floor_color' => '#FFE7E7',
+                    'icon' => ImageProcessor::urlOrDefault('system-notification/ban.svg' , 'defaults/notification.svg' , 'public'),
+                ],
+
+                'actor' => null,
+
+
+                'navigation' => [
+                    'screen' => 'my_profile',
+                    'action' => 'open',
+
+                ],
+
+                'params' => [
+                    'ban_id' => (int) $data['ban_id'],
+                    'user_id' => (int) $data['target_user_id'],
+                    'ban_type' => $data['ban_type'],
+                    'is_permanent' => $isPermanent,
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $data['target_user_id'],
+            payload: $payload,
+        );
+    }
+
+    private function sendUserBanLiftedNotification(array $data): void
+    {
+        $payload = NotificationPayload::make(
+            title: 'تم فك الحظر عن حسابك',
+            body: 'تم فك الحظر عن حسابك، ويمكنك الآن استخدام المنصة من جديد.',
+            metadata: [
+                'type' => 'user_ban_lifted',
+                'category' => 'moderation',
+
+                'presentation' => [
+                    'mode' => 'system',
+                    'floor_color' => '#E4FFE5',
+                    'icon' => ImageProcessor::urlOrDefault('system-notification/unban.svg' , 'defaults/notification.svg' , 'public'),
+                ],
+
+                'actor' => null,
+
+                'navigation' => [
+                    'screen' => 'my_profile',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'ban_id' => (int) $data['ban_id'],
+                    'user_id' => (int) $data['target_user_id'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $data['target_user_id'],
+            payload: $payload,
+        );
     }
 }

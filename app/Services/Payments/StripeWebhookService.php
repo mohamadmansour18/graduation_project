@@ -90,8 +90,6 @@ class StripeWebhookService
             return;
         }
 
-        $wasAlreadyPaid = $purchase->payment_status === PaymentStatus::Paid->value;
-
         $paymentResult = $this->testPurchaseRepository->markAsPaidFromAttempt(
             purchase: $purchase,
             attempt: $attempt,
@@ -265,6 +263,7 @@ class StripeWebhookService
             title: 'تمت عملية الشراء بنجاح',
             body: "تم شراء {$testLabel} بنجاح، يمكنك الآن الوصول إلى الاختبار.",
             metadata: [
+                'type' => 'test_purchase',
                 'category' => 'payment',
 
                 'presentation' => [
@@ -300,6 +299,7 @@ class StripeWebhookService
                 title: 'تم شراء اختبارك',
                 body: "قام مستخدم بشراء {$testLabel}.",
                 metadata: [
+                    'type' => 'test_purchase',
                     'category' => 'payment',
 
                     'presentation' => [
@@ -307,6 +307,7 @@ class StripeWebhookService
                         'icon' => null,
                         'color' => null,
                     ],
+
                     'actor' => BuildActor::buildUserActor($sellerUserId),
 
                     'navigation' => [

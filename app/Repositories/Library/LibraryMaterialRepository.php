@@ -6,6 +6,7 @@ use App\Enums\Decision;
 use App\Enums\LibraryDecision;
 use App\Enums\LibraryMaterialReviewStatus;
 use App\Enums\LibraryTriggerType;
+use App\Enums\SystemRole;
 use App\Enums\VisibilityType;
 use App\Models\LibraryMaterial;
 use App\Models\LibraryMaterialAsset;
@@ -13,6 +14,7 @@ use App\Models\LibraryMaterialInterestSelection;
 use App\Models\LibraryMaterialReviewRound;
 use App\Models\LibraryMaterialStatusHistory;
 use App\Models\Test;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -441,5 +443,15 @@ class LibraryMaterialRepository
             ])
             ->orderByDesc('id')
             ->cursorPaginate($perPage);
+    }
+
+    public function getDashboardContentReviewerUserIds(): array
+    {
+        return User::query()
+            ->whereHas('role', function ($query) {
+                $query->whereIn('name', [SystemRole::Owner->value , SystemRole::Supervisor->value]);
+            })
+            ->pluck('id')
+            ->all();
     }
 }

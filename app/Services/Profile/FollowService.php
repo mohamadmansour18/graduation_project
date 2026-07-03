@@ -2,15 +2,19 @@
 
 namespace App\Services\Profile;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Exceptions\Api\FollowException;
+use App\Helpers\BuildActor;
 use App\Repositories\Profile\FollowRepository;
 use App\Services\Cache\CacheKeys;
+use App\Services\Notifications\NotificationCenter;
 use Illuminate\Support\Facades\DB;
 
 class FollowService
 {
     public function __construct(
-        private readonly FollowRepository $followRepository
+        private readonly FollowRepository $followRepository,
+        private readonly NotificationCenter $notificationCenter,
     ) {}
 
     public function follow(int $followerUserId, int $followedUserId): void
@@ -19,7 +23,9 @@ class FollowService
             throw FollowException::cannotFollowYourself();
         }
 
-        DB::transaction(function () use ($followerUserId, $followedUserId) {
+        $notificationPayload = null;
+
+        DB::transaction(function () use ($followerUserId, $followedUserId, &$notificationPayload) {
 
             if (! $this->followRepository->userExists($followedUserId)) {
                 throw FollowException::userNotFound();
@@ -43,6 +49,10 @@ class FollowService
 
         CacheKeys::clearMyBasicProfileInfo($followerUserId);
         CacheKeys::clearMyBasicProfileInfo($followedUserId);
+
+        if ($notificationPayload !== null) {
+            $this->sendUserFollowedNotification($notificationPayload);
+        }
     }
 
     public function unfollow(int $followerUserId, int $followedUserId): void
@@ -77,4 +87,37 @@ class FollowService
     }
 
 
+    private function sendUserFollowedNotification(array $data): void
+    {
+        $payload = NotificationPayload::make(
+            title: 'عملية متابعة لحسابك',
+            body: 'بدأ بمتابعتك',
+            metadata: [
+                'type' => 'user_followed_you',
+                'category' => 'social',
+
+                'presentation' => [
+                    'mode' => 'user',
+                    'floor_color' => null,
+                    'icon' => null,
+                ],
+
+                'actor' => BuildActor::buildUserActor((int) $data['follower_user_id']),
+
+                'navigation' => [
+                    'screen' => 'user_profile',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'user_id' => (int) $data['follower_user_id'],
+                ],
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $data['followed_user_id'],
+            payload: $payload,
+        );
+    }
 }

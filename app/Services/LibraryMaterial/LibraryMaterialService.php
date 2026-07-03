@@ -2,12 +2,14 @@
 
 namespace App\Services\LibraryMaterial;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Enums\Asset_type;
 use App\Enums\LibraryMaterialContentKind;
 use App\Enums\LibraryMaterialReviewStatus;
 use App\Enums\VisibilityType;
 use App\Events\LibraryMaterialDeletedByOwner;
 use App\Exceptions\Api\LibraryMaterialException;
+use App\Helpers\BuildActor;
 use App\Helpers\ImageProcessor;
 use App\Http\Resources\LibraryMaterial\FeaturedLibraryMaterialResource;
 use App\Http\Resources\LibraryMaterial\LibraryMaterialListResource;
@@ -15,6 +17,7 @@ use App\Models\LibraryMaterial;
 use App\Repositories\Library\LibraryMaterialRepository;
 use App\Services\AiQuestionGeneration\Validation\ImageContentHeuristicValidator;
 use App\Services\AiQuestionGeneration\Validation\PdfStructureValidator;
+use App\Services\Notifications\NotificationCenter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -24,7 +27,8 @@ class LibraryMaterialService
 {
     private const int MAX_PENDING_PUBLIC_MATERIALS = 3;
     public function __construct(
-        private readonly LibraryMaterialRepository $libraryMaterialRepository
+        private readonly LibraryMaterialRepository $libraryMaterialRepository,
+        private readonly NotificationCenter $notificationCenter,
     ) {}
 
     public function getLibraryMaterials(int $userId, string $tab = 'trending', int $perPage = 10, bool $includeFeatured = true): array
@@ -139,13 +143,27 @@ class LibraryMaterialService
                 'download_count' => 0,
             ];
 
-            return $this->libraryMaterialRepository->createWithRelations(
+            $material = $this->libraryMaterialRepository->createWithRelations(
                 materialData: $materialData,
                 assetRows: $assetRows,
                 interestIds: $data['interest_ids'],
                 shouldCreateReviewRound: ! $isPrivate,
                 changedByUserId: $userId
             );
+
+            if (! $isPrivate) {
+                $this->sendNewLibraryMaterialRequiresReviewNotification([
+                    'material_id' => (int) $material->id,
+                    'material_title' => $material->title,
+                    'creator_user_id' => $userId,
+                    'content_kind' => $contentKind,
+                    'visibility_type' => $visibilityType,
+                    'asset_count' => count($assetRows),
+                    'review_status' => LibraryMaterialReviewStatus::New->value,
+                ]);
+            }
+
+            return $material;
 
         }catch (Throwable $exception)
         {
@@ -388,5 +406,48 @@ class LibraryMaterialService
                 'has_more_pages' => $paginator->hasMorePages(),
             ],
         ];
+    }
+
+    private function sendNewLibraryMaterialRequiresReviewNotification(array $data): void
+    {
+        $reviewerIds = $this->libraryMaterialRepository->getDashboardContentReviewerUserIds();
+
+        if (empty($reviewerIds)) {
+            return;
+        }
+
+        $materialTitle = $data['material_title'] ?? 'محتوى جديد';
+
+        $payload = NotificationPayload::make(
+            title: 'محتوى جديد بانتظار المراجعة',
+            body: "قام مستخدم بإنشاء محتوى جديد بعنوان: {$materialTitle}",
+            metadata: [
+                'type' => 'library_material_created_requires_review',
+                'category' => 'library_review',
+
+                'presentation' => [
+                    'mode' => 'user',
+                    'floor_color' => null,
+                    'icon' => null,
+                ],
+
+                'actor' => BuildActor::buildUserActor((int) $data['creator_user_id']),
+
+                'navigation' => [
+                    'screen' => 'test_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'material_id' => (int) $data['material_id'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToWeb(
+            userIds: $reviewerIds,
+            payload: $payload,
+        );
     }
 }

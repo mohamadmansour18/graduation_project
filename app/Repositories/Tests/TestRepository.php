@@ -3,6 +3,7 @@
 namespace App\Repositories\Tests;
 
 use App\Enums\PaymentStatus;
+use App\Enums\SystemRole;
 use App\Enums\TestReviewRoundsTriggerType;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
@@ -10,6 +11,7 @@ use App\Models\Test;
 use App\Models\TestQuestion;
 use App\Models\TestQuestionOption;
 use App\Models\TestReview;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -560,4 +562,13 @@ class TestRepository
             ]);
     }
 
+    public function getDashboardReviewerUserIds(): array
+    {
+        return User::query()
+            ->whereHas('role', function ($query) {
+                $query->whereIn('name', [SystemRole::Supervisor->value , SystemRole::Owner->value]);
+            })
+            ->pluck('id')
+            ->all();
+    }
 }

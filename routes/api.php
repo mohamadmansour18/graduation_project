@@ -1,6 +1,8 @@
 <?php
 
 use App\DTOs\Notifications\NotificationPayload;
+use App\Helpers\BuildActor;
+use App\Helpers\ImageProcessor;
 use App\Http\Controllers\V1\Admin\AllocationDashboardController;
 use App\Http\Controllers\V1\Admin\AuthDashboardController;
 use App\Http\Controllers\V1\Admin\HomeDashboardController;
@@ -21,6 +23,7 @@ use App\Http\Controllers\V1\Library\LibraryMaterialDownloadController;
 use App\Http\Controllers\V1\Library\LibraryMaterialLikeController;
 use App\Http\Controllers\V1\Library\LibraryMaterialReportController;
 use App\Http\Controllers\V1\Library\LibraryMaterialShareController;
+use App\Http\Controllers\V1\NotificationsController;
 use App\Http\Controllers\V1\Payments\TestPaymentController;
 use App\Http\Controllers\V1\Profile\FollowController;
 use App\Http\Controllers\V1\Profile\MyProfileController;
@@ -334,6 +337,13 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             //NOTIFICATION
             Route::prefix('notification')->group(function () {
                 Route::post('/fcm-token', [FcmTokenController::class, 'upsertMobile']);
+                Route::get('/show', [NotificationsController::class, 'index']);
+                Route::get('/notifications/unread-count', [NotificationsController::class, 'unreadCount']);
+
+                Route::middleware('idempotency')->group(function () {
+                    Route::post('/notifications/read', [NotificationsController::class, 'markAsRead']);
+                });
+
             });
         });
 
@@ -435,6 +445,13 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             //NOTIFICATION
             Route::prefix('notification')->group(function () {
                 Route::post('/fcm-token', [FcmTokenController::class, 'upsertWeb']);
+
+                Route::get('/show', [NotificationsController::class, 'index']);
+                Route::get('/notifications/unread-count', [NotificationsController::class, 'unreadCount']);
+
+                Route::middleware('idempotency')->group(function () {
+                    Route::post('/notifications/read', [NotificationsController::class, 'markAsRead']);
+                });
             });
         });
 
@@ -479,13 +496,29 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 Route::get('/test-fcm', function (NotificationCenter $fcm) {
     try {
         $payload = NotificationPayload::make(
-                        title: 'اختبار جديد بانتظار المراجعة',
-                        body: "هذا الاشعار تجريبي يا صديقي",
-                        metadata: [
-                            'type' => 'http://localhost/storage/defaults/default-avatar.svg',
-                            'resource_type' => 'test',
-                            'screen' => 'dashboard_test_review_details',
-                        ]);
+            title: 'تم الإبلاغ عن اختبارك',
+            body: "قام النظام بتحويل حالة اختبارك الى مبلغ عنه بسبب كثرة البلاغات عليه",
+            metadata: [
+            'type' => 'test_marked_as_reported',
+            'category' => 'report',
+
+            'presentation' => [
+                'mode' => 'system',
+                'floor_color' => '#FFE7E7',
+                'icon' => ImageProcessor::urlOrDefault('system-notification/flag.svg' , 'defaults/notification.svg' , 'public'),
+            ],
+
+            'actor' => null,
+
+            'navigation' => [
+                'screen' => 'my_test_details',
+                'action' => 'open',
+            ],
+
+            'params' => [
+                'test_id' => (int) 29,
+            ],
+        ]);
         $fcm->sendToWeb(
             11,
             $payload,

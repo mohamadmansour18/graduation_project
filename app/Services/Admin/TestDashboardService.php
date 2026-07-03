@@ -2,6 +2,7 @@
 
 namespace App\Services\Admin;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Enums\TestReviewStatus;
 use App\Events\TestApproved;
 use App\Events\TestDashboardDeleted;
@@ -9,14 +10,11 @@ use App\Events\TestManagementRevisionRequested;
 use App\Events\TestManagementStatusChanged;
 use App\Events\TestReviewStateChanged;
 use App\Exceptions\Api\TestException;
-use App\Http\Resources\LibraryMaterialListResource;
-use App\Http\Resources\Profile\MyLibraryMaterialListResource;
-use App\Models\LibraryMaterial;
+use App\Helpers\ImageProcessor;
 use App\Models\Test;
-use App\Models\TestReviewRound;
 use App\Models\User;
 use App\Repositories\Admin\TestDashboardRepository;
-use App\Repositories\Library\LibraryMaterialRepository;
+use App\Services\Notifications\NotificationCenter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +24,7 @@ class TestDashboardService
 {
     public function __construct(
         private readonly TestDashboardRepository $repository,
+        private readonly NotificationCenter $notificationCenter,
     )
     {}
 
@@ -163,6 +162,7 @@ class TestDashboardService
 
             return [
                 'test_id' => $test->id,
+                'test_title' => $test->title,
                 'creator_user_id' => $test->creator_user_id,
                 'from_status' => $fromStatus->value,
                 'to_status' => TestReviewStatus::Approved->value,
@@ -198,6 +198,8 @@ class TestDashboardService
             'to_status' => $result['to_status'],
             'current_approval_version' => $result['current_approval_version'],
         ]);
+
+        $this->sendTestApprovedNotification($result);
 
         return [
             'id' => $result['test_id'],
@@ -308,6 +310,8 @@ class TestDashboardService
 
             return [
                 'test_id' => $testId,
+                'test_title' => $test->title,
+                'deletion_reason' => $deletionReason,
                 'creator_user_id' => $test->creator_user_id,
                 'from_status' => $fromStatus->value,
                 'to_status' => TestReviewStatus::Deleted->value,
@@ -351,6 +355,8 @@ class TestDashboardService
             'deletion_type' => $result['deletion_type'],
             'should_decrease_publish_counters' => $result['should_decrease_publish_counters'],
         ]);
+
+        $this->sendTestDeletedNotification($result);
 
         return [
             'id' => $result['test_id'],
@@ -437,6 +443,8 @@ class TestDashboardService
 
             return [
                 'test_id' => $test->id,
+                'creator_user_id' => (int) $test->creator_user_id,
+                'test_title' => $test->title,
                 'review_round_id' => $round->id,
                 'from_status' => $fromStatus->value,
                 'to_status' => TestReviewStatus::NeedsRevision->value,
@@ -471,6 +479,8 @@ class TestDashboardService
             'created_revision_requests_count' => $result['created_revision_requests_count'],
             'total_revision_requests_count' => $result['total_revision_requests_count'],
         ]);
+
+        $this->sendTestRevisionRequestedNotification($result);
 
         return [
             'id' => $result['test_id'],
@@ -743,10 +753,15 @@ class TestDashboardService
             );
 
             return [
-                'test_id' => $test->id,
-                'creator_user_id' => $test->creator_user_id,
-                'actor_user_id' => $actor->id,
-                'review_id' => $reviewId,
+                'test_id' => (int) $test->id,
+                'test_title' => $test->title,
+                'creator_user_id' => (int) $test->creator_user_id,
+
+                'review_id' => (int) $reviewId,
+                'review_owner_user_id' => (int) $review->user_id,
+                'review_rating' => (int) $review->rating,
+
+                'actor_user_id' => (int) $actor->id,
                 'effective_at' => $effectiveAt,
             ];
         });
@@ -765,6 +780,8 @@ class TestDashboardService
             'creator_user_id' => $result['creator_user_id'],
             'actor_user_id' => $result['actor_user_id'],
         ]);
+
+        $this->sendTestReviewDeletedFromDashboardNotification($result);
     }
 
     /////////////////////////////////////////////////////////////
@@ -830,7 +847,9 @@ class TestDashboardService
 
     public function updateManagementTestRevisionRequests(int $testId, User $reviewer, array $revisions): void
     {
-        DB::transaction(function () use ($testId, $reviewer, $revisions) {
+        $notificationPayload = null;
+
+        DB::transaction(function () use ($testId, $reviewer, $revisions, &$notificationPayload) {
             $test = $this->repository->findTestForRevisionRequestsUpdateWithLock($testId);
 
             if (! $test) {
@@ -863,6 +882,17 @@ class TestDashboardService
                 requests: $normalizedRequests
             );
 
+            $notificationPayload = [
+                'test_id' => (int) $test->id,
+                'test_title' => $test->title,
+                'creator_user_id' => (int) $test->creator_user_id,
+                'review_round_id' => (int) $round->id,
+                'reviewer_user_id' => (int) $reviewer->id,
+                'revision_requests_count' => count($normalizedRequests),
+                'review_status' => TestReviewStatus::NeedsRevision->value,
+                'changed_at' => now()->toDateTimeString(),
+            ];
+
             Log::channel('audit')->info('test_revision_requests_updated_from_dashboard', [
                 'test_id' => $test->id,
                 'review_round_id' => $round->id,
@@ -870,6 +900,10 @@ class TestDashboardService
                 'revision_requests_count' => count($normalizedRequests),
             ]);
         });
+
+        if ($notificationPayload !== null) {
+            $this->sendTestRevisionRequestsUpdatedNotification($notificationPayload);
+        }
     }
 
     private function ensureCanUpdateRevisionRequests(Test $test): void
@@ -889,5 +923,191 @@ class TestDashboardService
         }
     }
 
+    private function sendTestApprovedNotification(array $data): void
+    {
+        $testTitle = $data['test_title'] ?? 'اختبارك';
 
+        $payload = NotificationPayload::make(
+            title: 'تمت الموافقة على نشر اختبارك',
+            body: "تمت الموافقة على نشر اختبارك: {$testTitle}",
+            metadata: [
+                'type' => 'test_approved',
+                'category' => 'test_review',
+
+                'presentation' => [
+                    'mode' => 'system',
+                    'floor_color' => '#E4FFE5',
+                    'icon' => ImageProcessor::urlOrDefault('system-notification/true.svg' , 'defaults/notification.svg' , 'public'),
+                ],
+
+                'actor' => null,
+
+                'navigation' => [
+                    'screen' => 'my_test_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'test_id' => (int) $data['test_id'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $data['creator_user_id'],
+            payload: $payload,
+        );
+    }
+
+    private function sendTestDeletedNotification(array $data): void
+    {
+        $testTitle = $data['test_title'] ?? 'اختبارك';
+
+        $payload = NotificationPayload::make(
+            title: 'تم حذف اختبارك',
+            body: "تم حذف اختبارك: {$testTitle}. السبب: {$data['deletion_reason']}",
+            metadata: [
+                'type' => 'test_deleted_by_dashboard',
+                'category' => 'test_review',
+
+                'presentation' => [
+                    'mode' => 'system',
+                    'floor_color' => '#FFE7E7',
+                    'icon' => ImageProcessor::urlOrDefault('system-notification/trash.svg' , 'defaults/notification.svg' , 'public'),
+                ],
+
+                'actor' => null,
+
+                'navigation' => [
+                    'screen' => 'my_tests_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'test_id' => (int) $data['test_id'],
+                    'deletion_type' => $data['deletion_type'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $data['creator_user_id'],
+            payload: $payload,
+        );
+    }
+
+    private function sendTestRevisionRequestedNotification(array $data): void
+    {
+        $testTitle = $data['test_title'] ?? 'اختبارك';
+
+        $payload = NotificationPayload::make(
+            title: 'مطلوب تعديل اختبارك',
+            body: "طلبت لوحة التحكم تعديلات على اختبارك: {$testTitle}",
+            metadata: [
+                'type' => 'test_revision_requested',
+                'category' => 'test_review',
+
+                'presentation' => [
+                    'mode' => 'system',
+                    'floor_color' => '#E7F9FF',
+                    'icon' => ImageProcessor::urlOrDefault('system-notification/feather.svg' , 'defaults/notification.svg' , 'public'),
+                ],
+
+                'actor' => null,
+
+                'navigation' => [
+                    'screen' => 'my_profile_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'test_id' => (int) $data['test_id'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $data['creator_user_id'],
+            payload: $payload,
+        );
+    }
+
+    private function sendTestRevisionRequestsUpdatedNotification(array $data): void
+    {
+        $testTitle = $data['test_title'] ?? 'اختبارك';
+
+        $payload = NotificationPayload::make(
+            title: 'تم تعديل قائمة التعديلات المطلوبة',
+            body: "تم تعديل قائمة التعديلات المطلوبة على اختبارك: {$testTitle}",
+            metadata: [
+                'type' => 'test_revision_requests_updated',
+                'category' => 'test_review',
+
+                'presentation' => [
+                    'mode' => 'system',
+                    'floor_color' => '#E7F9FF',
+                    'icon' => ImageProcessor::urlOrDefault('system-notification/feather.svg' , 'defaults/notification.svg' , 'public'),
+                ],
+
+                'actor' => null,
+
+                'navigation' => [
+                    'screen' => 'my_test_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'test_id' => (int) $data['test_id'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $data['creator_user_id'],
+            payload: $payload,
+        );
+    }
+
+    private function sendTestReviewDeletedFromDashboardNotification(array $data): void
+    {
+        $testTitle = $data['test_title'] ?? 'أحد الاختبارات';
+
+        $payload = NotificationPayload::make(
+            title: 'تم حذف تعليقك',
+            body: "تم حذف تعليقك على اختبار: {$testTitle} من قبل إدارة النظام.",
+            metadata: [
+                'type' => 'test_review_deleted_by_dashboard',
+                'category' => 'moderation',
+
+                'presentation' => [
+                    'mode' => 'system',
+                    'floor_color' => '#FFE7E7',
+                    'icon' => ImageProcessor::urlOrDefault('system-notification/trash.svg' , 'defaults/notification.svg' , 'public'),
+                ],
+
+                'actor' => null,
+
+                'navigation' => [
+                    'screen' => 'public_test_details',
+                    'action' => 'open',
+
+                ],
+
+                'params' => [
+                    'test_id' => (int) $data['test_id'],
+                    'review_id' => (int) $data['review_id'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $data['review_owner_user_id'],
+            payload: $payload,
+        );
+    }
 }

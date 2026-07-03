@@ -2,16 +2,20 @@
 
 namespace App\Services\Tests;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Events\TestBookmarkStateChanged;
 use App\Exceptions\Api\TestException;
+use App\Helpers\BuildActor;
 use App\Repositories\Tests\TestBookmarkRepository;
+use App\Services\Notifications\NotificationCenter;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 
 class TestBookmarkService
 {
     public function __construct(
-        private readonly TestBookmarkRepository $testBookmarkRepository
+        private readonly TestBookmarkRepository $testBookmarkRepository,
+        private readonly NotificationCenter $notificationCenter,
     ) {}
 
     public function bookmark(int $testId, int $userId): array
@@ -56,6 +60,8 @@ class TestBookmarkService
 
         if ($eventPayload !== null) {
             event(new TestBookmarkStateChanged(...$eventPayload));
+
+            $this->sendTestBookmarkedNotification($eventPayload);
         }
 
         return $result;
@@ -124,6 +130,42 @@ class TestBookmarkService
             viewerId: $viewerId,
             search: $search,
             perPage: $perPage
+        );
+    }
+
+    private function sendTestBookmarkedNotification(array $eventPayload): void
+    {
+        $payload = NotificationPayload::make(
+            title: 'عملية حفظ اختبار',
+            body: 'قام بحفظ بالاختبار الخاص بك',
+            metadata: [
+                'type' => 'test_bookmarked',
+                'category' => 'social',
+
+                'presentation' => [
+                    'mode' => 'user',
+                    'floor_color' => null,
+                    'icon' => null,
+                ],
+
+                'actor' => BuildActor::buildUserActor((int) $eventPayload['actor_user_id']),
+
+                'navigation' => [
+                    'screen' => 'my_test_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'test_id' => (int) $eventPayload['test_id'],
+                    'actor_user_id' => (int) $eventPayload['actor_user_id'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $eventPayload['creator_user_id'],
+            payload: $payload,
         );
     }
 }

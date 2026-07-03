@@ -2,16 +2,20 @@
 
 namespace App\Services\Tests;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Events\TestLikeStateChanged;
 use App\Exceptions\Api\TestException;
+use App\Helpers\BuildActor;
 use App\Repositories\Tests\TestLikeRepository;
+use App\Services\Notifications\NotificationCenter;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 
 class TestLikeService
 {
     public function __construct(
-        private readonly TestLikeRepository $testLikeRepository
+        private readonly TestLikeRepository $testLikeRepository,
+        private readonly NotificationCenter $notificationCenter,
     ) {}
 
     public function like(int $testId, int $userId): array
@@ -59,6 +63,8 @@ class TestLikeService
         if($eventPayload !== null)
         {
             event(new TestLikeStateChanged(...$eventPayload));
+
+            $this->sendTestLikedNotification($eventPayload);
         }
 
         return $result;
@@ -125,6 +131,43 @@ class TestLikeService
             viewerId: $viewerId,
             search: $search,
             perPage: $perPage
+        );
+    }
+
+    private function sendTestLikedNotification(array $eventPayload): void
+    {
+
+        $payload = NotificationPayload::make(
+            title: 'عملية تسجيل اعجاب',
+            body: 'قام المستخدم بتسجيل إعجابه بالاختبار الخاص بك',
+            metadata: [
+                'type' => 'test_liked',
+                'category' => 'social',
+
+                'presentation' => [
+                    'mode' => 'user',
+                    'floor_color' => null,
+                    'icon' => null,
+                ],
+
+                'actor' => BuildActor::buildUserActor((int) $eventPayload['actor_user_id']),
+
+                'navigation' => [
+                    'screen' => 'my_test_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'test_id' => (int) $eventPayload['test_id'],
+                    'actor_user_id' => (int) $eventPayload['actor_user_id'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $eventPayload['creator_user_id'],
+            payload: $payload,
         );
     }
 }

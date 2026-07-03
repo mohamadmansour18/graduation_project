@@ -5,6 +5,7 @@ namespace App\Repositories\Library;
 use App\Enums\LibraryDecision;
 use App\Enums\LibraryMaterialReviewStatus;
 use App\Enums\LibraryTriggerType;
+use App\Enums\SystemRole;
 use App\Enums\VisibilityType;
 use App\Exceptions\Api\LibraryMaterialException;
 use App\Models\LibraryMaterial;
@@ -12,6 +13,7 @@ use App\Models\LibraryMaterialReport;
 use App\Models\LibraryMaterialReviewRound;
 use App\Models\LibraryMaterialStatusHistory;
 use App\Models\LibraryReportReasonCounter;
+use App\Models\User;
 use App\Support\LibraryMaterialReportThresholdPolicy;
 use Illuminate\Support\Facades\DB;
 
@@ -82,7 +84,8 @@ class LibraryMaterialReportRepository
 
             if (! $shouldMarkReported) {
                 return [
-                    'statusChangedToReported' => false
+                    'statusChangedToReported' => false,
+                    'notificationData' => null,
                 ];
             }
 
@@ -96,7 +99,19 @@ class LibraryMaterialReportRepository
             );
 
             return [
-                'statusChangedToReported' => true
+                'statusChangedToReported' => true,
+                'notificationData' => [
+                    'material_id' => (int) $material->id,
+                    'material_title' => $material->title,
+                    'creator_user_id' => (int) $material->creator_user_id,
+                    'approval_version' => $approvalVersion,
+                    'reason' => $reason,
+                    'same_reason_reporters_count' => $sameReasonReportersCount,
+                    'total_distinct_reporters_count' => $totalDistinctReportersCount,
+                    'likes_count' => (int) $material->like_count,
+                    'changed_by_user_id' => $userId,
+                    'new_status' => LibraryMaterialReviewStatus::Reported->value,
+                ],
             ];
         });
     }
@@ -184,5 +199,15 @@ class LibraryMaterialReportRepository
             $totalDistinctReportersCount,
             $approvalVersion
         );
+    }
+
+    public function getDashboardContentReviewerUserIds(): array
+    {
+        return User::query()
+            ->whereHas('role', function ($query) {
+                $query->whereIn('name', [SystemRole::Supervisor->value , SystemRole::Owner->value]);
+            })
+            ->pluck('id')
+            ->all();
     }
 }

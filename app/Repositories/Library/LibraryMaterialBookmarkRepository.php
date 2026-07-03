@@ -106,4 +106,16 @@ class LibraryMaterialBookmarkRepository
             $value
         );
     }
+
+    public function findMaterialNotificationSnapshot(int $materialId): ?object
+    {
+        return LibraryMaterial::query()
+            ->select([
+                'id',
+                'creator_user_id',
+                'title',
+            ])
+            ->whereKey($materialId)
+            ->first();
+    }
 }

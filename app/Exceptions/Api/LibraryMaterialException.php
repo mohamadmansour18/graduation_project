@@ -167,4 +167,22 @@ class LibraryMaterialException extends ApiException
         );
     }
 
+    public static function cannotLikeOwnMaterial(): self
+    {
+        return new self(
+            title: '! لا يمكن تسجيل الإعجاب',
+            message: 'لا يمكنك تسجيل الإعجاب على محتوى قمت بإنشائه',
+            status: 403
+        );
+    }
+
+    public static function cannotBookmarkOwnMaterial(): self
+    {
+        return new self(
+            title: '! لا يمكن حفظ العنصر',
+            message: 'لا يمكنك تسجيل حفظ على محتوى قمت بإنشائه',
+            status: 403
+        );
+    }
+
 }

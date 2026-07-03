@@ -2,10 +2,13 @@
 
 namespace App\Services\Settings;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Enums\AcademicAssetType;
 use App\Enums\Status;
 use App\Exceptions\Api\SettingsException;
+use App\Helpers\BuildActor;
 use App\Repositories\Settings\AcademicVerificationRepository;
+use App\Services\Notifications\NotificationCenter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +18,8 @@ use Illuminate\Support\Str;
 class AcademicVerificationService
 {
     public function __construct(
-        private readonly AcademicVerificationRepository $repository
+        private readonly AcademicVerificationRepository $repository,
+        private readonly NotificationCenter $notificationCenter,
     )
     {}
 
@@ -88,9 +92,10 @@ class AcademicVerificationService
         }
 
         $storedPaths = [];
+        $notificationPayload = null;
 
         try {
-            DB::transaction(function () use ($userId, $certificateImage, $identityImage , & $storedPaths) {
+            DB::transaction(function () use ($userId, $certificateImage, $identityImage , &$storedPaths , &$notificationPayload) {
                 $verificationRequest = $this->repository->createRequest($userId);
 
                 $certificatePath = $this->storeEncryptedAcademicAsset(
@@ -122,6 +127,19 @@ class AcademicVerificationService
                     originalName: $identityImage->getClientOriginalName(),
                     mimeType: $identityImage->getMimeType()
                 );
+
+                $notificationPayload = [
+                    'verification_request_id' => (int) $verificationRequest->id,
+                    'user_id' => (int) $userId,
+                    'status' => 'pending',
+                    'certificate_mime_type' => $certificateImage->getMimeType(),
+                    'identity_mime_type' => $identityImage->getMimeType(),
+                ];
+
+                if ($notificationPayload !== null) {
+                    $this->sendAcademicVerificationSubmittedNotification($notificationPayload);
+                }
+
             });
         }catch (\Throwable $exception) {
             foreach ($storedPaths as $path) {
@@ -192,5 +210,47 @@ class AcademicVerificationService
         foreach ($assetPaths as $path) {
             Storage::disk('local')->delete($path);
         }
+    }
+
+    private function sendAcademicVerificationSubmittedNotification(array $data): void
+    {
+        $reviewerIds = $this->repository->getDashboardVerificationReviewerUserIds();
+
+        if (empty($reviewerIds)) {
+            return;
+        }
+
+        $payload = NotificationPayload::make(
+            title: 'طلب توثيق جديد',
+            body: " أرسل طلب توثيق لحسابه الشخصي",
+            metadata: [
+                'type' => 'academic_verification_submitted',
+                'category' => 'verification',
+
+                'presentation' => [
+                    'mode' => 'user',
+                    'floor_color' => null,
+                    'icon' => null,
+                ],
+
+                'actor' => BuildActor::buildUserActor((int) $data['user_id']),
+
+                'navigation' => [
+                    'screen' => 'user_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'verification_request_id' => (int) $data['verification_request_id'],
+                    'user_id' => (int) $data['user_id'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToWeb(
+            userIds: $reviewerIds,
+            payload: $payload,
+        );
     }
 }

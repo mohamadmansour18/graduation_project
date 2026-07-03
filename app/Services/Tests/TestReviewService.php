@@ -2,15 +2,19 @@
 
 namespace App\Services\Tests;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Events\TestReviewStateChanged;
 use App\Exceptions\Api\TestException;
+use App\Helpers\BuildActor;
 use App\Repositories\Tests\TestReviewRepository;
+use App\Services\Notifications\NotificationCenter;
 use Illuminate\Support\Facades\DB;
 
 class TestReviewService
 {
     public function __construct(
-        private readonly TestReviewRepository $repository
+        private readonly TestReviewRepository $repository,
+        private readonly NotificationCenter $notificationCenter,
     ) {}
 
     public function store(int $testId, int $userId, int $rating, string $reviewText): void
@@ -62,6 +66,8 @@ class TestReviewService
 
         if ($eventPayload !== null) {
             event(new TestReviewStateChanged(...$eventPayload));
+
+            $this->sendTestReviewNotification($eventPayload);
         }
     }
 
@@ -276,5 +282,42 @@ class TestReviewService
                 );
             }
         });
+    }
+
+    private function sendTestReviewNotification(array $eventPayload): void
+    {
+
+        $payload = NotificationPayload::make(
+            title: 'عملية تعليق على اختبارك',
+            body: 'قام المستخدم بتسجيل إعجابه بالاختبار الخاص بك',
+            metadata: [
+                'type' => 'test_Reviewed',
+                'category' => 'social',
+
+                'presentation' => [
+                    'mode' => 'user',
+                    'floor_color' => null,
+                    'icon' => null,
+                ],
+
+                'actor' => BuildActor::buildUserActor((int) $eventPayload['actor_user_id']),
+
+                'navigation' => [
+                    'screen' => 'my_test_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'test_id' => (int) $eventPayload['test_id'],
+                    'actor_user_id' => (int) $eventPayload['actor_user_id'],
+                ],
+
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $eventPayload['creator_user_id'],
+            payload: $payload,
+        );
     }
 }

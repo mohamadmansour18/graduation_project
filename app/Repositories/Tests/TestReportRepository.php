@@ -4,8 +4,10 @@ namespace App\Repositories\Tests;
 
 use App\Enums\Decision;
 use App\Enums\PaymentStatus;
+use App\Enums\SystemRole;
 use App\Enums\TestReviewRoundsTriggerType;
 use App\Enums\TestReviewStatus;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class TestReportRepository
@@ -166,5 +168,15 @@ class TestReportRepository
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+    }
+
+    public function getDashboardContentReviewerUserIds(): array
+    {
+        return User::query()
+            ->whereHas('role', function ($query) {
+                $query->whereIn('name', [SystemRole::Supervisor->value , SystemRole::Owner->value]);
+            })
+            ->pluck('id')
+            ->all();
     }
 }

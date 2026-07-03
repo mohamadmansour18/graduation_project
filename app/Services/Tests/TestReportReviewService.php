@@ -2,9 +2,12 @@
 
 namespace App\Services\Tests;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Events\TestReviewStateChanged;
 use App\Exceptions\Api\TestException;
+use App\Helpers\ImageProcessor;
 use App\Repositories\Tests\TestReportReviewRepository;
+use App\Services\Notifications\NotificationCenter;
 use App\Support\TestReviewReportThresholdPolicy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,14 +16,16 @@ class TestReportReviewService
 {
     public function __construct(
         private readonly TestReportReviewRepository $repository,
-        private readonly TestReviewReportThresholdPolicy $thresholdPolicy
+        private readonly TestReviewReportThresholdPolicy $thresholdPolicy,
+        private readonly NotificationCenter $notificationCenter,
     ) {}
 
     public function store(int $reviewId, int $reporterUserId, string $reason, ?string $description): array
     {
         $eventPayload = null;
+        $notificationPayload = null;
 
-        $isStatusChanged = DB::transaction(function () use ($reviewId, $reporterUserId, $reason, $description , &$eventPayload) {
+        $isStatusChanged = DB::transaction(function () use ($reviewId, $reporterUserId, $reason, $description , &$eventPayload , &$notificationPayload) {
             $lockedReview = $this->repository->lockReviewForReport($reviewId);
 
             if (! $lockedReview) {
@@ -39,7 +44,7 @@ class TestReportReviewService
             );
 
             if (! $isNewReport) {
-                return;
+                return false ;
             }
 
             $reportsCount = $this->repository->countReportsForReview($reviewId);
@@ -51,7 +56,7 @@ class TestReportReviewService
             );
 
             if (! $shouldDelete) {
-                return;
+                return false;
             }
 
             $this->repository->deleteReview($reviewId);
@@ -75,6 +80,17 @@ class TestReportReviewService
                 'effective_at' => $lockedReview->created_at,
             ];
 
+            $notificationPayload = [
+                'review_owner_user_id' => (int) $lockedReview->reviewer_user_id,
+                'review_id' => (int) $reviewId,
+                'test_id' => (int) $lockedReview->test_id,
+                'reason' => $reason,
+                'reports_count' => (int) $reportsCount,
+                'helpful_yes_count' => (int) $lockedReview->helpful_yes_count,
+                'helpful_no_count' => (int) $lockedReview->helpful_no_count,
+                'rating' => (int) $lockedReview->rating,
+            ];
+
             Log::channel('audit')->info('Test review deleted automatically by report threshold.', [
                 'test_review_id' => $reviewId,
                 'test_id' => (int) $lockedReview->test_id,
@@ -91,9 +107,54 @@ class TestReportReviewService
             event(new TestReviewStateChanged(...$eventPayload));
         }
 
+        if (($isStatusChanged ?? false) === true && $notificationPayload !== null) {
+            $this->sendReviewDeletedByReportsNotification($notificationPayload);
+        }
+
         return [
             'is_status_changed' => $isStatusChanged ?? false,
         ];
+    }
+
+    private function sendReviewDeletedByReportsNotification(array $data): void
+    {
+        $payload = NotificationPayload::make(
+            title: 'تم حذف تعليقك',
+            body: 'تم حذف تعليقك على أحد الاختبارات بسبب وصول البلاغات إلى الحد المطلوب',
+            metadata: [
+                'type' => 'review_deleted_by_reports',
+                'category' => 'report',
+
+                'presentation' => [
+                    'mode' => 'system',
+                    'floor_color' => '#FFE7E7',
+                    'icon' => ImageProcessor::urlOrDefault('system-notification/trash.svg' , 'defaults/notification.svg' , 'public'),
+                ],
+
+                'actor' => null,
+
+                'target' => [
+                    'type' => 'test_review',
+                    'id' => (int) $data['review_id'],
+                    'title' => null,
+                ],
+
+                'navigation' => [
+                    'screen' => 'public_test_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'test_id' => (int) $data['test_id'],
+                    'review_id' => (int) $data['review_id'],
+                ],
+            ],
+        );
+
+        $this->notificationCenter->sendToUser(
+            userId: (int) $data['review_owner_user_id'],
+            payload: $payload,
+        );
     }
 
 }

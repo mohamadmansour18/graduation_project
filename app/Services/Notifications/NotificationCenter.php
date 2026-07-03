@@ -61,7 +61,7 @@ class NotificationCenter
         );
     }
 
-    public function sendToWeb(array|int $userIds, NotificationPayload $payload,): void
+    public function sendToWeb(array|int $userIds, NotificationPayload $payload): void
     {
         $this->sendToUsers(
             userIds: is_array($userIds) ? $userIds : [$userIds],

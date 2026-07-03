@@ -3,6 +3,7 @@
 namespace App\Repositories\Settings;
 
 use App\Enums\Status;
+use App\Enums\SystemRole;
 use App\Models\User;
 use App\Models\UserAcademicAsset;
 use App\Models\UserAcademicVerificationRequest;
@@ -118,5 +119,15 @@ class AcademicVerificationRepository
     public function deleteRequest(UserAcademicVerificationRequest $request): void
     {
         $request->delete();
+    }
+
+    public function getDashboardVerificationReviewerUserIds(): array
+    {
+        return User::query()
+            ->whereHas('role', function ($query) {
+                $query->whereIn('name', [SystemRole::Owner->value , SystemRole::Supervisor->value]);
+            })
+            ->pluck('id')
+            ->all();
     }
 }

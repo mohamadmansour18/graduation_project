@@ -2,13 +2,16 @@
 
 namespace App\Services\Tests;
 
+use App\DTOs\Notifications\NotificationPayload;
 use App\Enums\RevisionType;
 use App\Enums\TestReviewStatus;
 use App\Exceptions\Api\TestException;
+use App\Helpers\BuildActor;
 use App\Models\Test;
 use App\Models\TestQuestion;
 use App\Models\TestQuestionOption;
 use App\Repositories\Tests\TestRepository;
+use App\Services\Notifications\NotificationCenter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -20,11 +23,14 @@ class UpdateTestService
     public function __construct(
         private readonly TestRepository $testRepository,
         private readonly ScientificChangeDetector $changeDetector,
+        private readonly NotificationCenter $notificationCenter,
     ) {}
 
     public function updateTest(int $testId, int $userId, array $payload): array
     {
-        return DB::transaction(function () use ($testId, $userId, $payload) {
+        $notificationPayload = null;
+
+        $result = DB::transaction(function () use ($testId, $userId, $payload, &$notificationPayload) {
             $test = $this->testRepository->findForUpdate($testId);
 
             if (! $test) {
@@ -44,13 +50,13 @@ class UpdateTestService
             }
 
             if ($this->isPrivateToPublicConversion($test, $payload)) {
-                return $this->handlePrivateToPublicConversion($test, $payload, $userId);
+                return $this->handlePrivateToPublicConversion($test, $payload, $userId, $notificationPayload);
             }
 
             $analysis = $this->analyzePayloadChanges($test, $payload);
 
             if ($test->review_status === TestReviewStatus::NeedsRevision) {
-                return $this->handleNeedsRevisionUpdate($test, $payload, $analysis, $userId);
+                return $this->handleNeedsRevisionUpdate($test, $payload, $analysis, $userId, $notificationPayload);
             }
 
             $this->applyBasicUpdates($test, $payload);
@@ -91,6 +97,21 @@ class UpdateTestService
                     changedByUserId: $userId,
                     note: 'تم تعديل محتوى علمي جوهري وإرسال الاختبار للمراجعة'
                 );
+
+                $notificationPayload = [
+                    'type' => 'test_owner_update_requires_review',
+                    'title' => 'اختبار مُعدّل بانتظار المراجعة',
+                    'body' => "قام صاحب الاختبار بتعديل محتوى علمي جوهري في اختبار: {$test->title}",
+                    'test_id' => (int) $test->id,
+                    'test_title' => $test->title,
+                    'owner_user_id' => (int) $test->creator_user_id,
+                    'review_round_id' => (int) $roundId,
+                    'old_status' => $oldStatus,
+                    'new_status' => TestReviewStatus::UnderReview->value,
+                    'reason' => 'owner_significant_scientific_update',
+                    'scientific_changes_count' => count($analysis['scientific_changes'] ?? []),
+                ];
+
             } else {
                 $test->last_content_updated_at = now();
                 $test->save();
@@ -113,6 +134,12 @@ class UpdateTestService
                     : 'تم تعديل الاختبار بنجاح'
             );
         });
+
+        if ($notificationPayload !== null) {
+            $this->sendTestSubmittedForReviewAfterOwnerUpdateNotification($notificationPayload);
+        }
+
+        return $result;
     }
 
     private function ensureEditableStatus(Test $test): void
@@ -140,7 +167,7 @@ class UpdateTestService
             && ($payload['test_type'] ?? null) === self::TYPE_PRIVATE;
     }
 
-    private function handlePrivateToPublicConversion(Test $test, array $payload, int $userId): array
+    private function handlePrivateToPublicConversion(Test $test, array $payload, int $userId, ?array &$notificationPayload = null): array
     {
         $this->applyBasicUpdates($test, $payload);
         $this->syncInterestsIfPresent($test, $payload);
@@ -165,6 +192,20 @@ class UpdateTestService
             note: 'تم تحويل الاختبار من خاص إلى عام'
         );
 
+        $notificationPayload = [
+            'type' => 'test_private_to_public_requires_review',
+            'title' => 'اختبار جديد بانتظار المراجعة',
+            'body' => "قام مستخدم بتحويل اختبار خاص إلى عام: {$test->title}",
+            'test_id' => (int) $test->id,
+            'test_title' => $test->title,
+            'owner_user_id' => (int) $test->creator_user_id,
+            'review_round_id' => null,
+            'old_status' => null,
+            'new_status' => TestReviewStatus::New->value,
+            'reason' => 'private_to_public_conversion',
+            'scientific_changes_count' => 0,
+        ];
+
         Log::channel('audit')->info('test_converted_private_to_public', [
             'test_id' => $test->id,
             'user_id' => $userId,
@@ -172,13 +213,13 @@ class UpdateTestService
 
         return $this->result(
             test: $test,
-            requiresReview: false,
+            requiresReview: true,
             statusChanged: true,
-            message: 'تم تحويل الاختبار إلى عام وحفظه كمسودة'
+            message: 'تم تحويل الاختبار إلى عام وإرساله للمراجعة'
         );
     }
 
-    private function handleNeedsRevisionUpdate(Test $test, array $payload, array $analysis, int $userId): array
+    private function handleNeedsRevisionUpdate(Test $test, array $payload, array $analysis, int $userId, ?array &$notificationPayload = null): array
     {
         $roundId = $this->testRepository->getOpenRevisionRoundId((int) $test->id);
 
@@ -234,6 +275,21 @@ class UpdateTestService
             changedByUserId: $userId,
             note: 'تم تنفيذ التعديلات المطلوبة وإعادة إرسال الاختبار للمراجعة'
         );
+
+        $notificationPayload = [
+            'type' => 'test_revision_completed_requires_review',
+            'title' => 'تم تنفيذ تعديلات مطلوبة على اختبار',
+            'body' => "قام صاحب الاختبار بتنفيذ التعديلات المطلوبة على اختبار: {$test->title}",
+            'test_id' => (int) $test->id,
+            'test_title' => $test->title,
+            'owner_user_id' => (int) $test->creator_user_id,
+            'review_round_id' => (int) $roundId,
+            'old_status' => $oldStatus,
+            'new_status' => TestReviewStatus::UnderReview->value,
+            'reason' => 'owner_completed_requested_revisions',
+            'scientific_changes_count' => count($analysis['scientific_changes'] ?? []),
+            'matched_revision_requests_count' => count($matchedRevisionRequestIds),
+        ];
 
         return $this->result(
             test: $test,
@@ -779,5 +835,53 @@ class UpdateTestService
             'status_changed' => $statusChanged,
             'message' => $message,
         ];
+    }
+
+    private function sendTestSubmittedForReviewAfterOwnerUpdateNotification(array $data): void
+    {
+        $reviewerIds = $this->testRepository->getDashboardReviewerUserIds();
+
+        if (empty($reviewerIds)) {
+            return;
+        }
+
+        $testTitle = $data['test_title'] ?? 'اختبار';
+
+        $payload = NotificationPayload::make(
+            title: $data['title'],
+            body: $data['body'],
+            metadata: [
+                'type' => $data['type'],
+                'category' => 'test_status',
+
+                'presentation' => [
+                    'mode' => 'user',
+                    'floor_color' => null,
+                    'icon' => null,
+                ],
+
+                'actor' => BuildActor::buildUserActor((int) (int) $data['owner_user_id']),
+
+                'target' => [
+                    'type' => 'test',
+                    'id' => (int) $data['test_id'],
+                    'title' => $testTitle,
+                ],
+
+                'navigation' => [
+                    'screen' => 'test_details',
+                    'action' => 'open',
+                ],
+
+                'params' => [
+                    'test_id' => (int) $data['test_id'],
+                ],
+            ],
+        );
+
+        $this->notificationCenter->sendToWeb(
+            userIds: $reviewerIds,
+            payload: $payload,
+        );
     }
 }

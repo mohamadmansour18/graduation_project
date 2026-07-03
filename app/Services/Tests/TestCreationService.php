@@ -6,6 +6,7 @@ use App\DTOs\Notifications\NotificationPayload;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
 use App\Exceptions\Api\TestException;
+use App\Helpers\BuildActor;
 use App\Models\User;
 use App\Repositories\Tests\TestCreationRepository;
 use App\Services\Notifications\NotificationCenter;
@@ -20,14 +21,14 @@ class TestCreationService
 
     public function __construct(
         private readonly TestCreationRepository $repository,
-//        private readonly NotificationCenter $notificationCenter
+        private readonly NotificationCenter $notificationCenter
     ) {}
 
     /**
      * @throws TestException
      * @throws Throwable
      */
-    public function create(User $user, array $data , ): void
+    public function create(User $user, array $data): void
     {
         $isPublic = $data['test_type'] === TestType::Public->value;
         $isPrivate = $data['test_type'] === TestType::Private->value;
@@ -117,28 +118,41 @@ class TestCreationService
                     userId: $user->id
                 );
 
-//                $supervisorIds = $this->repository->getDashboardSupervisorIds();
-//
-//                if (! empty($supervisorIds)) {
-//                    $payload = NotificationPayload::make(
-//                        title: 'اختبار جديد بانتظار المراجعة',
-//                        body: "قام {$user->name} بإنشاء اختبار جديد بعنوان: {$test->title}",
-//                        metadata: [
-//                            'type' => 'test_created_requires_review',
-//                            'resource_type' => 'test',
-//                            'resource_id' => $test->id,
-//                            'screen' => 'dashboard_test_review_details',
-//                            'action' => 'open_test_review',
-//                            'creator_id' => $user->id,
-//                            'test_title' => $test->title,
-//                        ],
-//                    );
-//
-//                    $this->notificationCenter->sendToWeb(
-//                        userIds: $supervisorIds,
-//                        payload: $payload,
-//                    );
-//                }
+                $supervisorIds = $this->repository->getDashboardSupervisorIds();
+
+                if (! empty($supervisorIds)) {
+                    $payload = NotificationPayload::make(
+                        title: 'اختبار جديد بانتظار المراجعة',
+                        body: "قام {$user->name} بإنشاء اختبار جديد بعنوان: {$test->title}",
+                        metadata: [
+                            'type' => 'test_created_requires_review',
+                            'category' => 'test_status',
+
+                            'presentation' => [
+                                'mode' => 'user',
+                                'floor_color' => null,
+                                'icon' => null,
+                            ],
+
+                            'actor' => BuildActor::buildUserActor($user->id),
+
+                            'navigation' => [
+                                'screen' => 'my_test_details',
+                                'action' => 'open',
+                            ],
+
+                            'params' => [
+                                'test_id' => (int) $test->id,
+                                'creator_id' => $user->id,
+                            ],
+                        ],
+                    );
+
+                    $this->notificationCenter->sendToWeb(
+                        userIds: $supervisorIds,
+                        payload: $payload,
+                    );
+                }
             }
         });
     }

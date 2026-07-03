@@ -25,7 +25,7 @@ class BuildActor
 
         return [
             'id' => (int) $user->id,
-            'name' => $user->name,
+            'name' => $user->name ?? 'مستخدم',
             'avatar_url' => ImageProcessor::urlOrDefault(
                 $user->userProfile?->avatar_path,
                 'defaults/default-avatar.svg',
