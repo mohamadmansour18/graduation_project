@@ -43,7 +43,7 @@ class MyProfileService
 
     private const string PHOTO_TYPE_AVATAR = 'avatar';
     private const string PHOTO_TYPE_COVER = 'cover';
-    private const string PROFILE_PHOTO_DISK = 'local';
+    private const string PROFILE_PHOTO_DISK = 'public';
     private const string AVATAR_DIRECTORY = 'users-photo/profile';
     private const string COVER_DIRECTORY = 'users-photo/cover';
     private const string DEFAULT_AVATAR_PATH = 'defaults/default-avatar.svg';
