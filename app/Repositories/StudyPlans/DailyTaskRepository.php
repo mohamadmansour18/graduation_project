@@ -4,6 +4,8 @@ namespace App\Repositories\StudyPlans;
 
 use App\Models\StudyPlan;
 use App\Models\StudyTaskOccurrence;
+use App\Models\UserSetting;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class DailyTaskRepository
@@ -83,5 +85,13 @@ class DailyTaskRepository
                 DB::raw('COALESCE(subtask_counts.subtasks_total_count, 0) as subtasks_total_count'),
                 DB::raw('COALESCE(subtask_counts.completed_subtasks_count, 0) as completed_subtasks_count'),
             ]);
+    }
+
+    public function getUserSettings(int $userId): Builder|UserSetting|null|\LaravelIdea\Helper\App\Models\_IH_UserSetting_QB
+    {
+        return UserSetting::query()
+            ->select(['id','week_starts_on' , 'time_format'])
+            ->where('user_id' , $userId)
+            ->first();
     }
 }

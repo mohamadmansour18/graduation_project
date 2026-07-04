@@ -21,8 +21,11 @@ class DailyTaskService
 
         $defaultPlan = $this->studyPlanRepository->findDefaultForUser($userId);
 
+        $userSettings = $this->studyPlanRepository->getUserSettings($userId);
+
         if (! $defaultPlan) {
             return [
+                'userSettings' => $userSettings ?? null,
                 'server_today' => $today,
                 'selected_date' => $selectedDate,
                 'range' => [
@@ -59,6 +62,7 @@ class DailyTaskService
         });
 
         return [
+            'userSettings' => $userSettings,
             'server_today' => $today,
             'selected_date' => $selectedDate,
             'range' => [

@@ -12,6 +12,7 @@ use App\Http\Resources\StudyPlanOverviewResource;
 use App\Http\Resources\StudyPlanTasksGroupedResource;
 use App\Repositories\StudyPlans\StudyPlanRepository;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -381,5 +382,93 @@ class StudyPlanService
         );
 
         $updateData['subjects_count'] = count($subjectIds);
+    }
+
+    public function getScheduleForUser(int $userId, int $days = 7): array
+    {
+        $timezone = config('app.timezone');
+
+        $now = CarbonImmutable::now($timezone);
+
+        $fromDate = $now->startOfDay();
+        $toDate = $fromDate->addDays($days - 1)->endOfDay();
+
+        $taskRemindersEnabled = $this->studyPlanRepository->getUserTaskReminderSetting($userId);
+
+        if (! $taskRemindersEnabled) {
+            return [
+                'timezone' => $timezone,
+                'task_reminders_enabled' => false,
+                'should_cancel_existing_alarms' => true,
+                'days' => $days,
+                'generated_at' => $now->toDateTimeString(),
+                'alarms' => [],
+            ];
+        }
+
+        $occurrences = $this->studyPlanRepository->getDefaultPlanReminderOccurrences(
+            userId: $userId,
+            fromDate: $fromDate,
+            toDate: $toDate,
+        );
+
+        $alarms = $occurrences
+            ->map(function (object $occurrence) use ($now, $timezone) {
+                $scheduledStartAt = CarbonImmutable::parse(
+                    "{$occurrence->occurrence_date} {$occurrence->scheduled_start_time}",
+                    $timezone
+                );
+
+                $scheduledEndAt = CarbonImmutable::parse(
+                    "{$occurrence->occurrence_date} {$occurrence->scheduled_end_time}",
+                    $timezone
+                );
+
+                $offsetMinutes = (int) $occurrence->reminder_offset_minutes;
+
+                $alarmAt = $scheduledStartAt->subMinutes($offsetMinutes);
+
+                return [
+                    'alarm_key' => "study_task_alarm:{$occurrence->occurrence_id}",
+
+                    'should_schedule_alarm' => $alarmAt->greaterThan($now),
+
+                    'alarm_at' => $alarmAt->toDateTimeString(),
+
+                    'reminder_offset_minutes' => $offsetMinutes,
+
+                    'occurrence' => [
+                        'id' => (int) $occurrence->occurrence_id,
+                        'date' => (string) $occurrence->occurrence_date,
+                        'scheduled_start_at' => $scheduledStartAt->toDateTimeString(),
+                        'scheduled_end_at' => $scheduledEndAt->toDateTimeString(),
+                    ],
+
+                    'task' => [
+                        'id' => (int) $occurrence->task_id,
+                        'title' => $occurrence->task_title,
+                        'description' => $occurrence->task_description,
+                        'status' => $occurrence->task_status,
+                    ],
+
+                    'study_plan' => [
+                        'id' => (int) $occurrence->study_plan_id,
+                        'title' => $occurrence->study_plan_title,
+                        'is_default' => (bool) $occurrence->is_default,
+                    ],
+                ];
+            })
+            ->filter(fn (array $alarm) => $alarm['should_schedule_alarm'] === true)
+            ->values()
+            ->all();
+
+        return [
+            'timezone' => $timezone,
+            'task_reminders_enabled' => true,
+            'should_cancel_existing_alarms' => false,
+            'days' => $days,
+            'generated_at' => $now->toDateTimeString(),
+            'alarms' => $alarms,
+        ];
     }
 }

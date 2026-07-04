@@ -89,6 +89,10 @@ pdfinfo -v
 4- sail artisan reverb:start --host=0.0.0.0 --port=8080 --debug
 
 ------------------
+{{Laravel Prunable}}
+sail artisan model:prune --pretend --model="App\Models\ScheduledNotificationDelivery" --model="App\Models\PrunableDatabaseNotification"
+
+------------------
 مراقبة log لحاوية ما :
 docker logs --tail 0 -f graduation_project_nerd-ollama-1
 

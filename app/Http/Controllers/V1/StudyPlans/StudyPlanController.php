@@ -84,4 +84,16 @@ class StudyPlanController extends Controller
             message: 'تم حذف الخطة الدراسية بنجاح'
         );
     }
+
+    public function index(): JsonResponse
+    {
+        $data = $this->studyPlanService->getScheduleForUser(
+            userId: \Auth::id(),
+        );
+
+        return $this->dataResponse(
+            data: $data,
+            title: 'تم جلب جدول تنبيهات المهام بنجاح'
+        );
+    }
 }

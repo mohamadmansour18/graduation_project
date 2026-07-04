@@ -21,7 +21,7 @@ return new class extends Migration
             $table->time('start_time');
             $table->unsignedInteger('duration_seconds_per_day');
             $table->timestamp('deadline_at');
-            $table->unsignedInteger('reminder_offset_minutes')->default(0);
+            $table->unsignedInteger('reminder_offset_minutes')->nullable();
             $table->enum('priority' , array_column(\App\Enums\Priority::cases(), 'value'));
             $table->enum('status', array_column(\App\Enums\TaskStatus::cases(), 'value'));
             $table->timestamp('completed_at')->nullable();

@@ -12,8 +12,34 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule
-            ->command('pdf-cache:cleanup-test-downloads --days=7')->dailyAt('03:00');
+        $schedule->command('pdf-cache:cleanup-test-downloads --days=7')
+            ->dailyAt('03:00')
+            ->runInBackground();
+
+        $schedule->command('study-notifications:task-start')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        $schedule->command('study-notifications:task-missed')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        $schedule->command('study-notifications:daily-motivation')
+            ->dailyAt('00:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        $schedule->command('model:prune', [
+            '--model' => [
+                \App\Models\ScheduledNotificationDelivery::class,
+                \App\Models\PrunableDatabaseNotification::class,
+            ],
+        ])
+            ->dailyAt('03:30')
+            ->withoutOverlapping(30)
+            ->runInBackground();
     }
 
     /**

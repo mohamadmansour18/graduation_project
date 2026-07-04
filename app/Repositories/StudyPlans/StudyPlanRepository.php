@@ -2,15 +2,23 @@
 
 namespace App\Repositories\StudyPlans;
 
+use App\Enums\TaskStatus;
 use App\Models\StudyPlan;
 use App\Models\StudyPlanSubject;
 use App\Models\StudySubject;
 use App\Models\StudyTask;
 use App\Models\StudyTaskOccurrence;
 use Illuminate\Support\Facades\DB;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 
 class StudyPlanRepository
 {
+    private const array ACTIVE_TASK_STATUSES = [
+        TaskStatus::TODO->value,
+        TaskStatus::In_Progress->value,
+    ];
+
     public function countAllUserPlans(int $userId): int
     {
         return StudyPlan::query()
@@ -278,5 +286,48 @@ class StudyPlanRepository
         }
 
         $studyPlan->delete();
+    }
+
+    public function getUserTaskReminderSetting(int $userId): bool
+    {
+        return (bool) DB::table('user_settings')
+            ->where('user_id', $userId)
+            ->value('task_reminders_enabled');
+    }
+
+    public function getDefaultPlanReminderOccurrences(
+        int $userId,
+        CarbonImmutable $fromDate,
+        CarbonImmutable $toDate,
+    ): Collection {
+        return DB::table('study_task_occurrence as occurrence')
+            ->join('study_task as task', 'task.id', '=', 'occurrence.study_task_id')
+            ->join('study_plan as plan', 'plan.id', '=', 'occurrence.study_plan_id')
+            ->where('plan.user_id', $userId)
+            ->where('plan.is_default', true)
+            ->whereIn('task.status', self::ACTIVE_TASK_STATUSES)
+            ->whereNotNull('task.reminder_offset_minutes')
+            ->whereBetween('occurrence.occurrence_date', [
+                $fromDate->toDateString(),
+                $toDate->toDateString(),
+            ])
+            ->orderBy('occurrence.occurrence_date')
+            ->orderBy('occurrence.scheduled_start_time')
+            ->get([
+                'occurrence.id as occurrence_id',
+                'occurrence.study_task_id as task_id',
+                'occurrence.study_plan_id as study_plan_id',
+                'occurrence.occurrence_date',
+                'occurrence.scheduled_start_time',
+                'occurrence.scheduled_end_time',
+
+                'task.title as task_title',
+                'task.description as task_description',
+                'task.reminder_offset_minutes',
+                'task.status as task_status',
+
+                'plan.title as study_plan_title',
+                'plan.is_default',
+            ]);
     }
 }
