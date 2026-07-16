@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use App\Exceptions\Api\DashboardUserException;
 use App\Models\Interest;
 use App\Repositories\Admin\AllocationDashboardRepository;
+use App\Services\Cache\CacheKeys;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -50,11 +51,15 @@ class AllocationDashboardService
 
             $interest = $this->allocationDashboardRepository->createScientificInterest($data);
 
-            Log::channel('audit')->info('Scientific interest created', [
-                'action' => 'dashboard.scientific_interests.create',
-                'owner_id' => $ownerId,
-                'interest_id' => $interest->id,
-            ]);
+            DB::afterCommit(function () use ($ownerId, $interest) {
+                CacheKeys::clearScientificInterests();
+
+                Log::channel('audit')->info('Scientific interest created', [
+                    'action' => 'dashboard.scientific_interests.create',
+                    'owner_id' => $ownerId,
+                    'interest_id' => $interest->id,
+                ]);
+            });
         });
     }
 
@@ -80,12 +85,18 @@ class AllocationDashboardService
                 Storage::disk('public')->delete($oldIconPath);
             }
 
-            Log::channel('audit')->info('Scientific interest updated', [
-                'action' => 'dashboard.scientific_interests.update',
-                'owner_id' => $ownerId,
-                'interest_id' => $interest->id,
-                'updated_fields' => array_keys($data),
-            ]);
+            DB::afterCommit(function () use ($ownerId, $interest, $data) {
+                CacheKeys::clearScientificInterests();
+                CacheKeys::clearScientificInterests();
+
+                Log::channel('audit')->info('Scientific interest updated', [
+                    'action' => 'dashboard.scientific_interests.update',
+                    'owner_id' => $ownerId,
+                    'interest_id' => $interest->id,
+                    'updated_fields' => array_keys($data),
+                ]);
+
+            });
         });
     }
 
@@ -111,12 +122,17 @@ class AllocationDashboardService
                 Storage::disk('public')->delete($iconPath);
             }
 
+            DB::afterCommit(function () use ($ownerId, $interestId) {
+                CacheKeys::clearScientificInterests();
+                CacheKeys::clearTestsByInterest();
 
-            Log::channel('audit')->info('Scientific interest force deleted', [
-                'action' => 'dashboard.scientific_interests.delete',
-                'owner_id' => $ownerId,
-                'interest_id' => $interestId,
-            ]);
+                Log::channel('audit')->info('Scientific interest force deleted', [
+                    'action' => 'dashboard.scientific_interests.delete',
+                    'owner_id' => $ownerId,
+                    'interest_id' => $interestId,
+                ]);
+            });
+
         });
     }
 
@@ -131,11 +147,17 @@ class AllocationDashboardService
         DB::transaction(function () use ($ownerId, $data) {
             $category = $this->allocationDashboardRepository->createScientificInterestCategory($data);
 
-            Log::channel('audit')->info('Scientific interest category created', [
-                'action' => 'dashboard.scientific_interest_categories.create',
-                'owner_id' => $ownerId,
-                'category_id' => $category->id,
-            ]);
+            DB::afterCommit(function () use ($ownerId, $category) {
+
+                CacheKeys::clearScientificInterests();
+
+                Log::channel('audit')->info('Scientific interest category created', [
+                    'action' => 'dashboard.scientific_interest_categories.create',
+                    'owner_id' => $ownerId,
+                    'category_id' => $category->id,
+                ]);
+            });
+
         });
     }
 
@@ -150,11 +172,16 @@ class AllocationDashboardService
                 data: $data,
             );
 
-            Log::channel('audit')->info('Scientific interest category updated', [
-                'action' => 'dashboard.scientific_interest_categories.update',
-                'owner_id' => $ownerId,
-                'category_id' => $categoryId,
-            ]);
+            DB::afterCommit(function () use ($ownerId, $categoryId) {
+                CacheKeys::clearScientificInterests();
+
+                Log::channel('audit')->info('Scientific interest category updated', [
+                    'action' => 'dashboard.scientific_interest_categories.update',
+                    'owner_id' => $ownerId,
+                    'category_id' => $categoryId,
+                ]);
+            });
+
         });
     }
 
@@ -176,18 +203,21 @@ class AllocationDashboardService
 
             $this->allocationDashboardRepository->forceDeleteScientificInterestCategory($category);
 
-            DB::afterCommit(function () use ($iconPaths) {
+            DB::afterCommit(function () use ($iconPaths , $ownerId , $categoryId , $interestsCount) {
                 collect($iconPaths)
                     ->filter()
                     ->each(fn (string $path) => Storage::disk('public')->delete($path));
+
+                CacheKeys::clearScientificInterests();
+
+                Log::channel('audit')->info('Scientific interest category force deleted', [
+                    'action' => 'dashboard.scientific_interest_categories.delete',
+                    'owner_id' => $ownerId,
+                    'category_id' => $categoryId,
+                    'interests_count_before_delete' => $interestsCount,
+                ]);
             });
 
-            Log::channel('audit')->info('Scientific interest category force deleted', [
-                'action' => 'dashboard.scientific_interest_categories.delete',
-                'owner_id' => $ownerId,
-                'category_id' => $categoryId,
-                'interests_count_before_delete' => $interestsCount,
-            ]);
         });
     }
 }

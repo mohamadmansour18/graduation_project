@@ -7,7 +7,7 @@ rebuild index (delete all data in index and import again) "using after editing t
 sail artisan scout:import "App\Models\Test" --fresh
 
 delete all data in index without import it again :
-sail artisan scout:flush "App\Models\Test"
+sail artisan scout:flush "App\Models\LibraryMaterial"
 
 Sync index setting from config/scout.php to meilisearch index :
 sail artisan scout:sync-index-settings

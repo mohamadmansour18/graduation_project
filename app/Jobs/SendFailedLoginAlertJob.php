@@ -23,7 +23,9 @@ class SendFailedLoginAlertJob implements ShouldQueue
         public ?string $ipAddress = null,
         public ?string $userAgent = null,
     )
-    {}
+    {
+        $this->onQueue('medium');
+    }
 
     /**
      * Execute the job.

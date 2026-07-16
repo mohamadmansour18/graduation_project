@@ -13,7 +13,11 @@ class UpdateTestBookmarkSummaryTables implements ShouldQueue
 {
     use InteractsWithQueue;
 
+    public bool $afterCommit = true;
     public int $tries = 2;
+    public array $backoff = [5, 10];
+    public int $timeout = 60;
+    public string $queue = 'light';
     /**
      * Create the event listener.
      */

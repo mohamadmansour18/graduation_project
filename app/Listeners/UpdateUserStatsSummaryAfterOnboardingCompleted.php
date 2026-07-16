@@ -18,7 +18,9 @@ class UpdateUserStatsSummaryAfterOnboardingCompleted implements ShouldQueue
 
     public int $tries = 2;
     public bool $afterCommit = true;
-
+    public array $backoff = [5, 10];
+    public int $timeout = 60;
+    public string $queue = 'light';
 
     public function handle(UserOnboardingCompleted $event): void
     {

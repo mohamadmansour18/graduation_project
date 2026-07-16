@@ -22,7 +22,9 @@ class SendOtpMailJob implements ShouldQueue
         public string $otpCode,
         public string $purpose
     )
-    {}
+    {
+        $this->onQueue('medium');
+    }
 
     /**
      * Execute the job.

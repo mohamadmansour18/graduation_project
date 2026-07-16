@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\DB;
 
 class PaidDashboardRepository
 {
+    private function salesCurrency(): string
+    {
+        return strtolower((string) config('payments.pricing_currency', 'syp'));
+    }
+
     public function cursorPaginateSalesHistory(Carbon $startDate, Carbon $endDate, string $sortBy, int $perPage): CursorPaginator
     {
         if ($sortBy === 'test_status') {
@@ -39,7 +44,7 @@ class PaidDashboardRepository
                 'buyerUser.userProfile:user_id,avatar_path,avatar_disk',
             ])
             ->whereBetween('test_purchases.purchased_at', [$startDate, $endDate])
-            ->where('test_purchases.currency', 'usd')
+            ->where('test_purchases.currency', $this->salesCurrency())
             ->where('test_purchases.payment_status', PaymentStatus::Paid->value);
 
         $this->applySalesSorting($query, $sortBy);
@@ -76,7 +81,7 @@ class PaidDashboardRepository
     {
         $stats = TestPurchase::query()
             ->whereBetween('purchased_at', [$startDate, $endDate])
-            ->where('currency', 'usd')
+            ->where('currency', $this->salesCurrency())
             ->where('test_purchases.payment_status', PaymentStatus::Paid->value)
             ->selectRaw('
             COUNT(DISTINCT test_id) as distinct_sold_tests_count,
@@ -99,7 +104,7 @@ class PaidDashboardRepository
         $statusOrderSubQuery = DB::table('test_purchases')
             ->join('test', 'test.id', '=', 'test_purchases.test_id')
             ->whereBetween('test_purchases.purchased_at', [$startDate, $endDate])
-            ->where('test_purchases.currency', 'usd')
+            ->where('test_purchases.currency', $this->salesCurrency())
             ->where('test_purchases.payment_status', PaymentStatus::Paid->value)
             ->select([
                 'test_purchases.id as purchase_id',

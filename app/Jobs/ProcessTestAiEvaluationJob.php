@@ -24,7 +24,9 @@ class ProcessTestAiEvaluationJob implements ShouldQueue
 
     public function __construct(
         private readonly int $evaluationRequestId
-    ) {}
+    ) {
+        $this->onQueue('heavy');
+    }
 
     public function handle(TestAiEvaluationRepository $repository, TestAiEvaluationProviderOrchestrator $providerOrchestrator): void
     {

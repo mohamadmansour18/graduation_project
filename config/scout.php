@@ -45,7 +45,12 @@ return [
     |
     */
 
-    'queue' => env('SCOUT_QUEUE', false),
+    'queue' => env('SCOUT_QUEUE', false)
+        ? [
+            'connection' => env('SCOUT_QUEUE_CONNECTION', 'redis'),
+            'queue' => env('SCOUT_QUEUE_NAME', 'medium'),
+        ]
+        : false,
 
     /*
     |--------------------------------------------------------------------------
@@ -58,7 +63,7 @@ return [
     |
     */
 
-    'after_commit' => false,
+    'after_commit' => true,
 
     /*
     |--------------------------------------------------------------------------
@@ -199,46 +204,47 @@ return [
                     'هذه',
                 ],
             ],
-        ],
-
-        LibraryMaterial::class => [
-            'searchableAttributes' => [
-                'normalized_title',
-                'title',
-                'description',
-            ],
-            'filterableAttributes' => [
-                'id',
-                'creator_user_id',
-                'visibility_type',
-                'review_status',
-                'published_at_timestamp',
-                'interest_ids',
-                'content_kind',
-            ],
-            'sortableAttributes' => [
-                'published_at_timestamp',
-                'like_count',
-            ],
-            'rankingRules' => [
-                'words',
-                'typo',
-                'proximity',
-                'attribute',
-                'sort',
-                'exactness',
-            ],
-            'typoTolerance' => [
-                'enabled' => true,
-                'minWordSizeForTypos' => [
-                    'oneTypo' => 4,
-                    'twoTypos' => 8,
+            LibraryMaterial::class => [
+                'searchableAttributes' => [
+                    'normalized_title',
+                    'title',
+                    'description',
+                ],
+                'filterableAttributes' => [
+                    'id',
+                    'creator_user_id',
+                    'visibility_type',
+                    'review_status',
+                    'published_at_timestamp',
+                    'interest_ids',
+                    'content_kind',
+                ],
+                'sortableAttributes' => [
+                    'published_at_timestamp',
+                    'like_count',
+                ],
+                'rankingRules' => [
+                    'words',
+                    'typo',
+                    'proximity',
+                    'attribute',
+                    'sort',
+                    'exactness',
+                ],
+                'typoTolerance' => [
+                    'enabled' => true,
+                    'minWordSizeForTypos' => [
+                        'oneTypo' => 4,
+                        'twoTypos' => 8,
+                    ],
+                ],
+                'stopWords' => [
+                    'في','من','عن','على','الى','إلى','ال','و','يا','مع','هذا','هذه',
                 ],
             ],
-            'stopWords' => [
-                'في','من','عن','على','الى','إلى','ال','و','يا','مع','هذا','هذه',
-            ],
         ],
+
+
 
     ],
 

@@ -23,7 +23,9 @@ class SendSupervisorAccountCreatedMailJob implements ShouldQueue
         public User $supervisor,
         public User $owner,
     )
-    {}
+    {
+        $this->onQueue('medium');
+    }
 
     /**
      * Execute the job.

@@ -24,7 +24,9 @@ class ProcessAiQuestionGenerationJob implements ShouldQueue
     public function __construct(
         private readonly int $generationRequestId
     )
-    {}
+    {
+        $this->onQueue('heavy');
+    }
 
     public function handle(
         AiQuestionGenerationRepository $repository,

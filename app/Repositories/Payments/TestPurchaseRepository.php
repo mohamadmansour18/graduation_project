@@ -158,7 +158,7 @@ class TestPurchaseRepository
             ]);
     }
 
-    public function markAsPaidFromAttempt(object $purchase, object $attempt): object
+    public function markAsPaidFromAttempt(object $purchase, object $attempt): array
     {
         return DB::transaction(function () use ($purchase, $attempt) {
             $lockedPurchase = DB::table('test_purchases')

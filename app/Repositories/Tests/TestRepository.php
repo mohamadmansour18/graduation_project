@@ -3,6 +3,7 @@
 namespace App\Repositories\Tests;
 
 use App\Enums\PaymentStatus;
+use App\Enums\Decision;
 use App\Enums\SystemRole;
 use App\Enums\TestReviewRoundsTriggerType;
 use App\Enums\TestReviewStatus;
@@ -453,6 +454,38 @@ class TestRepository
         ]);
     }
 
+    public function createInitialReviewRoundForPrivateToPublicUpdate(Test $test): int
+    {
+        return $this->createPendingReviewRoundForTestUpdate(
+            test: $test,
+            triggerType: TestReviewRoundsTriggerType::Initial_Submission
+        );
+    }
+
+    public function createOwnerResubmissionReviewRoundForTestUpdate(Test $test): int
+    {
+        return $this->createPendingReviewRoundForTestUpdate(
+            test: $test,
+            triggerType: TestReviewRoundsTriggerType::Owner_Resubmission
+        );
+    }
+
+    private function createPendingReviewRoundForTestUpdate(Test $test, TestReviewRoundsTriggerType $triggerType): int
+    {
+        return DB::table('test_review_rounds')->insertGetId([
+            'test_id' => $test->id,
+            'round_no' => $this->getNextReviewRoundNo((int) $test->id),
+            'reviewer_user_id' => null,
+            'trigger_type' => $triggerType->value,
+            'decision' => Decision::Pending->value,
+            'based_on_approval_version' => $test->current_approval_version,
+            'started_at' => now(),
+            'decided_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     public function getOpenRevisionRoundId(int $testId): ?int
     {
         return DB::table('test_review_rounds')
@@ -460,6 +493,45 @@ class TestRepository
             ->whereNull('decided_at')
             ->orderByDesc('id')
             ->value('id');
+    }
+
+    public function getLatestNeedsRevisionRoundIdForTestUpdate(int $testId): ?int
+    {
+        return DB::table('test_review_rounds')
+            ->where('test_id', $testId)
+            ->where('decision', Decision::Needs_Revision->value)
+            ->orderByDesc('round_no')
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->value('id');
+    }
+
+    public function findPendingReviewRoundIdForOwnerDelete(int $testId): ?int
+    {
+        return DB::table('test_review_rounds')
+            ->where('test_id', $testId)
+            ->where('decision', Decision::Pending->value)
+            ->orderByDesc('round_no')
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->value('id');
+    }
+
+    public function closeReviewRoundAsDeletedForOwnerDelete(int $roundId): void
+    {
+        DB::table('test_review_rounds')
+            ->where('id', $roundId)
+            ->update([
+                'decision' => Decision::Deleted->value,
+                'decided_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function markAsDeletedForOwnerDelete(Test $test): void
+    {
+        $test->review_status = TestReviewStatus::Deleted->value;
+        $test->save();
     }
 
     public function getUnresolvedRevisionRequests(int $testId, int $roundId): \Illuminate\Support\Collection

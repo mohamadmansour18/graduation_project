@@ -14,6 +14,7 @@ use App\Helpers\ImageProcessor;
 use App\Models\Test;
 use App\Models\User;
 use App\Repositories\Admin\TestDashboardRepository;
+use App\Services\Cache\CacheKeys;
 use App\Services\Notifications\NotificationCenter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -183,6 +184,8 @@ class TestDashboardService
             $result['changed_at'],
             $result['current_approval_version']
         );
+
+        CacheKeys::clearTestsByInterest();
 
         TestApproved::dispatch(
             $result['test_id'],

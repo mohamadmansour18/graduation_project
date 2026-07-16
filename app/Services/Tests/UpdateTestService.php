@@ -11,6 +11,7 @@ use App\Models\Test;
 use App\Models\TestQuestion;
 use App\Models\TestQuestionOption;
 use App\Repositories\Tests\TestRepository;
+use App\Services\Cache\CacheKeys;
 use App\Services\Notifications\NotificationCenter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -69,14 +70,14 @@ class UpdateTestService
             $statusChanged = false;
 
             if (
-                $test->test_type === self::TYPE_PUBLIC
+                $test->test_type->value === self::TYPE_PUBLIC
                 && $oldStatus === TestReviewStatus::Approved->value
                 && $analysis['has_significant_scientific_change']
             ) {
                 $requiresReview = true;
                 $statusChanged = true;
 
-                $roundId = $this->testRepository->createReviewRoundForOwnerUpdate($test);
+                $roundId = $this->testRepository->createOwnerResubmissionReviewRoundForTestUpdate($test);
 
                 $test->review_status = TestReviewStatus::UnderReview;
                 $test->last_content_updated_at = now();
@@ -183,9 +184,11 @@ class UpdateTestService
         $test->last_content_updated_at = now();
         $test->save();
 
+        $roundId = $this->testRepository->createInitialReviewRoundForPrivateToPublicUpdate($test);
+
         $this->testRepository->createStatusHistory(
             testId: (int) $test->id,
-            testReviewRoundId: null,
+            testReviewRoundId: $roundId,
             fromStatus: null,
             toStatus: TestReviewStatus::New->value,
             changedByUserId: $userId,
@@ -199,7 +202,7 @@ class UpdateTestService
             'test_id' => (int) $test->id,
             'test_title' => $test->title,
             'owner_user_id' => (int) $test->creator_user_id,
-            'review_round_id' => null,
+            'review_round_id' => (int) $roundId,
             'old_status' => null,
             'new_status' => TestReviewStatus::New->value,
             'reason' => 'private_to_public_conversion',
@@ -221,15 +224,15 @@ class UpdateTestService
 
     private function handleNeedsRevisionUpdate(Test $test, array $payload, array $analysis, int $userId, ?array &$notificationPayload = null): array
     {
-        $roundId = $this->testRepository->getOpenRevisionRoundId((int) $test->id);
+        $revisionRoundId = $this->testRepository->getLatestNeedsRevisionRoundIdForTestUpdate((int) $test->id);
 
-        if (! $roundId) {
+        if (! $revisionRoundId) {
             throw TestException::testCannotBeEdited();
         }
 
         $revisionRequests = $this->testRepository->getUnresolvedRevisionRequests(
             testId: (int) $test->id,
-            roundId: $roundId
+            roundId: $revisionRoundId
         );
 
         $matchedRevisionRequestIds = $this->matchRevisionRequestsWithPayload(
@@ -259,8 +262,10 @@ class UpdateTestService
 
         $this->testRepository->resolveRevisionRequests($matchedRevisionRequestIds);
 
+        $resubmissionRoundId = $this->testRepository->createOwnerResubmissionReviewRoundForTestUpdate($test);
+
         $this->createScientificChangeLogs(
-            roundId: $roundId,
+            roundId: $resubmissionRoundId,
             test: $test,
             changes: $analysis['scientific_changes'],
             userId: $userId,
@@ -269,7 +274,7 @@ class UpdateTestService
 
         $this->testRepository->createStatusHistory(
             testId: (int) $test->id,
-            testReviewRoundId: $roundId,
+            testReviewRoundId: $resubmissionRoundId,
             fromStatus: $oldStatus,
             toStatus: TestReviewStatus::UnderReview->value,
             changedByUserId: $userId,
@@ -283,7 +288,7 @@ class UpdateTestService
             'test_id' => (int) $test->id,
             'test_title' => $test->title,
             'owner_user_id' => (int) $test->creator_user_id,
-            'review_round_id' => (int) $roundId,
+            'review_round_id' => (int) $resubmissionRoundId,
             'old_status' => $oldStatus,
             'new_status' => TestReviewStatus::UnderReview->value,
             'reason' => 'owner_completed_requested_revisions',
@@ -335,6 +340,8 @@ class UpdateTestService
             testId: (int) $test->id,
             interestIds: $payload['interest_ids']
         );
+
+        CacheKeys::clearTestsByInterest();
     }
 
     private function applyQuestionsIfPresent(Test $test, array $payload): void
@@ -516,7 +523,7 @@ class UpdateTestService
 
     private function validatePreviewCountIfPublic(Test $test): void
     {
-        if ($test->test_type !== self::TYPE_PUBLIC) {
+        if ($test->test_type->value !== self::TYPE_PUBLIC) {
             return;
         }
 

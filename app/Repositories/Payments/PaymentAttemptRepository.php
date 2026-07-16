@@ -18,6 +18,13 @@ class PaymentAttemptRepository
 
             'amount' => $data['amount'],
             'currency' => $data['currency'],
+            'source_amount' => $data['source_amount'] ?? null,
+            'source_currency' => $data['source_currency'] ?? null,
+            'exchange_rate' => $data['exchange_rate'] ?? null,
+            'exchange_rate_provider' => $data['exchange_rate_provider'] ?? null,
+            'exchange_rate_fetched_at' => $data['exchange_rate_fetched_at'] ?? null,
+            'exchange_rate_expires_at' => $data['exchange_rate_expires_at'] ?? null,
+            'exchange_rate_is_fallback' => $data['exchange_rate_is_fallback'] ?? false,
             'status' => PaymentAttemptStatus::Pending->value,
 
             'expires_at' => $data['expires_at'],
@@ -169,9 +176,14 @@ class PaymentAttemptRepository
             ->update($updates);
     }
 
-    public function findReusablePendingAttemptForPurchase(int $testPurchaseId): ?object
+    public function findReusablePendingAttemptForPurchase(
+        int $testPurchaseId,
+        ?float $sourceAmount = null,
+        ?string $sourceCurrency = null,
+        ?string $providerCurrency = null,
+    ): ?object
     {
-        return DB::table('payment_attempts')
+        $query = DB::table('payment_attempts')
             ->where('test_purchase_id', $testPurchaseId)
             ->where('status', PaymentAttemptStatus::Pending->value)
             ->whereNotNull('provider_reference')
@@ -179,7 +191,21 @@ class PaymentAttemptRepository
             ->where(function ($query) {
                 $query->whereNull('expires_at')
                     ->orWhere('expires_at', '>', now()->addMinute());
-            })
+            });
+
+        if ($sourceAmount !== null) {
+            $query->where('source_amount', round($sourceAmount, 2));
+        }
+
+        if ($sourceCurrency !== null) {
+            $query->where('source_currency', strtolower($sourceCurrency));
+        }
+
+        if ($providerCurrency !== null) {
+            $query->where('currency', strtolower($providerCurrency));
+        }
+
+        return $query
             ->latest('id')
             ->first();
     }

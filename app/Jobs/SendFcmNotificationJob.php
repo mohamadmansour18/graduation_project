@@ -27,7 +27,9 @@ class SendFcmNotificationJob implements ShouldQueue
         private readonly array $payloadData,
         private readonly array $firebaseProjects,
     )
-    {}
+    {
+        $this->onQueue('medium');
+    }
 
     public function handle(FirebasePushService $firebasePushService , FcmTokenService $fcmTokenService): void
     {

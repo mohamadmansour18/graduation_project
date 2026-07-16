@@ -64,6 +64,34 @@ class StripeWebhookService
             return;
         }
 
+        if (! $this->sessionAmountMatchesAttempt($session, $attempt)) {
+            $this->paymentAttemptRepository->markAsFailed(
+                attemptId: $attempt->id,
+                failureCode: 'stripe_amount_mismatch',
+                failureMessage: 'Stripe checkout session amount or currency does not match the local payment attempt.',
+            );
+
+            $hasActiveAttempt = $this->paymentAttemptRepository
+                ->hasActivePendingAttemptForPurchase($attempt->test_purchase_id);
+
+            $this->testPurchaseRepository->markAsCancelledIfNoActiveAttempts(
+                purchaseId: $attempt->test_purchase_id,
+                hasActiveAttempt: $hasActiveAttempt,
+            );
+
+            Log::channel('errors')->error('Stripe checkout session amount mismatch', [
+                'stripe_event_id' => $event->id,
+                'checkout_session_id' => $session->id,
+                'payment_attempt_id' => $attempt->id,
+                'expected_currency' => $attempt->currency,
+                'stripe_currency' => $session->currency ?? null,
+                'expected_amount_minor' => $this->minorAmount((float) $attempt->amount),
+                'stripe_amount_total' => $session->amount_total ?? null,
+            ]);
+
+            return;
+        }
+
         $paymentIntentId = is_string($session->payment_intent ?? null)
             ? $session->payment_intent
             : null;
@@ -253,6 +281,25 @@ class StripeWebhookService
         }
 
         return null;
+    }
+
+    private function sessionAmountMatchesAttempt(object $session, object $attempt): bool
+    {
+        $sessionCurrency = strtolower((string) ($session->currency ?? ''));
+        $attemptCurrency = strtolower((string) $attempt->currency);
+        $sessionAmount = $session->amount_total ?? null;
+
+        if (! is_numeric($sessionAmount)) {
+            return false;
+        }
+
+        return $sessionCurrency === $attemptCurrency
+            && (int) $sessionAmount === $this->minorAmount((float) $attempt->amount);
+    }
+
+    private function minorAmount(float $amount): int
+    {
+        return (int) round($amount * 100);
     }
 
     private function sendPurchasePaidNotifications(object $purchase, object $attempt, string $stripeEventId,): void

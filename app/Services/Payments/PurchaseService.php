@@ -21,6 +21,7 @@ class PurchaseService
         private readonly TestPaymentRepository $testPaymentRepository,
         private readonly TestPurchaseRepository $testPurchaseRepository,
         private readonly PurchaseMoneyCalculator $moneyCalculator,
+        private readonly CurrencyConversionService $currencyConversionService,
         private readonly PaymentManager $paymentManager,
         private readonly PaymentAttemptRepository $paymentAttemptRepository,
     )
@@ -54,19 +55,19 @@ class PurchaseService
 
         /*
         |--------------------------------------------------------------------------
-        | 3. تحديد العملة وحساب توزيع المال
+        | 3. تحديد عملة التسعير الداخلية وحساب توزيع المال
         |--------------------------------------------------------------------------
         |
-        | grossAmount: السعر الكامل.
-        | platformFeeAmount: ربح المنصة.
-        | sellerNetAmount: صافي ربح صاحب الاختبار.
+        | test.price مخزن كقيمة داخلية بالليرة السورية.
+        | Stripe سيأخذ مبلغًا منفصلًا بالدولار لاحقًا عند إنشاء محاولة الدفع.
         |
         */
-        $currency = (string) config('payments.default_currency', 'usd');
+        $pricingCurrency = strtolower((string) config('payments.pricing_currency', 'syp'));
+        $checkoutCurrency = strtolower((string) config('payments.stripe.checkout_currency', 'usd'));
 
         $money = $this->moneyCalculator->calculate(
             grossAmount: (float) $test->price,
-            currency: $currency,
+            currency: $pricingCurrency,
         );
 
         /*
@@ -148,7 +149,12 @@ class PurchaseService
         |
         */
         $reusableAttempt = $this->paymentAttemptRepository
-            ->findReusablePendingAttemptForPurchase($purchase->id);
+            ->findReusablePendingAttemptForPurchase(
+                testPurchaseId: $purchase->id,
+                sourceAmount: $money->grossAmount,
+                sourceCurrency: $money->currency,
+                providerCurrency: $checkoutCurrency,
+            );
 
         if ($reusableAttempt) {
             return [
@@ -167,6 +173,15 @@ class PurchaseService
                     'seller_net_amount' => $money->sellerNetAmount,
                     'currency' => $money->currency,
                 ],
+                'provider_amount' => [
+                    'gross_amount' => (float) $reusableAttempt->amount,
+                    'currency' => $reusableAttempt->currency,
+                    'exchange_rate' => $reusableAttempt->exchange_rate
+                        ? (float) $reusableAttempt->exchange_rate
+                        : null,
+                    'exchange_rate_provider' => $reusableAttempt->exchange_rate_provider,
+                    'exchange_rate_is_fallback' => (bool) $reusableAttempt->exchange_rate_is_fallback,
+                ],
             ];
         }
 
@@ -182,15 +197,30 @@ class PurchaseService
             ->addMinutes((int) config('payments.checkout_session_expires_after_minutes', 30))
             ->timestamp;
 
+        $providerAmount = $this->currencyConversionService->convert(
+            amount: $money->grossAmount,
+            sourceCurrency: $money->currency,
+            targetCurrency: $checkoutCurrency,
+        );
+
         $attempt = $this->paymentAttemptRepository->createPendingAttempt([
             'test_purchase_id' => $purchase->id,
             'payment_provider' => $provider->value,
-            'amount' => $money->grossAmount,
-            'currency' => $money->currency,
+            'amount' => $providerAmount->convertedAmount,
+            'currency' => $providerAmount->targetCurrency,
+            'source_amount' => $providerAmount->sourceAmount,
+            'source_currency' => $providerAmount->sourceCurrency,
+            'exchange_rate' => $providerAmount->exchangeRate,
+            'exchange_rate_provider' => $providerAmount->provider,
+            'exchange_rate_fetched_at' => $providerAmount->fetchedAt,
+            'exchange_rate_expires_at' => $providerAmount->expiresAt,
+            'exchange_rate_is_fallback' => $providerAmount->isFallback,
             'expires_at' => Carbon::createFromTimestamp($expiresAt),
             'metadata' => [
                 'source' => 'mobile_app',
                 'purchase_type' => 'test',
+                'pricing_currency' => $money->currency,
+                'checkout_currency' => $providerAmount->targetCurrency,
             ],
         ]);
 
@@ -222,13 +252,20 @@ class PurchaseService
                     buyerUserId: $buyerUserId,
                     sellerUserId: $test->creator_user_id,
                     testTitle: $test->title,
-                    money: $money,
+                    money: $this->moneyCalculator->calculate(
+                        grossAmount: $providerAmount->convertedAmount,
+                        currency: $providerAmount->targetCurrency,
+                    ),
                     successUrl: (string) config('payments.success_url'),
                     cancelUrl: (string) config('payments.cancel_url'),
                     expiresAt: $expiresAt,
                     metadata: [
                         'source' => 'mobile_app',
                         'purchase_type' => 'test',
+                        'source_amount' => (string) $providerAmount->sourceAmount,
+                        'source_currency' => $providerAmount->sourceCurrency,
+                        'exchange_rate' => (string) $providerAmount->exchangeRate,
+                        'exchange_rate_provider' => $providerAmount->provider,
                     ],
                 ));
 
@@ -253,6 +290,13 @@ class PurchaseService
                     'platform_fee_amount' => $money->platformFeeAmount,
                     'seller_net_amount' => $money->sellerNetAmount,
                     'currency' => $money->currency,
+                ],
+                'provider_amount' => [
+                    'gross_amount' => $providerAmount->convertedAmount,
+                    'currency' => $providerAmount->targetCurrency,
+                    'exchange_rate' => $providerAmount->exchangeRate,
+                    'exchange_rate_provider' => $providerAmount->provider,
+                    'exchange_rate_is_fallback' => $providerAmount->isFallback,
                 ],
             ];
         } catch (Throwable $exception) {

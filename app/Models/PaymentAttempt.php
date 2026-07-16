@@ -17,6 +17,13 @@ class PaymentAttempt extends Model
         'checkout_url',
         'amount',
         'currency',
+        'source_amount',
+        'source_currency',
+        'exchange_rate',
+        'exchange_rate_provider',
+        'exchange_rate_fetched_at',
+        'exchange_rate_expires_at',
+        'exchange_rate_is_fallback',
         'status',
         'failure_code',
         'failure_message',
@@ -30,6 +37,11 @@ class PaymentAttempt extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'source_amount' => 'decimal:2',
+        'exchange_rate' => 'decimal:8',
+        'exchange_rate_fetched_at' => 'datetime',
+        'exchange_rate_expires_at' => 'datetime',
+        'exchange_rate_is_fallback' => 'boolean',
         'metadata' => 'array',
 
         'expires_at' => 'datetime',

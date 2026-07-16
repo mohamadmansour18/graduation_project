@@ -10,6 +10,7 @@ use App\Exceptions\Api\TestException;
 use App\Helpers\CounterProcessor;
 use App\Models\Test;
 use App\Repositories\Tests\TestRepository;
+use App\Services\Cache\CacheKeys;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -321,19 +322,26 @@ class TestService
                 'deletionStrategy' => $strategy,
             ];
 
-            $test->review_status = TestReviewStatus::Deleted->value;
-            $test->save();
-
-            $this->testRepository->createStatusHistory(
-                testId: (int) $test->id,
-                testReviewRoundId: null,
-                fromStatus: $fromStatus,
-                toStatus: TestReviewStatus::Deleted->value,
-                changedByUserId: $userId,
-                note: 'تم حذف هذا الاختبار من قبل صاحب الاختبار'
-            );
-
             if ($strategy === TestDeletionStrategy::SoftDelete) {
+                $pendingRoundId = $this->testRepository->findPendingReviewRoundIdForOwnerDelete((int) $test->id);
+
+                if ($pendingRoundId !== null) {
+                    $this->testRepository->closeReviewRoundAsDeletedForOwnerDelete($pendingRoundId);
+                }
+
+                $this->testRepository->markAsDeletedForOwnerDelete($test);
+
+                $this->testRepository->createStatusHistory(
+                    testId: (int) $test->id,
+                    testReviewRoundId: $pendingRoundId,
+                    fromStatus: $fromStatus,
+                    toStatus: TestReviewStatus::Deleted->value,
+                    changedByUserId: $userId,
+                    note: 'تم حذف هذا الاختبار من قبل صاحب الاختبار'
+                );
+
+                CacheKeys::clearTestsByInterest();
+
                 $test->delete();
             } else {
                 $test->forceDelete();

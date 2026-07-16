@@ -24,7 +24,9 @@ class ProcessNotificationJob implements ShouldQueue
         private readonly array $payloadData,
         private readonly array $firebaseProjects,
     )
-    {}
+    {
+        $this->onQueue('medium');
+    }
 
     public function handle(): void
     {

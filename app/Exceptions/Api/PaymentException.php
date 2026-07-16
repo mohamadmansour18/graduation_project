@@ -84,4 +84,13 @@ class PaymentException extends ApiException
             status: 502
         );
     }
+
+    public static function currencyConversionUnavailable(): self
+    {
+        return new self(
+            title: '! تعذر تحويل العملة',
+            message: 'تعذر الحصول على سعر صرف صالح حاليًا، يرجى المحاولة لاحقًا',
+            status: 503
+        );
+    }
 }

@@ -1380,7 +1380,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
         }
 
         $purchaseRows = [];
-        $currency = (string) config('payments.default_currency', 'usd');
+        $currency = (string) config('payments.pricing_currency', config('payments.default_currency', 'syp'));
         $paymentProvider = (string) config('payments.default_provider', 'stripe');
         $platformFeePercent = (float) config('payments.platform_fee_percent', 10);
 

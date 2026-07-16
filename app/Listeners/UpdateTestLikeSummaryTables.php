@@ -12,14 +12,12 @@ use Throwable;
 class UpdateTestLikeSummaryTables implements ShouldQueue
 {
     use InteractsWithQueue;
+
+    public bool $afterCommit = true;
     public int $tries = 2;
-    /**
-     * Create the event listener.
-     */
-    public function __construct()
-    {
-        //
-    }
+    public array $backoff = [5, 10];
+    public int $timeout = 60;
+    public string $queue = 'light';
 
     /**
      * Handle the event.

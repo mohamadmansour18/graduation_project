@@ -25,7 +25,7 @@ class DailyTaskService
 
         if (! $defaultPlan) {
             return [
-                'userSettings' => $userSettings ?? null,
+                'userSettings' => $userSettings ?? [],
                 'server_today' => $today,
                 'selected_date' => $selectedDate,
                 'range' => [

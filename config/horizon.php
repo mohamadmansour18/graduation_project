@@ -194,33 +194,111 @@ return [
     */
 
     'defaults' => [
-        'supervisor-1' => [
+
+        'supervisor-heavy' => [
             'connection' => 'redis',
-            'queue' => ['default'],
+            'queue' => ['heavy'],
+
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
+
+            'minProcesses' => 1,
             'maxProcesses' => 1,
+
+            'balanceMaxShift' => 1,
+            'balanceCooldown' => 5,
+
             'maxTime' => 0,
             'maxJobs' => 0,
+
+            'memory' => 512,
+            'tries' => 2,
+            'timeout' => 300,
+
+            'nice' => 0,
+        ],
+
+        'supervisor-medium' => [
+            'connection' => 'redis',
+            'queue' => ['medium'],
+
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+
+            'minProcesses' => 1,
+            'maxProcesses' => 1,
+
+            'balanceMaxShift' => 1,
+            'balanceCooldown' => 3,
+
+            'maxTime' => 0,
+            'maxJobs' => 0,
+
+            'memory' => 256,
+            'tries' => 3,
+            'timeout' => 120,
+
+            'nice' => 0,
+        ],
+
+        'supervisor-light' => [
+            'connection' => 'redis',
+            'queue' => ['light'],
+
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+
+            'minProcesses' => 1,
+            'maxProcesses' => 1,
+
+            'balanceMaxShift' => 1,
+            'balanceCooldown' => 2,
+
+            'maxTime' => 0,
+            'maxJobs' => 0,
+
             'memory' => 128,
             'tries' => 3,
-            'timeout' => 60,
+            'timeout' => 80,
+
             'nice' => 0,
         ],
     ],
 
     'environments' => [
         'production' => [
-            'supervisor-1' => [
-                'maxProcesses' => 10,
-                'balanceMaxShift' => 1,
-                'balanceCooldown' => 3,
+
+            'supervisor-heavy' => [
+                'minProcesses' => 1,
+                'maxProcesses' => 2,
             ],
+
+            'supervisor-medium' => [
+                'minProcesses' => 1,
+                'maxProcesses' => 3,
+            ],
+
+            'supervisor-light' => [
+                'minProcesses' => 1,
+                'maxProcesses' => 5,
+            ],
+
         ],
 
         'local' => [
-            'supervisor-1' => [
-                'maxProcesses' => 3,
+            'supervisor-heavy' => [
+                'minProcesses' => 1,
+                'maxProcesses' => 1,
+            ],
+
+            'supervisor-medium' => [
+                'minProcesses' => 1,
+                'maxProcesses' => 1,
+            ],
+
+            'supervisor-light' => [
+                'minProcesses' => 1,
+                'maxProcesses' => 1,
             ],
         ],
     ],

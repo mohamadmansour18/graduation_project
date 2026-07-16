@@ -206,7 +206,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/followers/{userId}', [PublicProfileController::class, 'followers']); //يلي متابعيني
                 Route::get('/following/{userId}', [PublicProfileController::class, 'following']); //يلي انا متابعهن
 
-                Route::middleware('throttle:4,2')->group(function () {
+                Route::middleware(['throttle:4,2' , 'idempotency'])->group(function () {
                     Route::post('/follow/{userId}' , [FollowController::class , 'follow']);
                     Route::delete('/unfollow/{userId}' , [FollowController::class , 'unfollow']);
 

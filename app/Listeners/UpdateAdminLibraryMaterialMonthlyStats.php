@@ -14,6 +14,9 @@ class UpdateAdminLibraryMaterialMonthlyStats implements ShouldQueue
     use InteractsWithQueue;
 
     public int $tries = 2;
+    public array $backoff = [5, 10];
+    public int $timeout = 60;
+    public string $queue = 'light';
 
     public function handle(LibraryMaterialLikeChanged $event): void
     {
