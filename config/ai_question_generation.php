@@ -62,11 +62,11 @@ return [
     'providers' => [
         'gemini' => GeminiQuestionGenerationProvider::class,
         'openrouter' => OpenRouterQuestionGenerationProvider::class,
-//        'deepseek' => DeepSeekQuestionGenerationProvider::class, //noooooooooooooooooooooooooooooooo
+        'deepseek' => DeepSeekQuestionGenerationProvider::class,
         'cloudflare_workers_ai' => CloudflareWorkersAiQuestionGenerationProvider::class,
-//        'ollama_cloud' => OllamaCloudQuestionGenerationProvider::class,         //testttttttttttttttttttt
+//        'ollama_cloud' => OllamaCloudQuestionGenerationProvider::class,
         'huggingface' => HuggingFaceInferenceQuestionGenerationProvider::class,
-//        'ollama_local' => OllamaLocalQuestionGenerationProvider::class,
+        'ollama_local' => OllamaLocalQuestionGenerationProvider::class,
     ],
 
     /*
@@ -176,7 +176,6 @@ return [
             'low' => [
                 'openrouter',
                 'cloudflare_workers_ai',
-                'ollama_cloud',
                 'huggingface',
                 'gemini',
                 'ollama_local',
@@ -186,7 +185,6 @@ return [
                 'openrouter',
                 'gemini',
                 'cloudflare_workers_ai',
-                'ollama_cloud',
                 'huggingface',
                 'ollama_local',
             ],
@@ -195,7 +193,6 @@ return [
                 'gemini',
                 'openrouter',
                 'cloudflare_workers_ai',
-                'ollama_cloud',
                 'huggingface',
                 'ollama_local',
             ],
@@ -207,7 +204,6 @@ return [
                     'openrouter',
                     'cloudflare_workers_ai',
                     'gemini',
-                    'ollama_cloud',
                     'huggingface',
                     'ollama_local',
                 ],
@@ -216,7 +212,6 @@ return [
                     'openrouter',
                     'cloudflare_workers_ai',
                     'gemini',
-                    'ollama_cloud',
                     'huggingface',
                     'ollama_local',
                 ],
@@ -225,7 +220,6 @@ return [
                     'gemini',
                     'openrouter',
                     'cloudflare_workers_ai',
-                    'ollama_cloud',
                     'huggingface',
                     'ollama_local',
                 ],
@@ -235,21 +229,18 @@ return [
                 'low' => [
                     'cloudflare_workers_ai',
                     'gemini',
-                    'ollama_cloud',
                     'huggingface',
                 ],
 
                 'medium' => [
                     'cloudflare_workers_ai',
                     'gemini',
-                    'ollama_cloud',
                     'huggingface',
                 ],
 
                 'high' => [
                     'gemini',
                     'cloudflare_workers_ai',
-                    'ollama_cloud',
                     'huggingface',
                 ],
             ],
