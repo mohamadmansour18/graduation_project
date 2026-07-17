@@ -434,7 +434,7 @@ class LibraryMaterialService
                 'actor' => BuildActor::buildUserActor((int) $data['creator_user_id']),
 
                 'navigation' => [
-                    'screen' => 'test_details',
+                    'screen' => 'material_details',
                     'action' => 'open',
                 ],
 

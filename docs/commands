@@ -16,6 +16,13 @@ sail artisan scout:sync-index-settings
 
 sail artisan backup:run --only-db
 
+---------[Octan]---------
+لعرض حالة اوكتان :
+sail artisan octane:status --server=swoole
+
+لاعادة تحميل الكود بعد التعديل عليه :
+sail artisan octane:reload
+
 ------------------
 
 crontab :

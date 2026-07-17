@@ -125,7 +125,7 @@ class AcademicVerificationRepository
     {
         return User::query()
             ->whereHas('role', function ($query) {
-                $query->whereIn('name', [SystemRole::Owner->value , SystemRole::Supervisor->value]);
+                $query->where('name', SystemRole::Owner->value);
             })
             ->pluck('id')
             ->all();
