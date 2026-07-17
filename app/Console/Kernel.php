@@ -41,6 +41,21 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        $schedule
+            ->command('backup:run --only-db')
+            ->weeklyOn(5, '04:00')
+            ->withoutOverlapping(180);
+
+        $schedule
+            ->command('backup:clean')
+            ->weeklyOn(5, '05:00')
+            ->withoutOverlapping(60);
+
+        $schedule
+            ->command('backup:monitor')
+            ->dailyAt('06:00')
+            ->withoutOverlapping(30);
+
         $schedule->command('model:prune', [
             '--model' => [
                 \App\Models\ScheduledNotificationDelivery::class,
