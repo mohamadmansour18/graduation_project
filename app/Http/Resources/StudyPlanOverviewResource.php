@@ -35,6 +35,9 @@ class StudyPlanOverviewResource extends JsonResource
             'start_date' => DateProcessor::fromTimestamp($startDate),
             'end_date' => DateProcessor::fromTimestamp($endDate),
 
+            'start_date_label' => $startDate,
+            'end_date_label' => $endDate,
+
             'starts_in_days' => $today->diffInDays($startDate, false),
             'remaining_days' => max(0, $today->diffInDays($endDate, false)),
 
