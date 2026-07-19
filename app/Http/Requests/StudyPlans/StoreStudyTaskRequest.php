@@ -46,7 +46,7 @@ class StoreStudyTaskRequest extends ApiFormRequest
                 Rule::enum(RepeatPattern::class),
             ],
 
-            'repeat_weekday' => ['required_unless:repeat_pattern,null,none', 'integer', 'between:0,6'],
+            'repeat_weekday' => ['required_unless:repeat_pattern,null,بدون تكرار', 'integer', 'between:0,6'],
 
             'reminder_offset_minutes' => [
                 'sometimes',
