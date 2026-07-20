@@ -297,7 +297,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::get('/reminder-schedule' , [StudyPlanController::class , 'index']);
 
-                Route::middleware(['idempotency' , 'throttle:3,5'])->group(function () {
+                Route::middleware(['idempotency' , 'throttle:20,5'])->group(function () {
                     Route::post('/create' , [StudyPlanController::class, 'store']);
 
                     Route::post('/create/study-subjects' , [StudySubjectController::class , 'store']);
