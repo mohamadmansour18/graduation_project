@@ -47,12 +47,18 @@ class StudyTaskService
             $durationSeconds = ((int) $data['duration_minutes']) * 60;
             $dailyLimitSeconds = ((int) $plan->daily_study_minutes) * 60;
 
+            $repeatPattern = $data['repeat_pattern'] ?? RepeatPattern::None->value;
+
+            $repeatWeekday = $repeatPattern === RepeatPattern::None->value
+                ? null
+                : (int) $data['repeat_weekday'];
+
             $instances = $this->buildTaskInstances(
                 planEndDate: Carbon::parse($plan->end_date)->startOfDay(),
                 baseStartDate: $baseStartDate,
                 baseEndDate: $baseEndDate,
-                repeatPattern: $data['repeat_pattern'] ?? RepeatPattern::None->value,
-                repeatWeekday: $data['repeat_weekday'] ?? null,
+                repeatPattern: $repeatPattern,
+                repeatWeekday: $repeatWeekday,
             );
 
             $this->ensureDailyCapacity(
@@ -60,7 +66,7 @@ class StudyTaskService
                 instances: $instances['items'],
                 durationSeconds: $durationSeconds,
                 dailyLimitSeconds: $dailyLimitSeconds,
-                recurrenceEnabled: ($data['repeat_pattern'] ?? RepeatPattern::None->value) !== RepeatPattern::None->value
+                recurrenceEnabled: $repeatPattern !== RepeatPattern::None->value
             );
 
             $taskGroupUuid = (string) Str::uuid();
@@ -95,7 +101,8 @@ class StudyTaskService
                     'completed_at' => null,
                     'missed_at' => null,
 
-                    'repeat_pattern' => $data['repeat_pattern'] ?? RepeatPattern::None->value,
+                    'repeat_pattern' => $repeatPattern,
+                    'repeat_weekday' => $repeatWeekday,
                     'recurrence_end_date' => $instances['last_generated_end_date'],
                 ]);
 
@@ -318,7 +325,8 @@ class StudyTaskService
             $merged = $this->mergeTaskData($task, $data);
 
             $temporalFieldsWereChanged = $this->temporalFieldsWereChanged($data);
-            $recurrenceWasChanged = array_key_exists('repeat_pattern', $data);
+            $recurrenceWasChanged = array_key_exists('repeat_pattern', $data)
+                || array_key_exists('repeat_weekday', $data);
 
             $subtasksTemplateForRepeatedTasks = [];
 
@@ -364,7 +372,7 @@ class StudyTaskService
                     durationSeconds: $merged['duration_seconds_per_day'],
                     dailyLimitSeconds: ((int) $plan->daily_study_minutes) * 60,
                     excludedTaskIds: $affectedTaskIds,
-                    recurrenceEnabled: $merged['repeat_pattern'] !== 'بدون تكرار'
+                    recurrenceEnabled: $merged['repeat_pattern'] !== RepeatPattern::None->value
                 );
             }
 
@@ -395,7 +403,7 @@ class StudyTaskService
                 $this->studyTaskRepository->syncSubtasks($task->id, $data['subtasks']);
             }
 
-            if ($recurrenceWasChanged && $merged['repeat_pattern'] !== 'بدون تكرار') {
+            if ($recurrenceWasChanged && $merged['repeat_pattern'] !== RepeatPattern::None->value) {
                 $this->createRepeatedTasksAfterRoot(
                     planId: $studyPlanId,
                     rootTask: $task->fresh(),
@@ -437,16 +445,29 @@ class StudyTaskService
         });
     }
 
-    private function mergeTaskData($task, array $data): array
+    private function mergeTaskData(StudyTask $task, array $data): array
     {
         $durationSeconds = array_key_exists('duration_minutes', $data)
             ? ((int) $data['duration_minutes']) * 60
             : (int) $task->duration_seconds_per_day;
 
+        $repeatPattern = array_key_exists('repeat_pattern', $data)
+            ? ($data['repeat_pattern'] ?? RepeatPattern::None->value)
+            : ($task->repeat_pattern?->value ?? RepeatPattern::None->value);
+
+        $repeatWeekday = $repeatPattern === RepeatPattern::None->value
+            ? null
+            : (
+                array_key_exists('repeat_weekday', $data)
+                    ? ($data['repeat_weekday'] !== null ? (int) $data['repeat_weekday'] : null)
+                    : ($task->repeat_weekday !== null ? (int) $task->repeat_weekday : null)
+            );
+
         return [
             'title' => $data['title'] ?? $task->title,
             'description' => $data['description'] ?? $task->description,
-            'study_plan_subject_id' => $data['study_plan_subject_id'] ?? $task->study_plan_subject_id,
+            'study_plan_subject_id' => $data['study_plan_subject_id']
+                ?? $task->study_plan_subject_id,
 
             'start_date' => array_key_exists('start_date', $data)
                 ? $data['start_date']
@@ -461,18 +482,14 @@ class StudyTaskService
                 : substr((string) $task->start_time, 0, 5),
 
             'duration_seconds_per_day' => $durationSeconds,
-
             'priority' => $data['priority'] ?? $task->priority,
+            'repeat_pattern' => $repeatPattern,
+            'repeat_weekday' => $repeatWeekday,
 
-            'repeat_pattern' => array_key_exists('repeat_pattern', $data)
-                ? ($data['repeat_pattern'] ?? 'بدون تكرار')
-                : ($task->repeat_pattern ?? 'بدون تكرار'),
-
-            'repeat_weekday' => $data['repeat_weekday'] ?? null,
-
-            'reminder_offset_minutes' => array_key_exists('reminder_offset_minutes', $data)
-                ? $data['reminder_offset_minutes']
-                : $task->reminder_offset_minutes,
+            'reminder_offset_minutes' =>
+                array_key_exists('reminder_offset_minutes', $data)
+                    ? $data['reminder_offset_minutes']
+                    : $task->reminder_offset_minutes,
         ];
     }
 
@@ -626,6 +643,7 @@ class StudyTaskService
             'reminder_offset_minutes' => $merged['reminder_offset_minutes'],
             'priority' => $merged['priority'],
             'repeat_pattern' => $merged['repeat_pattern'],
+            'repeat_weekday' => $merged['repeat_weekday'],
             'recurrence_end_date' => $instances['last_generated_end_date'],
         ];
     }
@@ -658,6 +676,7 @@ class StudyTaskService
                 'completed_at' => null,
                 'missed_at' => null,
                 'repeat_pattern' => $merged['repeat_pattern'],
+                'repeat_weekday' => $merged['repeat_weekday'],
                 'recurrence_end_date' => $lastGeneratedEndDate,
             ]);
 

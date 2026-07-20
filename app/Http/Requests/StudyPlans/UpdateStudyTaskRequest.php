@@ -76,8 +76,16 @@ class UpdateStudyTaskRequest extends ApiFormRequest
 
             $repeatPattern = $this->input('repeat_pattern');
 
-            if ($repeatPattern && $repeatPattern !== 'none' && ! $this->has('repeat_weekday')) {
+            $recurrenceIsEnabled = $repeatPattern !== null
+                && $repeatPattern !== RepeatPattern::None->value;
+
+            if ($this->has('repeat_pattern') && $recurrenceIsEnabled && ! $this->filled('repeat_weekday')) {
                 $validator->errors()->add('repeat_weekday', 'يجب اختيار يوم التكرار عند تفعيل التكرار');
+                return;
+            }
+
+            if (! $this->has('repeat_pattern') && $this->has('repeat_weekday') && ! $this->filled('repeat_weekday')) {
+                $validator->errors()->add('repeat_weekday', 'يوم التكرار غير صالح');
             }
         });
     }

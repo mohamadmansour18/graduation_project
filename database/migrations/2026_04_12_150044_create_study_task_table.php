@@ -27,6 +27,7 @@ return new class extends Migration
             $table->timestamp('completed_at')->nullable();
             $table->timestamp('missed_at')->nullable();
             $table->enum('repeat_pattern', array_column(\App\Enums\RepeatPattern::cases(), 'value'));
+            $table->unsignedTinyInteger('repeat_weekday')->nullable();
             $table->date('recurrence_end_date')->nullable();
             $table->timestamps();
 

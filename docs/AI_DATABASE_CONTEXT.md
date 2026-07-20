@@ -574,7 +574,7 @@ study_task(
   title, description, start_date, end_date, start_time,
   duration_seconds_per_day, deadline_at,
   reminder_offset_minutes, priority enum, status enum,
-  completed_at, missed_at, repeat_pattern enum,
+  completed_at, missed_at, repeat_pattern enum, repeat_weekday,
   recurrence_end_date
 )
 
@@ -645,6 +645,7 @@ study_task_subtask(
   - `weekly_2`
   - `weekly_3`
   - `weekly_4`
+- `repeat_weekday` يخزن يوم التكرار كرقم من `0` (الأحد) إلى `6` (السبت)، ويكون `null` عند عدم وجود تكرار
 - التكرار ينتهي عبر:
   - `recurrence_end_date`
 - إذا كانت المهمة ليوم واحد:

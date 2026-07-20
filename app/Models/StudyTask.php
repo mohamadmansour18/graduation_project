@@ -39,6 +39,7 @@ class StudyTask extends Model
         'missed_at',
         'repeat_pattern',
         'recurrence_end_date',
+        'repeat_weekday',
     ];
 
     protected $casts = [
@@ -53,6 +54,7 @@ class StudyTask extends Model
         'repeat_pattern' => RepeatPattern::class,
         'recurrence_end_date' => 'date',
         'priority' => Priority::class,
+        'repeat_weekday' => 'integer',
     ];
 
     public function studyPlan(): BelongsTo

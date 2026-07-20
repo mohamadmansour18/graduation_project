@@ -286,6 +286,7 @@ class  StudyTaskRepository
                 'completed_at',
                 'missed_at',
                 'repeat_pattern',
+                'repeat_weekday',
                 'recurrence_end_date',
             ])
             ->where('id', $taskId)

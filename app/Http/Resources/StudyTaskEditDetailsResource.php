@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\RepeatPattern;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -28,6 +29,7 @@ class StudyTaskEditDetailsResource extends JsonResource
                 'start_date' => optional($this->start_date)->toDateString(),
                 'end_date' => optional($this->end_date)->toDateString(),
 
+
                 'priority' => $this->priority,
                 'description' => $this->description,
 
@@ -47,6 +49,9 @@ class StudyTaskEditDetailsResource extends JsonResource
                 ],
 
                 'repeat_pattern' => $this->repeat_pattern->value ?? "لايوجد تكرار",
+                'repeat_weekday' => $this->repeat_pattern === RepeatPattern::None
+                    ? null
+                    : $this->repeatWeekdayName($this->repeat_weekday),
 
                 'reminder' => [
                     'offset_minutes' => $this->reminder_offset_minutes !== null
@@ -65,6 +70,24 @@ class StudyTaskEditDetailsResource extends JsonResource
                     'is_completed' => (bool) $subtask->is_completed,
                 ]),
         ];
+    }
+
+    private function repeatWeekdayName(null|int|string $repeatWeekday): ?string
+    {
+        if ($repeatWeekday === null) {
+            return null;
+        }
+
+        return match ((int) $repeatWeekday) {
+            0 => 'الأحد',
+            1 => 'الاثنين',
+            2 => 'الثلاثاء',
+            3 => 'الأربعاء',
+            4 => 'الخميس',
+            5 => 'الجمعة',
+            6 => 'السبت',
+            default => null,
+        };
     }
 
     private function formatTime(mixed $time): ?string
