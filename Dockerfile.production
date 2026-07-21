@@ -30,7 +30,7 @@ RUN apt-get update \
         tesseract-ocr-ara \
         libcap2-bin \
     && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xb8dc7e53946656efbce4c1dd71daeaab4ad4cab6 \
+    && curl -fsSL 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xb8dc7e53946656efbce4c1dd71daeaab4ad4cab6' \
         | gpg --dearmor -o /etc/apt/keyrings/ondrej.gpg \
     && echo "deb [signed-by=/etc/apt/keyrings/ondrej.gpg] https://ppa.launchpadcontent.net/ondrej/php/ubuntu noble main" \
         > /etc/apt/sources.list.d/ondrej.list \
@@ -51,6 +51,10 @@ RUN apt-get update \
         php${PHP_VERSION}-opcache \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+
+COPY docker/production/php/99-production.ini \
+    /etc/php/${PHP_VERSION}/cli/conf.d/99-production.ini
 
 
 RUN groupadd app \
@@ -115,7 +119,9 @@ COPY --from=frontend-builder \
     ./public/build
 
 
-RUN mkdir -p \
+RUN php artisan package:discover --ansi \
+    && mkdir -p \
+        storage/app/firebase \
         storage/framework/cache \
         storage/framework/sessions \
         storage/framework/views \
@@ -123,21 +129,10 @@ RUN mkdir -p \
         bootstrap/cache \
     && chown -R app:app storage bootstrap/cache
 
-
-RUN php artisan package:discover --ansi
-
-
 USER app
 
 
 EXPOSE 8000
 
 
-CMD [
-    "php",
-    "artisan",
-    "octane:start",
-    "--server=swoole",
-    "--host=0.0.0.0",
-    "--port=8000"
-]
+CMD ["php", "artisan", "octane:start", "--server=swoole", "--host=0.0.0.0", "--port=8000"]
