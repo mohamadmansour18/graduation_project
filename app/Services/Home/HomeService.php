@@ -46,10 +46,10 @@ class HomeService
             ->toArray();
     }
 
-    public function getTopTestCreators(): array
+    public function getTopTestCreators(int $userId): array
     {
         return $this->homeRepository
-            ->getTopTestCreators(self::TOP_TEST_CREATORS_LIMIT)
+            ->getTopTestCreators(self::TOP_TEST_CREATORS_LIMIT , $userId)
             ->map(fn ($creator) => [
                 'id' => $creator->id,
                 'name' => $creator->name,

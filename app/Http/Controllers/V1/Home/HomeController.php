@@ -32,7 +32,9 @@ class HomeController extends Controller
 
     public function topTestCreators(): JsonResponse
     {
-        $creators = $this->homeService->getTopTestCreators();
+        $userId = Auth::id();
+
+        $creators = $this->homeService->getTopTestCreators($userId);
 
         return $this->dataResponse(
             data: $creators,

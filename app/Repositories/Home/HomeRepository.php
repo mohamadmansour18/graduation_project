@@ -65,11 +65,12 @@ class HomeRepository
             ]);
     }
 
-    public function getTopTestCreators(int $limit): Collection
+    public function getTopTestCreators(int $limit , int $userId): Collection
     {
         return DB::table('user_profile_stats as ups')
             ->join('users as u' , 'u.id' , '=' , 'ups.user_id')
             ->leftJoin('user_profile as up', 'up.user_id', '=', 'u.id')
+            ->where('u.id', '!=', $userId)
             ->where('ups.published_tests_count', '>', 0)
             ->orderByDesc('ups.published_tests_count')
             ->orderByDesc('ups.average_test_rating')
