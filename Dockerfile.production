@@ -1,0 +1,143 @@
+# =========================================================
+# Stage 1: PHP Base Runtime
+# =========================================================
+
+FROM ubuntu:24.04 AS php-base
+
+WORKDIR /var/www/html
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=UTC \
+    LANG=C.UTF-8
+
+ARG PHP_VERSION=8.4
+
+RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo ${TZ} > /etc/timezone
+
+
+RUN apt-get update \
+    && apt-get install -y \
+        ca-certificates \
+        curl \
+        gnupg \
+        unzip \
+        zip \
+        ffmpeg \
+        poppler-utils \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        tesseract-ocr-ara \
+        libcap2-bin \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xb8dc7e53946656efbce4c1dd71daeaab4ad4cab6 \
+        | gpg --dearmor -o /etc/apt/keyrings/ondrej.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/ondrej.gpg] https://ppa.launchpadcontent.net/ondrej/php/ubuntu noble main" \
+        > /etc/apt/sources.list.d/ondrej.list \
+    && apt-get update \
+    && apt-get install -y \
+        php${PHP_VERSION}-cli \
+        php${PHP_VERSION}-mysql \
+        php${PHP_VERSION}-curl \
+        php${PHP_VERSION}-mbstring \
+        php${PHP_VERSION}-xml \
+        php${PHP_VERSION}-zip \
+        php${PHP_VERSION}-bcmath \
+        php${PHP_VERSION}-intl \
+        php${PHP_VERSION}-gd \
+        php${PHP_VERSION}-imagick \
+        php${PHP_VERSION}-redis \
+        php${PHP_VERSION}-swoole \
+        php${PHP_VERSION}-opcache \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+
+RUN groupadd app \
+    && useradd -m -g app app
+
+
+# =========================================================
+# Stage 2: Composer Builder
+# =========================================================
+
+FROM php-base AS composer-builder
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+COPY composer.json composer.lock ./
+
+RUN composer install \
+    --no-dev \
+    --no-interaction \
+    --prefer-dist \
+    --optimize-autoloader \
+    --no-scripts
+
+
+# =========================================================
+# Stage 3: Frontend Builder
+# =========================================================
+
+FROM node:22-bookworm-slim AS frontend-builder
+
+WORKDIR /var/www/html
+
+COPY package.json package-lock.json ./
+
+RUN npm ci
+
+COPY resources ./resources
+COPY vite.config.js ./
+
+RUN npm run build
+
+
+# =========================================================
+# Stage 4: Production Image
+# =========================================================
+
+FROM php-base AS production
+
+WORKDIR /var/www/html
+
+
+COPY . .
+
+
+COPY --from=composer-builder \
+    /var/www/html/vendor \
+    ./vendor
+
+
+COPY --from=frontend-builder \
+    /var/www/html/public/build \
+    ./public/build
+
+
+RUN mkdir -p \
+        storage/framework/cache \
+        storage/framework/sessions \
+        storage/framework/views \
+        storage/logs \
+        bootstrap/cache \
+    && chown -R app:app storage bootstrap/cache
+
+
+RUN php artisan package:discover --ansi
+
+
+USER app
+
+
+EXPOSE 8000
+
+
+CMD [
+    "php",
+    "artisan",
+    "octane:start",
+    "--server=swoole",
+    "--host=0.0.0.0",
+    "--port=8000"
+]
