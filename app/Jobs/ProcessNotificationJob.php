@@ -71,7 +71,7 @@ class ProcessNotificationJob implements ShouldQueue
                 payloadData: $payload->toArray(),
                 firebaseProjects: $this->firebaseProjects,
             )
-                ->onQueue(config('app_notifications.queue', 'default'))
+                ->onQueue(config('app_notifications.queue', 'medium'))
                 ->afterCommit();
         });
 

@@ -42,7 +42,7 @@ class NotificationCenter
             payloadData: $payload->toArray(),
             firebaseProjects: $projects,
         )
-            ->onQueue(config('app_notifications.queue', 'default'))
+            ->onQueue(config('app_notifications.queue', 'medium'))
             ->afterCommit();
 
         Log::info('NotificationCenter dispatched notification job', [

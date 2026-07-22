@@ -498,31 +498,32 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 Route::get('/test-fcm', function (NotificationCenter $fcm) {
     try {
         $payload = NotificationPayload::make(
-            title: 'تم الإبلاغ عن اختبارك',
-            body: "قام النظام بتحويل حالة اختبارك الى مبلغ عنه بسبب كثرة البلاغات عليه",
+            title: 'عملية تسجيل اعجاب',
+            body: 'قام بتسجيل إعجابه بالمحتوى الخاص بك',
             metadata: [
-            'type' => 'test_marked_as_reported',
-            'category' => 'report',
+                'type' => 'library_material_liked',
+                'category' => 'social',
 
-            'presentation' => [
-                'mode' => 'system',
-                'floor_color' => '#FFE7E7',
-                'icon' => ImageProcessor::urlOrDefault('system-notification/flag.svg' , 'defaults/notification.svg' , 'public'),
-            ],
+                'presentation' => [
+                    'mode' => 'user',
+                    'floor_color' => null,
+                    'icon' => null,
+                ],
 
-            'actor' => null,
+                'actor' => BuildActor::buildUserActor(35),
 
-            'navigation' => [
-                'screen' => 'my_test_details',
-                'action' => 'open',
-            ],
+                'navigation' => [
+                    'screen' => 'my_library_material_details',
+                    'action' => 'open',
+                ],
 
-            'params' => [
-                'test_id' => (int) 29,
-            ],
-        ]);
-        $fcm->sendToWeb(
-            11,
+                'params' => [
+                    'material_id' => 12,
+                    'actor_user_id' => 35,
+                ],
+            ]);
+        $fcm->sendToUser(
+            25,
             $payload,
         );
         return "تمت العملية بنجاح";
@@ -535,16 +536,3 @@ Route::get('/test-fcm', function (NotificationCenter $fcm) {
     }
 });
 
-
-
-
-
-/*
- * TODO :
- * في الـ APIs التي تعرض الاختبارات العامة لا تستخدم withTrashed() أبدا
- أما API مشتريات المستخدم لاحقاً، نستخدم withTrashed() فقط حتى يرى المشتري الاختبار المدفوع المحذوف Soft Delete
-
-TODO: تعديل اختبار فيه مشكلة لازم تشوفها وتحلها
- * */
-
-//TODO: معالجة حالات الاختبار في الموبايل عند الانشاء بطريقة صحيحة + معالجة الحالات العالقة من خلال مجدول
