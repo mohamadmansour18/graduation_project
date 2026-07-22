@@ -223,13 +223,7 @@ services:
     healthcheck:
 
       test:
-        [
-          "CMD",
-          "wget",
-          "--spider",
-          "http://localhost:7700/health"
-        ]
-
+        [  "CMD", "wget", "--spider", "http://127.0.0.1:7700/health"]
       interval: 10s
       timeout: 5s
       retries: 5
