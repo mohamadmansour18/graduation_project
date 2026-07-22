@@ -1,3 +1,16 @@
+x-app-storage-volumes: &app-storage-volumes
+  - type: volume
+    source: storage
+    target: /var/www/html/storage/app
+
+  - type: bind
+    source: ./storage/app/firebase
+    target: /var/www/html/storage/app/firebase
+    read_only: true
+    bind:
+      create_host_path: false
+
+
 services:
 
   app:
@@ -25,10 +38,7 @@ services:
       meilisearch:
         condition: service_healthy
 
-    volumes:
-      - storage:/var/www/html/storage/app
-      - ./storage/app/firebase/mobile-service-account.json:/var/www/html/storage/app/firebase/mobile-service-account.json:ro
-      - ./storage/app/firebase/web-service-account.json:/var/www/html/storage/app/firebase/web-service-account.json:ro
+    volumes: *app-storage-volumes
 
 
   nginx:
@@ -73,10 +83,7 @@ services:
     networks:
       - production
 
-    volumes:
-      - storage:/var/www/html/storage/app
-      - ./storage/app/firebase/mobile-service-account.json:/var/www/html/storage/app/firebase/mobile-service-account.json:ro
-      - ./storage/app/firebase/web-service-account.json:/var/www/html/storage/app/firebase/web-service-account.json:ro
+    volumes: *app-storage-volumes
 
     depends_on:
       redis:
@@ -101,10 +108,7 @@ services:
     networks:
       - production
 
-    volumes:
-      - storage:/var/www/html/storage/app
-      - ./storage/app/firebase/mobile-service-account.json:/var/www/html/storage/app/firebase/mobile-service-account.json:ro
-      - ./storage/app/firebase/web-service-account.json:/var/www/html/storage/app/firebase/web-service-account.json:ro
+    volumes: *app-storage-volumes
 
     depends_on:
       mysql:
