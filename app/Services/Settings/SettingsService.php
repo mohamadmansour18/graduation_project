@@ -2,6 +2,8 @@
 
 namespace App\Services\Settings;
 
+use App\Http\Resources\UserSettingsResource;
+use App\Models\UserSetting;
 use App\Repositories\Settings\SettingsRepository;
 
 class SettingsService
@@ -42,5 +44,21 @@ class SettingsService
             userId: $userId,
             themeMode: $themeMode
         );
+    }
+
+    public function getUserSettings(int $userId): UserSettingsResource
+    {
+        $settings = $this->settingsRepository->getSettingsForUser($userId);
+
+        if (! $settings) {
+            $settings = new UserSetting([
+                'task_reminders_enabled' => false,
+                'week_starts_on' => 'السبت',
+                'time_format' => '24 ساعة',
+                'theme_mode' => 'نهاري',
+            ]);
+        }
+
+        return new UserSettingsResource($settings);
     }
 }

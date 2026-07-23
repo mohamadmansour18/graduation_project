@@ -32,4 +32,18 @@ class SettingsRepository
             ['theme_mode' => $themeMode]
         );
     }
+
+    public function getSettingsForUser(int $userId): ?UserSetting
+    {
+        return UserSetting::query()
+            ->where('user_id', $userId)
+            ->first([
+                'id',
+                'user_id',
+                'task_reminders_enabled',
+                'week_starts_on',
+                'time_format',
+                'theme_mode',
+            ]);
+    }
 }

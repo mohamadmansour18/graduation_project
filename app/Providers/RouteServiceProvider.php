@@ -35,32 +35,32 @@ class RouteServiceProvider extends ServiceProvider
                 ? 'user:' . $user->id
                 : 'ip:' . $request->ip();
 
-            return Limit::perMinute(/*5*/100)->by($key);
+            return Limit::perMinute(5)->by($key);
         });
 
         RateLimiter::for('api-login' , function (Request $request) {
             $key = 'login:' . ($request->ip());
-            return Limit::perMinutes(5, /*3*/100)->by($key);
+            return Limit::perMinutes(5, 3)->by($key);
         });
 
         RateLimiter::for('api-register' , function (Request $request) {
             $key = 'register:' . ($request->ip());
-            return Limit::perMinute(/*3*/100)->by($key);
+            return Limit::perMinute(3)->by($key);
         });
 
         RateLimiter::for('api-verify-email' , function (Request $request) {
             $key = 'register:' . ($request->ip());
-            return Limit::perMinute(/*2*/100)->by($key);
+            return Limit::perMinute(2)->by($key);
         });
 
         RateLimiter::for('api-onboarding' , function (Request $request) {
             $key = 'onboarding:' . ($request->ip());
-            return Limit::perMinute(/*2*/100)->by($key);
+            return Limit::perMinute(2)->by($key);
         });
 
         RateLimiter::for('api-reset-password' , function (Request $request) {
             $key = 'reset-password:' . ($request->ip());
-            return Limit::perMinutes(3,/*3*/100)->by($key);
+            return Limit::perMinutes(3,3)->by($key);
         });
 
         RateLimiter::for('api-search' , function (Request $request) {

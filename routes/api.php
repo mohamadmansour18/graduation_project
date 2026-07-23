@@ -261,7 +261,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/folder/{userId}' , [MyProfileController::class , 'folders']);
 
 
-                Route::middleware(['idempotency' , 'throttle:3,2'])->group(function () {
+                Route::middleware(['idempotency' , 'throttle:4,2'])->group(function () {
                     Route::post('/update/basic-info/{userId}' , [MyProfileController::class, 'updatePersonalInformation']);
                     Route::post('/update/academic-info/{userId}' , [MyProfileController::class, 'updateAcademicInformation']);
                     Route::post('/update/scientific-interests/{userId}' , [MyProfileController::class, 'updateScientificInterests']);
@@ -275,7 +275,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::get('/folder-content/{folder}' , [TestFolderController::class , 'folderTests']);
 
-                Route::middleware(['idempotency' , 'throttle:3,4'])->group(function () {
+                Route::middleware(['idempotency' , 'throttle:4,4'])->group(function () {
                     Route::post('/create' , [TestFolderController::class , 'storeFolder']);
                     Route::delete('/delete/{folderId}' , [TestFolderController::class , 'deleteFolder' ]);
                     Route::post('/update/{folderId}' , [TestFolderController::class , 'updateFolder']);
@@ -297,7 +297,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::get('/reminder-schedule' , [StudyPlanController::class , 'index']);
 
-                Route::middleware(['idempotency' , 'throttle:20,5'])->group(function () {
+                Route::middleware(['idempotency' , 'throttle:10,5'])->group(function () {
                     Route::post('/create' , [StudyPlanController::class, 'store']);
 
                     Route::post('/create/study-subjects' , [StudySubjectController::class , 'store']);
@@ -323,8 +323,9 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             Route::prefix('settings')->group(function () {
                 Route::get('/status/certificate-request', [AcademicVerificationController::class, 'status']);
                 Route::get('/sold-tests', [UserSalesController::class, 'soldTests']);
+                Route::get('/get-setting' , [SettingsController::class, 'show']);
 
-                Route::middleware(['idempotency' , 'throttle:3,5'])->group(function () {
+                Route::middleware(['idempotency' , 'throttle:4,5'])->group(function () {
                     Route::patch('/task-reminders/enable', [SettingsController::class, 'enableTaskReminders']);
                     Route::patch('/task-reminders/disable', [SettingsController::class, 'disableTaskReminders']);
                     Route::post('/date-time', [SettingsController::class, 'updateDateTimeSettings']);
@@ -495,44 +496,5 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
 });
 
-Route::get('/test-fcm', function (NotificationCenter $fcm) {
-    try {
-        $payload = NotificationPayload::make(
-            title: 'عملية تسجيل اعجاب',
-            body: 'قام بتسجيل إعجابه بالمحتوى الخاص بك',
-            metadata: [
-                'type' => 'library_material_liked',
-                'category' => 'social',
 
-                'presentation' => [
-                    'mode' => 'user',
-                    'floor_color' => null,
-                    'icon' => null,
-                ],
-
-                'actor' => BuildActor::buildUserActor(35),
-
-                'navigation' => [
-                    'screen' => 'my_library_material_details',
-                    'action' => 'open',
-                ],
-
-                'params' => [
-                    'material_id' => 12,
-                    'actor_user_id' => 35,
-                ],
-            ]);
-        $fcm->sendToUser(
-            25,
-            $payload,
-        );
-        return "تمت العملية بنجاح";
-    }catch (\Exception $e)
-    {
-        return response()->json([
-            'title' => "خطا اتصال من الشبكة!",
-            'body' => $e->getMessage(),
-        ], 422);
-    }
-});
 

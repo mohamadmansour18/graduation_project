@@ -65,4 +65,16 @@ class SettingsController extends Controller
             message: 'تم تحديث الثيم بنجاح'
         );
     }
+
+    public function show(): JsonResponse
+    {
+        $settings = $this->settingsService->getUserSettings(
+            userId: \Auth::id()
+        );
+
+        return $this->dataResponse(
+            data: $settings,
+            title: '! تم جلب إعدادات المستخدم بنجاح'
+        );
+    }
 }
