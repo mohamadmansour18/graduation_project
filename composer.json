@@ -25,6 +25,7 @@
         "mpdf/mpdf": "^8.3",
         "php-open-source-saver/jwt-auth": "^2.8",
         "predis/predis": "^3.4",
+        "resend/resend-laravel": "^1.4",
         "spatie/laravel-backup": "^9.3"
     },
     "require-dev": {

@@ -55,7 +55,7 @@ class LibraryMaterialReportService
                 'actor' => null,
 
                 'navigation' => [
-                    'screen' => 'my_test_details',
+                    'screen' => 'my_library_material_details',
                     'action' => 'open',
                 ],
 

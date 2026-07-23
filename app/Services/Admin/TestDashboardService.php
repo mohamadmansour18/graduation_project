@@ -1021,7 +1021,7 @@ class TestDashboardService
                 'actor' => null,
 
                 'navigation' => [
-                    'screen' => 'my_profile_details',
+                    'screen' => 'my_test_details',
                     'action' => 'open',
                 ],
 

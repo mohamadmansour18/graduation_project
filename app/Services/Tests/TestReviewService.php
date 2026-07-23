@@ -289,7 +289,7 @@ class TestReviewService
 
         $payload = NotificationPayload::make(
             title: 'عملية تعليق على اختبارك',
-            body: 'قام المستخدم بتسجيل إعجابه بالاختبار الخاص بك',
+            body: 'قام المستخدم بالتعليق على الاختبار الخاص بك',
             metadata: [
                 'type' => 'test_Reviewed',
                 'category' => 'social',
