@@ -25,3 +25,4 @@ npm-debug.log
 yarn-error.log
 
 *.md
+docker/production/certbot/
