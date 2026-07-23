@@ -1,0 +1,17 @@
+[Unit]
+Description=Renew Let's Encrypt certificates for Graduation Project
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=mansour
+WorkingDirectory=/home/mansour/projects/graduation_project
+ExecStart=/home/mansour/projects/graduation_project/scripts/production/renew-ssl.sh
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
