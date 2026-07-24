@@ -102,11 +102,18 @@ services:
 
     restart: unless-stopped
 
+    init: true
+
+    stop_grace_period: 10s
+
     env_file:
       - .env.production
 
     command:
-      php artisan schedule:work
+      - php
+      - artisan
+      - schedule:work
+      - --no-interaction
 
     networks:
       - production
