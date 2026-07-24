@@ -415,10 +415,26 @@ check_redis_connection() {
             try {
                 $response = Illuminate\Support\Facades\Redis::connection()->ping();
 
+                if (is_object($response)) {
+                    if (method_exists($response, "getPayload")) {
+                        $response = $response->getPayload();
+                    } elseif (method_exists($response, "__toString")) {
+                        $response = (string) $response;
+                    }
+                }
+
+                if ($response === true) {
+                    echo "pong";
+                    exit(0);
+                }
+
+                $normalizedResponse = strtoupper(
+                    trim((string) $response)
+                );
+
                 if (
-                    $response === true ||
-                    $response === "PONG" ||
-                    $response === "+PONG"
+                    $normalizedResponse === "PONG" ||
+                    $normalizedResponse === "+PONG"
                 ) {
                     echo "pong";
                     exit(0);
@@ -450,6 +466,7 @@ check_redis_connection() {
             "Redis connection" \
             "Unexpected Redis check response."
 
+        printf '%s\n' "${output}" >&2
         return
     fi
 
