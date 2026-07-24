@@ -334,6 +334,8 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                     Route::post('/create/certificate-request', [AcademicVerificationController::class, 'submit']);
                     Route::post('/certificate-visibility', [AcademicVerificationController::class, 'updateCertificateVisibility']);
                     Route::delete('/cancel/certificate-request', [AcademicVerificationController::class, 'cancel']);
+
+                    Route::post('/update/password' , [UserDashboardController::class , 'updateMyDashboardPassword']);
                 });
             });
 
