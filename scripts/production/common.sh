@@ -204,9 +204,18 @@ production_compose() {
 
 service_exists() {
     local service_name="${1:?Service name is required}"
+    local compose_services
 
-    production_compose config --services |
-        grep --fixed-strings --line-regexp --quiet -- "${service_name}"
+    compose_services="$(
+        production_compose config --services
+    )"
+
+    grep \
+        --fixed-strings \
+        --line-regexp \
+        --quiet \
+        -- "${service_name}" \
+        <<<"${compose_services}"
 }
 
 require_service() {
@@ -219,11 +228,20 @@ require_service() {
 
 service_is_running() {
     local service_name="${1:?Service name is required}"
+    local running_services
 
-    production_compose ps \
-        --services \
-        --status running |
-        grep --fixed-strings --line-regexp --quiet -- "${service_name}"
+    running_services="$(
+        production_compose ps \
+            --services \
+            --status running
+    )"
+
+    grep \
+        --fixed-strings \
+        --line-regexp \
+        --quiet \
+        -- "${service_name}" \
+        <<<"${running_services}"
 }
 
 require_running_service() {
