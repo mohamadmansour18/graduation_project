@@ -41,6 +41,8 @@ class AppServiceProvider extends ServiceProvider
         InterestCategory::observe(InterestCategoryObserver::class);
         Test::observe(TestObserver::class);
         TestIntersetSelection::observe(TestInterestSelectionObserver::class);
-        Gate::define('viewPulse', static fn (): bool => true);
+        Gate::define('viewPulse', static function ($user = null): bool {
+            return true;
+        });
     }
 }
