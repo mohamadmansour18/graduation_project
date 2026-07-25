@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['GET', 'POST' , 'PATCH', 'DELETE' , 'OPTIONS'],
 
-    'allowed_origins' => ['http://localhost:3000'],
+    'allowed_origins' => ['http://localhost:3000' , 'https://competent-banzai.84-247-161-79.plesk.page'],
 
     'allowed_origins_patterns' => [],
 
