@@ -44,6 +44,7 @@ readonly ARTISAN_SCRIPT="${SCRIPT_DIR}/artisan.sh"
 
 readonly APP_SERVICE="app"
 readonly NGINX_SERVICE="nginx"
+readonly PHPMYADMIN_SERVICE="phpmyadmin"
 
 readonly -a LONG_RUNNING_SERVICES=(
     "reverb"
@@ -57,6 +58,7 @@ readonly -a REQUIRED_RUNNING_SERVICES=(
     "horizon"
     "scheduler"
     "nginx"
+    "phpmyadmin"
 )
 
 MAINTENANCE_MODE_ENABLED_BY_SCRIPT=false
@@ -121,6 +123,7 @@ validate_deployment_requirements() {
     fi
 
     require_service "${APP_SERVICE}"
+    require_service "${PHPMYADMIN_SERVICE}"
     require_service "${NGINX_SERVICE}"
 
     local service_name
@@ -261,6 +264,18 @@ recreate_long_running_services() {
     log_success "Long-running application services were recreated successfully."
 }
 
+ensure_phpmyadmin_service_is_running() {
+    log_info "Ensuring phpMyAdmin service is created and running..."
+
+    production_compose up \
+        --detach \
+        "${PHPMYADMIN_SERVICE}"
+
+    wait_for_service "${PHPMYADMIN_SERVICE}"
+
+    log_success "phpMyAdmin service is running."
+}
+
 recreate_nginx_service() {
     log_info "Recreating Nginx to refresh application upstream resolution..."
 
@@ -321,6 +336,8 @@ main() {
     rebuild_laravel_caches
 
     recreate_long_running_services
+
+    ensure_phpmyadmin_service_is_running
 
     recreate_nginx_service
 

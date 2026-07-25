@@ -16,6 +16,7 @@
 #   7. Horizon runtime status.
 #   8. Failed queue jobs.
 #   9. Public HTTPS application endpoint.
+#  10. Public phpMyAdmin HTTPS and Basic Auth endpoint.
 #
 # Exit codes:
 #   0 - All critical checks passed.
@@ -42,6 +43,7 @@ source "${SCRIPT_DIR}/common.sh"
 # ------------------------------------------------------------------------------
 
 readonly APP_SERVICE="app"
+readonly PHPMYADMIN_SERVICE="phpmyadmin"
 
 readonly -a REQUIRED_SERVICES=(
     "app"
@@ -52,6 +54,7 @@ readonly -a REQUIRED_SERVICES=(
     "reverb"
     "horizon"
     "scheduler"
+    "phpmyadmin"
 )
 
 # Optional services are checked only when they exist in the Compose file.
@@ -63,6 +66,7 @@ readonly -a OPTIONAL_SERVICES=(
 
 readonly HTTP_CONNECT_TIMEOUT_SECONDS=5
 readonly HTTP_MAX_TIME_SECONDS=15
+readonly PHPMYADMIN_PUBLIC_URL="${PHPMYADMIN_PUBLIC_URL:-https://db.nerdsoftwares.tech}"
 
 CRITICAL_FAILURES=0
 WARNINGS=0
@@ -784,6 +788,93 @@ check_public_application_url() {
     esac
 }
 
+# ------------------------------------------------------------------------------
+# Public phpMyAdmin HTTPS and Basic Auth check
+# ------------------------------------------------------------------------------
+
+check_public_phpmyadmin_url() {
+    require_command curl
+
+    if ! service_is_running "${PHPMYADMIN_SERVICE}"; then
+        report_fail \
+            "phpMyAdmin HTTPS endpoint" \
+            "The phpMyAdmin service is not running."
+
+        return
+    fi
+
+    if ! service_is_running "nginx"; then
+        report_fail \
+            "phpMyAdmin HTTPS endpoint" \
+            "Cannot test because the Nginx service is not running."
+
+        return
+    fi
+
+    if [[ "${PHPMYADMIN_PUBLIC_URL}" != https://* ]]; then
+        report_fail \
+            "phpMyAdmin HTTPS endpoint" \
+            "The configured URL does not use HTTPS: ${PHPMYADMIN_PUBLIC_URL}"
+
+        return
+    fi
+
+    local response_headers_file
+    response_headers_file="$(mktemp)"
+
+    local http_status
+
+    if ! http_status="$(
+        curl \
+            --silent \
+            --show-error \
+            --output /dev/null \
+            --dump-header "${response_headers_file}" \
+            --write-out '%{http_code}' \
+            --connect-timeout "${HTTP_CONNECT_TIMEOUT_SECONDS}" \
+            --max-time "${HTTP_MAX_TIME_SECONDS}" \
+            "${PHPMYADMIN_PUBLIC_URL}"
+    )"; then
+        rm -f "${response_headers_file}"
+
+        report_fail \
+            "phpMyAdmin HTTPS endpoint" \
+            "Could not connect to ${PHPMYADMIN_PUBLIC_URL}."
+
+        return
+    fi
+
+    if [[ "${http_status}" != "401" ]]; then
+        rm -f "${response_headers_file}"
+
+        report_fail \
+            "phpMyAdmin HTTPS endpoint" \
+            "Expected HTTP 401 from Basic Auth, but received HTTP ${http_status}."
+
+        return
+    fi
+
+    if ! grep \
+        --ignore-case \
+        --quiet \
+        '^WWW-Authenticate:[[:space:]]*Basic' \
+        "${response_headers_file}"; then
+
+        rm -f "${response_headers_file}"
+
+        report_fail \
+            "phpMyAdmin Basic Auth" \
+            "HTTP 401 was returned without a Basic authentication challenge."
+
+        return
+    fi
+
+    rm -f "${response_headers_file}"
+
+    report_pass \
+        "phpMyAdmin HTTPS endpoint" \
+        "${PHPMYADMIN_PUBLIC_URL} returned HTTP 401 with Basic Auth enabled."
+}
 
 # ------------------------------------------------------------------------------
 # Main
@@ -824,6 +915,7 @@ main() {
     check_horizon_status
     check_failed_jobs
     check_public_application_url
+    check_public_phpmyadmin_url
 
     print_separator
 

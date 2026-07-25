@@ -75,7 +75,10 @@ services:
       - production
 
     depends_on:
-      - app
+      app:
+        condition: service_started
+      phpmyadmin:
+        condition: service_started
 
 
   horizon:
