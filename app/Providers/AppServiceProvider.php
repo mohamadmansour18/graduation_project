@@ -12,6 +12,7 @@ use App\Observers\InterestObserver;
 use App\Observers\TestInterestSelectionObserver;
 use App\Observers\TestObserver;
 use App\Services\Payments\Providers\ExchangeRateApiProvider;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -40,5 +41,6 @@ class AppServiceProvider extends ServiceProvider
         InterestCategory::observe(InterestCategoryObserver::class);
         Test::observe(TestObserver::class);
         TestIntersetSelection::observe(TestInterestSelectionObserver::class);
+        Gate::define('viewPulse', static fn (): bool => true);
     }
 }

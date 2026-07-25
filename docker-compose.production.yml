@@ -71,6 +71,13 @@ services:
         bind:
           create_host_path: false
 
+      - type: bind
+        source: /opt/graduation/secrets/pulse.htpasswd
+        target: /etc/nginx/auth/pulse.htpasswd
+        read_only: true
+        bind:
+          create_host_path: false
+
     networks:
       - production
 
