@@ -32,7 +32,7 @@ class PublicProfileOverviewResource extends JsonResource
                 'user_id' => $user->id,
                 'name' => $user->name,
                 'avatar_url' => ImageProcessor::urlOrDefault($profile?->avatar_path , 'defaults/default-avatar.svg' , $profile?->avatar_disk),
-                'cover_url' => ImageProcessor::urlOrDefault($profile?->cover_path , 'defaults/default-cover.svg' , $profile?->cover_disk ),
+                'cover_url' => ImageProcessor::url($profile?->cover_path , $profile?->cover_disk ),
                 'followers_count' => (int) ($stats?->followers_count ?? 0),
                 'following_count' => (int) ($stats?->following_count ?? 0),
                 'published_tests_count' => (int) ($stats?->published_tests_count ?? 0),
