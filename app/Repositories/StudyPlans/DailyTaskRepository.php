@@ -47,7 +47,7 @@ class DailyTaskRepository
                 DB::raw('COUNT(*) as total_tasks'),
                 DB::raw("SUM(CASE WHEN task.status = 'تم انجازها' THEN 1 ELSE 0 END) as completed_tasks"),
             ])
-            ->keyBy(fn ($item) => (string) $item->occurrence_date);
+            ->keyBy(fn ($item) => $item->occurrence_date->toDateString());
     }
 
     public function getTasksForDate(int $studyPlanId, string $selectedDate): array|\Illuminate\Database\Eloquent\Collection|\LaravelIdea\Helper\App\Models\_IH_StudyTaskOccurrence_C
