@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ImageProcessor
 {
-    public static function url(?string $path, string $disk = 'public'): ?string
+    public static function url(?string $path, ?string $disk = 'public'): ?string
     {
         if (!$path) {
             return null;
