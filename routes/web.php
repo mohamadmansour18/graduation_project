@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::view('/', 'landing.index')
+    ->name('landing');
+
 //TEST
 Route::get('/share/tests/{slug}', [SharedLinkController::class, 'test'])
     ->name('share.tests.show');
@@ -37,4 +40,3 @@ Route::get('/share/profiles/{slug}', [SharedLinkController::class, 'profile'])
 Route::get('/app-not-installed', function () {
     return view('share.app-not-installed');
 });
-
