@@ -49,6 +49,24 @@ class LibraryMaterialDownloadService
             ];
         }
 
+        if ($material->libraryMaterialAssets->count() === 1) {
+            $asset = $material->libraryMaterialAssets->first();
+            $filePath = Storage::disk($asset->storage_disk)->path($asset->storage_path);
+
+            if (! is_file($filePath)) {
+                throw LibraryMaterialException::materialFileNotFound();
+            }
+
+            return [
+                'file_path' => $filePath,
+                'download_name' => $asset->original_name ?: basename($asset->storage_path),
+                'headers' => [
+                    'Content-Type' => $asset->mime_type ?: 'application/octet-stream',
+                ],
+                'delete_after_send' => false,
+            ];
+        }
+
         return $this->createImagesZip($material);
     }
 
