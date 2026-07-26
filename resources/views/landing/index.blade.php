@@ -637,21 +637,20 @@
                     </div>
                     <div class="contact-box">
                         <span>للتواصل والاستفسار</span>
-                        <a href="mailto:nerd.app@gmail.com">
+                        <a href="mailto:application.technical.m17@gmail.com">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M3 6h18v12H3V6Zm1 1 8 6 8-6"/>
                             </svg>
-                            nerd.app@gmail.com
+                            application.technical.m17@gmail.com
                         </a>
-                        <a href="https://instagram.com/nerd.app" target="_blank" rel="noreferrer">
+                        <a href="https://www.instagram.com/nerd.software" target="_blank" rel="noreferrer">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <rect x="3" y="3" width="18" height="18" rx="5"/>
                                 <circle cx="12" cy="12" r="4"/>
                                 <circle cx="17.5" cy="6.5" r="1"/>
                             </svg>
-                            @nerd.app
+                            @nerd.software
                         </a>
-                        <small>بيانات تجريبية مؤقتة</small>
                     </div>
                 </div>
             </div>
