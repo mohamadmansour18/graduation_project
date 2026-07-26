@@ -342,6 +342,7 @@ class MyProfileRepository
                 'test_type',
                 'target_level',
                 'average_rating',
+                'review_status',
                 'price',
                 'published_at',
                 'question_count',

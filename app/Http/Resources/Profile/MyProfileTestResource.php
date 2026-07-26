@@ -27,6 +27,7 @@ class MyProfileTestResource extends JsonResource
                 ->values()
                 ->toArray(),
             'target_level' => $this->target_level,
+            'review_status' => $this->review_status,
             'average_rating' => round((float) $this->average_rating, 1),
             'price' => $this->price ?? 0,
             'published_at' => DateProcessor::fromTimestamp($this->created_at),

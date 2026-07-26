@@ -33,8 +33,8 @@ class TestFolderService
 
         $containedTestType = $testTypes->first();
 
-        if ($containedTestType === TestType::Public->value) {
-            $hasNotApprovedPublicTest = $tests->contains(fn ($test) => $test->review_status !== TestReviewStatus::Approved->value);
+        if ($containedTestType === TestType::Public) {
+            $hasNotApprovedPublicTest = $tests->contains(fn ($test) => $test->review_status !== TestReviewStatus::Approved);
 
             if ($hasNotApprovedPublicTest) {
                 throw FoldersException::publicFolderTestsMustBeApproved();
