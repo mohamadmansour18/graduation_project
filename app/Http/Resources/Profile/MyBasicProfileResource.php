@@ -21,7 +21,7 @@ class MyBasicProfileResource extends JsonResource
         return [
             'header' => [
                 'avatar_url' => ImageProcessor::urlOrDefault($user['avatar_path'] , 'defaults/default-avatar.svg' , $user['avatar_disk']),
-                'cover_url' => ImageProcessor::urlOrDefault($user['cover_path'] , 'defaults/default-cover.svg' , $user['cover_disk']),
+                'cover_url' => ImageProcessor::url($user['cover_path'] , 'defaults/default-cover.svg' , $user['cover_disk']),
                 'name' => $user['name'],
                 'is_academically_verified' => (bool) ($user['is_academically_verified'] ?? false),
                 'followers_count' => (int) ($user['followers_count'] ?? 0),
