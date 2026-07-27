@@ -32,7 +32,7 @@ class MyLibraryMaterialDetailsResource extends JsonResource
 
                 'content_kind' => $this->content_kind,
 
-                'visibility_type' => $this->visibility_type  === 'خاص' ? 'محتوى خاص' : 'محتوى عام',
+                'visibility_type' => $this->visibility_type === VisibilityType::Private ? 'محتوى خاص' : 'محتوى عام',
 
                 'asset_count' => (int) $this->asset_count,
 
