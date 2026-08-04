@@ -29,6 +29,22 @@ return new class extends Migration
             $table->unsignedInteger('download_count')->default(0);
             $table->string('share_slug', 32)->nullable()->unique();
             $table->timestamps();
+            $table->index(
+                ['visibility_type', 'review_status', 'published_at', 'id'],
+                'lm_visibility_review_published_id_idx'
+            );
+            $table->index(
+                ['creator_user_id', 'visibility_type', 'review_status', 'published_at', 'id'],
+                'lm_creator_visibility_review_published_id_idx'
+            );
+            $table->index(
+                ['creator_user_id', 'visibility_type', 'created_at', 'id'],
+                'lm_creator_visibility_created_id_idx'
+            );
+            $table->index(
+                ['review_status', 'visibility_type', 'created_at', 'id'],
+                'lm_review_visibility_created_id_idx'
+            );
         });
     }
 

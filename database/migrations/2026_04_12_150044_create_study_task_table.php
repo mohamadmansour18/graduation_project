@@ -32,6 +32,18 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index('task_group_uuid');
+            $table->index(
+                ['study_plan_id', 'task_group_uuid', 'start_date', 'id'],
+                'study_task_plan_group_start_id_idx'
+            );
+            $table->index(
+                ['study_plan_id', 'start_date', 'start_time', 'id'],
+                'study_task_plan_start_time_id_idx'
+            );
+            $table->index(
+                ['missed_at', 'deadline_at', 'status', 'id'],
+                'study_task_missed_deadline_status_id_idx'
+            );
         });
     }
 

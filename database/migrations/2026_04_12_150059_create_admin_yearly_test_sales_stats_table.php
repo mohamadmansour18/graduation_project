@@ -19,6 +19,10 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['year', 'test_id']);
+            $table->index(
+                ['year', 'purchase_count', 'gross_sales_amount', 'test_id'],
+                'admin_test_sales_year_purchase_gross_test_idx'
+            );
         });
     }
 

@@ -185,10 +185,15 @@ class TestDiscoveryRepository
         $query = DB::table('test')
             ->where('test.test_type', TestType::Public->value)
             ->where('test.review_status', TestReviewStatus::Approved->value)
+            ->whereNull('test.deleted_at')
             ->where('test.creator_user_id', '!=', $userProfile->userId);
 
         if ($context->tab === DiscoveryTab::FREE) {
-            $query->whereNull('test.price');
+            $query->where(function (Builder $query): void {
+                $query
+                    ->whereNull('test.price')
+                    ->orWhere('test.price', '<=', 0);
+            });
         }
 
         return $query;

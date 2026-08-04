@@ -23,6 +23,14 @@ return new class extends Migration
 
             $table->index(['source_currency', 'target_currency', 'effective_date'] , 'currency_exchange_rates_ste');
             $table->index(['source_currency', 'target_currency', 'provider'] , 'currency_exchange_rates_stp');
+            $table->index(
+                ['source_currency', 'target_currency', 'effective_date', 'fetched_at', 'id'],
+                'currency_rates_pair_effective_fetched_id_idx'
+            );
+            $table->index(
+                ['source_currency', 'target_currency', 'fetched_at', 'id'],
+                'currency_rates_pair_fetched_id_idx'
+            );
         });
     }
 

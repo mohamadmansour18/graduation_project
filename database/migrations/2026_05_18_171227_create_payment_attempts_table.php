@@ -40,8 +40,15 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index(['test_purchase_id', 'status']);
+            $table->index(
+                ['test_purchase_id', 'status', 'expires_at', 'id'],
+                'payment_attempts_purchase_status_expires_id_idx'
+            );
             $table->index(['payment_provider', 'status']);
+            $table->index(
+                ['status', 'expires_at', 'id'],
+                'payment_attempts_status_expires_id_idx'
+            );
 
         });
     }

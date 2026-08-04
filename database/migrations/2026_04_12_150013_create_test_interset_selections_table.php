@@ -17,6 +17,10 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['test_id', 'interest_id']);
             $table->unique(['test_id', 'slot_no']);
+            $table->index(
+                ['interest_id', 'test_id'],
+                'test_interest_interest_test_idx'
+            );
         });
     }
 

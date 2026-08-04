@@ -24,6 +24,14 @@ return new class extends Migration
             $table->unsignedTinyInteger('academic_verification_cancel_count')->default(0);
             $table->softDeletes();
             $table->timestamps();
+            $table->index(
+                ['role_id', 'deleted_at', 'name', 'id'],
+                'users_role_deleted_name_id_idx'
+            );
+            $table->index(
+                ['role_id', 'deleted_at', 'created_at', 'id'],
+                'users_role_deleted_created_id_idx'
+            );
         });
     }
 

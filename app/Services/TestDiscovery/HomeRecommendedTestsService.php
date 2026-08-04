@@ -94,6 +94,7 @@ class HomeRecommendedTestsService
     {
         return match ($tab) {
             'new' => DiscoveryTab::NEW,
+            'free' => DiscoveryTab::FREE,
             'most_participated' => DiscoveryTab::MOST_PARTICIPATED,
             default => DiscoveryTab::TRENDING,
         };

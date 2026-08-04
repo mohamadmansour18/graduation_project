@@ -40,6 +40,22 @@ return new class extends Migration
             $table->string('share_slug', 80)->nullable()->unique();
             $table->softDeletes();
             $table->timestamps();
+            $table->index(
+                ['test_type', 'review_status', 'published_at', 'id'],
+                'test_type_review_published_id_idx'
+            );
+            $table->index(
+                ['creator_user_id', 'test_type', 'review_status', 'published_at', 'id'],
+                'test_creator_type_review_published_id_idx'
+            );
+            $table->index(
+                ['creator_user_id', 'test_type', 'created_at', 'id'],
+                'test_creator_type_created_id_idx'
+            );
+            $table->index(
+                ['test_type', 'review_status', 'target_level', 'published_at', 'id'],
+                'test_type_review_target_published_id_idx'
+            );
         });
     }
 

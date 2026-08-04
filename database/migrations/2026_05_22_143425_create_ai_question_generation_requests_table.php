@@ -58,6 +58,22 @@ return new class extends Migration
 
             $table->index(['user_id', 'created_at']);
             $table->index(['status', 'created_at']);
+            $table->index(
+                ['user_id', 'status', 'created_at'],
+                'ai_generation_user_status_created_idx'
+            );
+            $table->index(
+                [
+                    'user_id',
+                    'source_type',
+                    'requested_question_count',
+                    'difficulty_level',
+                    'language',
+                    'status',
+                    'id',
+                ],
+                'ai_generation_reusable_signature_idx'
+            );
         });
     }
 

@@ -21,6 +21,10 @@ return new class extends Migration
             $table->string('profile_slug' , 180)->nullable()->unique();
             $table->enum('governorate' , array_column(Governorate::cases() , 'value'));
             $table->timestamps();
+            $table->index(
+                ['governorate', 'user_id'],
+                'user_profile_governorate_user_idx'
+            );
 
         });
     }

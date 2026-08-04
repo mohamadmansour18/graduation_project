@@ -23,6 +23,10 @@ return new class extends Migration
 
             $table->index(['user_id', 'created_at']);
             $table->unique(['user_id', 'query']);
+            $table->index(
+                ['user_id', 'updated_at', 'id'],
+                'search_histories_user_updated_id_idx'
+            );
         });
     }
 

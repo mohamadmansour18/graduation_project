@@ -17,6 +17,10 @@ return new class extends Migration
 
             $table->unique(['library_material_id', 'interest_id'] , 'lm_interest_unique');
             $table->unique(['library_material_id', 'slot_no'] , 'lm_slot_no_unique');
+            $table->index(
+                ['interest_id', 'library_material_id'],
+                'lm_interest_interest_material_idx'
+            );
         });
     }
 

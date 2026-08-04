@@ -21,6 +21,10 @@ return new class extends Migration
             $table->unsignedInteger('total_test_reviews_received')->default(0);
             $table->unsignedInteger('total_test_bookmarks_received')->default(0);
             $table->timestamps();
+            $table->index(
+                ['published_tests_count', 'average_test_rating', 'user_id'],
+                'profile_stats_published_rating_user_idx'
+            );
         });
     }
 

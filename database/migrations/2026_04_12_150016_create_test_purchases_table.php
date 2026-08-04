@@ -25,6 +25,18 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['test_id', 'buyer_user_id']);
+            $table->index(
+                ['seller_user_id', 'payment_status', 'purchased_at', 'id'],
+                'test_purchases_seller_status_purchased_id_idx'
+            );
+            $table->index(
+                ['payment_status', 'currency', 'purchased_at', 'id'],
+                'test_purchases_status_currency_purchased_id_idx'
+            );
+            $table->index(
+                ['test_id', 'payment_status', 'purchased_at'],
+                'test_purchases_test_status_purchased_idx'
+            );
         });
     }
 

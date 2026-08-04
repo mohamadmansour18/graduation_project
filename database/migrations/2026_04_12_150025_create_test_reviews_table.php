@@ -19,6 +19,14 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['test_id', 'user_id']);
+            $table->index(
+                ['test_id', 'rating', 'id'],
+                'test_reviews_test_rating_id_idx'
+            );
+            $table->index(
+                ['test_id', 'helpful_yes_count', 'id'],
+                'test_reviews_test_helpful_id_idx'
+            );
         });
     }
 

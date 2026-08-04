@@ -19,6 +19,10 @@ return new class extends Migration
             $table->timestamp('consumed_at')->nullable();
             $table->timestamp('revoked_at')->nullable();
             $table->timestamps();
+            $table->index(
+                ['user_id', 'purpose', 'consumed_at', 'revoked_at', 'id'],
+                'auth_otp_user_purpose_active_id_idx'
+            );
         });
     }
 

@@ -35,6 +35,10 @@ return new class extends Migration
             $table->index(['user_id', 'platform']);
             $table->index(['user_id', 'firebase_project']);
             $table->index(['revoked_at']);
+            $table->index(
+                ['user_id', 'revoked_at', 'firebase_project'],
+                'fcm_tokens_user_revoked_project_idx'
+            );
         });
     }
 

@@ -15,6 +15,14 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['test_id', 'user_id']);
+            $table->index(
+                ['user_id', 'created_at', 'id'],
+                'test_bookmarks_user_created_id_idx'
+            );
+            $table->index(
+                ['test_id', 'id'],
+                'test_bookmarks_test_id_idx'
+            );
         });
     }
 

@@ -29,7 +29,14 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index('ai_question_generation_id');
+            $table->index(
+                ['ai_question_generation_id', 'sha256_hash'],
+                'ai_generation_assets_request_hash_idx'
+            );
+            $table->unique(
+                ['ai_question_generation_id', 'position'],
+                'ai_generation_assets_request_position_unique'
+            );
         });
     }
 

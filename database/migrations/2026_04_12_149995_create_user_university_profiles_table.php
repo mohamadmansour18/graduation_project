@@ -15,6 +15,14 @@ return new class extends Migration
             $table->unsignedTinyInteger('university_year')->nullable();
             $table->enum('department' , array_column(App\Enums\UniversityDepartment::cases(), 'value'));
             $table->timestamps();
+            $table->index(
+                ['university_name', 'user_id'],
+                'university_profiles_name_user_idx'
+            );
+            $table->index(
+                ['department', 'user_id'],
+                'university_profiles_department_user_idx'
+            );
         });
     }
 

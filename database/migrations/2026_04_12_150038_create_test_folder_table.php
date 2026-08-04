@@ -20,6 +20,14 @@ return new class extends Migration
             $table->unsignedTinyInteger('tests_count')->default(0);
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
+            $table->index(
+                ['creator_user_id', 'visibility_type', 'contained_test_type', 'published_at', 'id'],
+                'folders_creator_visibility_type_published_id_idx'
+            );
+            $table->index(
+                ['creator_user_id', 'visibility_type', 'created_at', 'id'],
+                'folders_creator_visibility_created_id_idx'
+            );
         });
     }
 

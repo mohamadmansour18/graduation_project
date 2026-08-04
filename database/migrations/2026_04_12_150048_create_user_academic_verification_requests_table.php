@@ -18,6 +18,14 @@ return new class extends Migration
             $table->timestamp('reviewed_at')->nullable();
             $table->text('rejection_reason')->nullable();
             $table->timestamps();
+            $table->index(
+                ['user_id', 'status', 'reviewed_at', 'id'],
+                'academic_requests_user_status_reviewed_id_idx'
+            );
+            $table->index(
+                ['status', 'submitted_at', 'id'],
+                'academic_requests_status_submitted_id_idx'
+            );
         });
     }
 

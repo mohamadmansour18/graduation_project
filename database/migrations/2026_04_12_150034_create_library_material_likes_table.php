@@ -15,6 +15,14 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['library_material_id', 'user_id'] , 'lm_like_user_unique');
+            $table->index(
+                ['user_id', 'created_at', 'id'],
+                'lm_likes_user_created_id_idx'
+            );
+            $table->index(
+                ['library_material_id', 'id'],
+                'lm_likes_material_id_idx'
+            );
         });
     }
 

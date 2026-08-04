@@ -55,12 +55,12 @@ class RouteServiceProvider extends ServiceProvider
 
         RateLimiter::for('api-onboarding' , function (Request $request) {
             $key = 'onboarding:' . ($request->ip());
-            return Limit::perMinute(2)->by($key);
+            return Limit::perMinute(10)->by($key);
         });
 
         RateLimiter::for('api-reset-password' , function (Request $request) {
             $key = 'reset-password:' . ($request->ip());
-            return Limit::perMinutes(3,3)->by($key);
+            return Limit::perMinutes(3,6)->by($key);
         });
 
         RateLimiter::for('api-search' , function (Request $request) {

@@ -206,7 +206,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/followers/{userId}', [PublicProfileController::class, 'followers']); //يلي متابعيني
                 Route::get('/following/{userId}', [PublicProfileController::class, 'following']); //يلي انا متابعهن
 
-                Route::middleware(['throttle:4,2' , 'idempotency'])->group(function () {
+                Route::middleware(['throttle:8,2' , 'idempotency'])->group(function () {
                     Route::post('/follow/{userId}' , [FollowController::class , 'follow']);
                     Route::delete('/unfollow/{userId}' , [FollowController::class , 'unfollow']);
 
@@ -231,7 +231,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::get('/similar/{materialId}' , [LibraryMaterialController::class, 'similar']);
 
-                Route::middleware('throttle:4,3')->group(function () {
+                Route::middleware('throttle:15,1')->group(function () {
                     Route::post('/like/{libraryMaterial}', [LibraryMaterialLikeController::class, 'like']);
                     Route::delete('/unlike/{libraryMaterial}', [LibraryMaterialLikeController::class, 'unlike']);
 
@@ -261,7 +261,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/folder/{userId}' , [MyProfileController::class , 'folders']);
 
 
-                Route::middleware(['idempotency' , 'throttle:4,2'])->group(function () {
+                Route::middleware(['idempotency' , 'throttle:8,1'])->group(function () {
                     Route::post('/update/basic-info/{userId}' , [MyProfileController::class, 'updatePersonalInformation']);
                     Route::post('/update/academic-info/{userId}' , [MyProfileController::class, 'updateAcademicInformation']);
                     Route::post('/update/scientific-interests/{userId}' , [MyProfileController::class, 'updateScientificInterests']);
@@ -275,7 +275,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::get('/folder-content/{folder}' , [TestFolderController::class , 'folderTests']);
 
-                Route::middleware(['idempotency' , 'throttle:4,4'])->group(function () {
+                Route::middleware(['idempotency' , 'throttle:8,2'])->group(function () {
                     Route::post('/create' , [TestFolderController::class , 'storeFolder']);
                     Route::delete('/delete/{folderId}' , [TestFolderController::class , 'deleteFolder' ]);
                     Route::post('/update/{folderId}' , [TestFolderController::class , 'updateFolder']);

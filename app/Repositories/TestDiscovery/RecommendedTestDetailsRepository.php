@@ -47,6 +47,7 @@ final class RecommendedTestDetailsRepository
                 DB::raw('COALESCE(users.is_academically_verified, 0) as is_owner_verified'),
             ])
             ->whereIn('test.id', $testIds)
+            ->whereNull('test.deleted_at')
             ->get()
             ->keyBy('id');
 

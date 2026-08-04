@@ -20,6 +20,10 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['test_id', 'user_id', 'reason', 'approval_version'], 'test_reports_unique_per_version');
+            $table->index(
+                ['test_id', 'approval_version', 'reported_at', 'id'],
+                'test_reports_test_version_reported_id_idx'
+            );
         });
 
     }

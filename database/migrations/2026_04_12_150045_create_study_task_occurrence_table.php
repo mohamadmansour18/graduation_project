@@ -17,6 +17,18 @@ return new class extends Migration
             $table->time('scheduled_end_time');
             $table->unsignedInteger('duration_second');
             $table->timestamps();
+            $table->index(
+                ['study_plan_id', 'occurrence_date', 'scheduled_start_time', 'id'],
+                'task_occurrence_plan_date_start_id_idx'
+            );
+            $table->index(
+                ['occurrence_date', 'scheduled_start_time', 'id'],
+                'task_occurrence_date_start_id_idx'
+            );
+            $table->index(
+                ['occurrence_date', 'scheduled_end_time', 'id'],
+                'task_occurrence_date_end_id_idx'
+            );
         });
     }
 

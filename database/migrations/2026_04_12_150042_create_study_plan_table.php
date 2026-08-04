@@ -23,6 +23,18 @@ return new class extends Migration
             $table->unsignedInteger('missed_tasks_count')->default(0);
             $table->unsignedInteger('pending_tasks_count')->default(0);
             $table->timestamps();
+            $table->index(
+                ['user_id', 'is_default', 'start_date', 'id'],
+                'study_plan_user_default_start_id_idx'
+            );
+            $table->index(
+                ['user_id', 'end_date'],
+                'study_plan_user_end_idx'
+            );
+            $table->index(
+                ['user_id', 'start_date', 'id'],
+                'study_plan_user_start_id_idx'
+            );
         });
     }
 

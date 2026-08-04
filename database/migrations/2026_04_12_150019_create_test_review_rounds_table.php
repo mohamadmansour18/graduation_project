@@ -23,6 +23,14 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['test_id', 'round_no']);
+            $table->index(
+                ['test_id', 'decision', 'round_no', 'id'],
+                'test_rounds_test_decision_round_id_idx'
+            );
+            $table->index(
+                ['test_id', 'decided_at', 'id'],
+                'test_rounds_test_decided_id_idx'
+            );
         });
     }
 

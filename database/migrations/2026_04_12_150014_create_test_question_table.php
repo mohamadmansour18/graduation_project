@@ -19,6 +19,10 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['test_id', 'position']);
+            $table->index(
+                ['test_id', 'is_preview', 'position'],
+                'test_question_preview_position_idx'
+            );
         });
     }
 

@@ -49,7 +49,7 @@ class ListLabTestDiscoveryRequest extends ApiFormRequest
     public function messages(): array
     {
         return [
-            'tab.' . Enum::class => 'قيمة التاب غير صحيحة القيم المسموحة هي: trending أو new أو most_participated',
+            'tab.' . Enum::class => 'قيمة التاب غير صحيحة. القيم المسموحة هي: trending أو new أو free أو most_participated',
             'page.integer' => 'رقم الصفحة يجب أن يكون رقمًا صحيحًا',
             'page.min' => 'رقم الصفحة يجب أن يبدأ من 1',
         ];

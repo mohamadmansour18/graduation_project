@@ -14,6 +14,10 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
             $table->unique(['test_folder_id', 'user_id']);
+            $table->index(
+                ['user_id', 'created_at', 'id'],
+                'folder_bookmarks_user_created_id_idx'
+            );
         });
     }
 

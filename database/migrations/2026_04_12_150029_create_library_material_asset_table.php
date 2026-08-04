@@ -18,6 +18,10 @@ return new class extends Migration
             $table->string('mime_type' , 100);
             $table->unsignedTinyInteger('position')->default(1);
             $table->timestamps();
+            $table->unique(
+                ['library_material_id', 'position'],
+                'lm_asset_material_position_unique'
+            );
         });
     }
 

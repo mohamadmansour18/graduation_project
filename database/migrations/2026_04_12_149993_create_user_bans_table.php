@@ -20,6 +20,14 @@ return new class extends Migration
             $table->foreignId('lifted_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('lifted_at')->nullable();
             $table->timestamps();
+            $table->index(
+                ['user_id', 'lifted_at', 'starts_at', 'ends_at', 'id'],
+                'user_bans_user_active_period_id_idx'
+            );
+            $table->index(
+                ['lifted_at', 'starts_at', 'ban_type', 'ends_at', 'created_at'],
+                'user_bans_active_type_period_created_idx'
+            );
         });
     }
 

@@ -31,6 +31,10 @@ return new class extends Migration
 
             $table->index(['user_id', 'notification_type'] , 'scheduled_notification_user_type');
             $table->index(['deliver_at']);
+            $table->index(
+                ['dispatched_at'],
+                'scheduled_notifications_dispatched_idx'
+            );
         });
     }
 

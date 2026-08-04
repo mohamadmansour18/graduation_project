@@ -17,6 +17,14 @@ return new class extends Migration
             $table->string('description');
             $table->timestamp('reported_at');
             $table->timestamps();
+            $table->unique(
+                ['library_material_id', 'user_id', 'approval_version', 'reason'],
+                'lm_reports_user_reason_version_unique'
+            );
+            $table->index(
+                ['library_material_id', 'approval_version', 'reported_at', 'id'],
+                'lm_reports_material_version_reported_id_idx'
+            );
 
 
         });

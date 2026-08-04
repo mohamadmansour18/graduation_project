@@ -23,6 +23,10 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['library_material_id', 'round_no'] , 'lm_round_no_unique');
+            $table->index(
+                ['library_material_id', 'decision', 'round_no', 'id'],
+                'lm_rounds_material_decision_round_id_idx'
+            );
         });
     }
 

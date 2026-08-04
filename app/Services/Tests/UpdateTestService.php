@@ -324,7 +324,10 @@ class UpdateTestService
         }
 
         if (array_key_exists('price', $payload)) {
-            $test->price = $payload['price'] === null ? null : (float) $payload['price'];
+            $price = $payload['price'];
+            $test->price = $price === null || (float) $price <= 0
+                ? null
+                : round((float) $price, 2);
         }
 
         $test->save();
