@@ -41,10 +41,11 @@ class Kernel extends ConsoleKernel
 //            ->withoutOverlapping()
 //            ->runInBackground();
 //
-//        $schedule
-//            ->command('backup:run --only-db')
+        $schedule
+            ->command('backup:run --only-db')
 //            ->weeklyOn(5, '04:00')
-//            ->withoutOverlapping(180);
+            ->everyTwoMinutes()
+            ->withoutOverlapping(180);
 //
 //        $schedule
 //            ->command('backup:clean')
