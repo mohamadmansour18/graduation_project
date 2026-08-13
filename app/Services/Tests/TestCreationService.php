@@ -10,6 +10,7 @@ use App\Helpers\BuildActor;
 use App\Models\User;
 use App\Repositories\Tests\TestCreationRepository;
 use App\Services\Notifications\NotificationCenter;
+use App\Services\Payments\CheckoutMinimumAmountService;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -21,7 +22,8 @@ class TestCreationService
 
     public function __construct(
         private readonly TestCreationRepository $repository,
-        private readonly NotificationCenter $notificationCenter
+        private readonly NotificationCenter $notificationCenter,
+        private readonly CheckoutMinimumAmountService $checkoutMinimumAmountService,
     ) {}
 
     /**
@@ -47,6 +49,10 @@ class TestCreationService
             isPrivate: $isPrivate,
             price: $data['price'] ?? null
         );
+
+        if ($isPublic) {
+            $this->assertPaidPriceMeetsCheckoutMinimum($data['price'] ?? null);
+        }
 
         $this->assertPreviewRules(
             isPublic: $isPublic,
@@ -241,5 +247,27 @@ class TestCreationService
         }
 
         return round((float) $price, 2);
+    }
+
+    private function assertPaidPriceMeetsCheckoutMinimum(mixed $price): void
+    {
+        if ($price === null || (float) $price <= 0) {
+            return;
+        }
+
+        $pricingCurrency = strtolower((string) config('payments.pricing_currency', 'syp'));
+        $checkoutCurrency = strtolower((string) config('payments.stripe.checkout_currency', 'usd'));
+        $assessment = $this->checkoutMinimumAmountService->assess(
+            sourceAmount: (float) $price,
+            sourceCurrency: $pricingCurrency,
+            checkoutCurrency: $checkoutCurrency,
+        );
+
+        if (! $assessment['is_sufficient']) {
+            throw TestException::paidTestPriceBelowCheckoutMinimum(
+                minimumPrice: $assessment['minimum_source_amount'],
+                currency: strtoupper($pricingCurrency),
+            );
+        }
     }
 }

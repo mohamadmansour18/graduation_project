@@ -28,4 +28,17 @@ class TestPaymentController
             title: '! تم إنشاء جلسة الدفع بنجاح'
         );
     }
+
+    public function paymentAttemptStatus(int $attemptId): JsonResponse
+    {
+        $status = $this->purchaseService->getPaymentAttemptStatus(
+            attemptId: $attemptId,
+            buyerUserId: (int) Auth::id(),
+        );
+
+        return $this->dataResponse(
+            data: $status,
+            title: '! تم جلب حالة الدفع بنجاح',
+        );
+    }
 }

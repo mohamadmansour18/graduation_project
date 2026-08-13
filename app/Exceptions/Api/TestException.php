@@ -329,6 +329,15 @@ class TestException extends ApiException
         );
     }
 
+    public static function paidTestPriceBelowCheckoutMinimum(float $minimumPrice, string $currency): self
+    {
+        return new self(
+            title: '! سعر الاختبار منخفض',
+            message: "يجب ألا يقل سعر الاختبار المدفوع عن {$minimumPrice} {$currency} لضمان إتمام عملية الدفع",
+            status: 422
+        );
+    }
+
     public static function privateTestCannotHavePreviewQuestions(): self
     {
         return new self(

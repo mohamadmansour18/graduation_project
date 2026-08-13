@@ -4,6 +4,7 @@ namespace App\Services\Settings;
 
 use App\Http\Resources\UserSoldTestsResource;
 use App\Repositories\Auth\UserSalesRepository;
+use Illuminate\Database\Eloquent\Collection;
 
 class UserSalesService
 {
@@ -11,6 +12,14 @@ class UserSalesService
         private readonly UserSalesRepository $repository,
     )
     {}
+
+    public function getMyPurchasedTests(int $buyerUserId, string $tab): Collection
+    {
+        return $this->repository->getPurchasedTests(
+            buyerUserId: $buyerUserId,
+            tab: $tab,
+        );
+    }
 
     public function getSoldTests(int $userId, string $tab): UserSoldTestsResource
     {

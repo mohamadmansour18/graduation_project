@@ -4,6 +4,7 @@ namespace App\Services\Payments;
 
 use App\DTOs\Payments\CreateCheckoutSessionData;
 use App\Enums\Payments\PaymentProvider;
+use App\Enums\Payments\PaymentAttemptStatus;
 use App\Enums\Payments\PaymentStatus;
 use App\Enums\TestReviewStatus;
 use App\Enums\TestType;
@@ -21,7 +22,7 @@ class PurchaseService
         private readonly TestPaymentRepository $testPaymentRepository,
         private readonly TestPurchaseRepository $testPurchaseRepository,
         private readonly PurchaseMoneyCalculator $moneyCalculator,
-        private readonly CurrencyConversionService $currencyConversionService,
+        private readonly CheckoutMinimumAmountService $checkoutMinimumAmountService,
         private readonly PaymentManager $paymentManager,
         private readonly PaymentAttemptRepository $paymentAttemptRepository,
     )
@@ -197,11 +198,24 @@ class PurchaseService
             ->addMinutes((int) config('payments.checkout_session_expires_after_minutes', 30))
             ->timestamp;
 
-        $providerAmount = $this->currencyConversionService->convert(
-            amount: $money->grossAmount,
+        $checkoutAmountAssessment = $this->checkoutMinimumAmountService->assess(
+            sourceAmount: $money->grossAmount,
             sourceCurrency: $money->currency,
-            targetCurrency: $checkoutCurrency,
+            checkoutCurrency: $checkoutCurrency,
         );
+        $providerAmount = $checkoutAmountAssessment['conversion'];
+
+        if (! $checkoutAmountAssessment['is_sufficient']) {
+            $this->testPurchaseRepository->markAsCancelledIfNoActiveAttempts(
+                purchaseId: $purchase->id,
+                hasActiveAttempt: false,
+            );
+
+            throw PaymentException::checkoutAmountBelowMinimum(
+                minimumPrice: $checkoutAmountAssessment['minimum_source_amount'],
+                currency: strtoupper($money->currency),
+            );
+        }
 
         $attempt = $this->paymentAttemptRepository->createPendingAttempt([
             'test_purchase_id' => $purchase->id,
@@ -256,8 +270,14 @@ class PurchaseService
                         grossAmount: $providerAmount->convertedAmount,
                         currency: $providerAmount->targetCurrency,
                     ),
-                    successUrl: (string) config('payments.success_url'),
-                    cancelUrl: (string) config('payments.cancel_url'),
+                    successUrl: $this->returnUrlForAttempt(
+                        configuredUrl: (string) config('payments.success_url'),
+                        attemptId: $attempt->id,
+                    ),
+                    cancelUrl: $this->returnUrlForAttempt(
+                        configuredUrl: (string) config('payments.cancel_url'),
+                        attemptId: $attempt->id,
+                    ),
                     expiresAt: $expiresAt,
                     metadata: [
                         'source' => 'mobile_app',
@@ -394,5 +414,45 @@ class PurchaseService
         if ($this->testPurchaseRepository->userHasPaidPurchase($test->id, $buyerUserId)) {
             throw PaymentException::testAlreadyPurchased();
         }
+    }
+
+    public function getPaymentAttemptStatus(int $attemptId, int $buyerUserId): array
+    {
+        $attempt = $this->paymentAttemptRepository->findForBuyer($attemptId, $buyerUserId);
+
+        if (! $attempt) {
+            throw PaymentException::paymentAttemptNotFound();
+        }
+
+        $status = PaymentAttemptStatus::tryFrom($attempt->attempt_status);
+
+        return [
+            'payment_attempt_id' => (int) $attempt->id,
+            'purchase_id' => (int) $attempt->purchase_id,
+            'test_id' => (int) $attempt->test_id,
+            'status' => match ($status) {
+                PaymentAttemptStatus::Succeeded => 'paid',
+                PaymentAttemptStatus::Failed => 'failed',
+                PaymentAttemptStatus::Expired => 'expired',
+                PaymentAttemptStatus::Cancelled => 'cancelled',
+                default => 'pending',
+            },
+            'is_final' => $status !== PaymentAttemptStatus::Pending,
+            'test_access_granted' => $attempt->purchase_status === PaymentStatus::Paid->value,
+            'expires_at' => $attempt->expires_at
+                ? Carbon::parse($attempt->expires_at)->toIso8601String()
+                : null,
+            'paid_at' => $attempt->paid_at
+                ? Carbon::parse($attempt->paid_at)->toIso8601String()
+                : null,
+        ];
+    }
+
+    private function returnUrlForAttempt(string $configuredUrl, int $attemptId): string
+    {
+        return $configuredUrl
+            . (str_contains($configuredUrl, '?') ? '&' : '?')
+            . 'payment_attempt_id='
+            . $attemptId;
     }
 }

@@ -4,6 +4,15 @@ namespace App\Exceptions\Api;
 
 class PaymentException extends ApiException
 {
+    public static function paymentAttemptNotFound(): self
+    {
+        return new self(
+            title: '! عملية الدفع غير موجودة',
+            message: 'عملية الدفع المطلوبة غير موجودة أو لا تخص حسابك',
+            status: 404
+        );
+    }
+
     public static function testNotFound(): self
     {
         return new self(
@@ -82,6 +91,15 @@ class PaymentException extends ApiException
             title: '! فشل إنشاء جلسة الدفع',
             message: 'حدث خطأ أثناء تجهيز صفحة الدفع، يرجى المحاولة لاحقًا',
             status: 502
+        );
+    }
+
+    public static function checkoutAmountBelowMinimum(float $minimumPrice, string $currency): self
+    {
+        return new self(
+            title: '! تعذر إنشاء عملية الدفع',
+            message: "سعر هذا الاختبار أقل من الحد الأدنى المطلوب للدفع. يجب أن يكون السعر {$minimumPrice} {$currency} على الأقل",
+            status: 422
         );
     }
 

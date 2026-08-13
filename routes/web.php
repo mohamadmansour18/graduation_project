@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\V1\SharedLinkController;
+use App\Http\Controllers\PaymentReturnController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,6 +17,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'landing.index')
     ->name('landing');
+
+Route::get('/payment/return/success', [PaymentReturnController::class, 'success'])
+    ->name('payments.return.success');
+Route::get('/payment/return/cancel', [PaymentReturnController::class, 'cancel'])
+    ->name('payments.return.cancel');
 
 //TEST
 Route::get('/share/tests/{slug}', [SharedLinkController::class, 'test'])

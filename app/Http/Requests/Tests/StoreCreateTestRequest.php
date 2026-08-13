@@ -62,7 +62,7 @@ class StoreCreateTestRequest extends ApiFormRequest
                 'nullable',
                 'numeric',
                 'min:1',
-                'max:1000',
+                'max:' . (float) config('payments.max_test_price', 10000000),
             ],
 
             'target_level' => [
@@ -166,7 +166,7 @@ class StoreCreateTestRequest extends ApiFormRequest
 
             'price.prohibited_unless' => 'لا يمكن إدخال سعر إلا للاختبارات العامة فقط',
             'price.numeric' => 'سعر الاختبار يجب أن يكون رقماً',
-            'price.min' => 'سعر الاختبار يجب ان لايقل عن 1 دولار',
+            'price.min' => 'سعر الاختبار يجب أن يكون أكبر من صفر',
             'price.max' => 'سعر الاختبار كبير جداً',
 
             'target_level.required' => 'المستوى الدراسي مطلوب',

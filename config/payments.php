@@ -11,6 +11,10 @@ return [
 
     'platform_fee_percent' => (float) env('PAYMENT_PLATFORM_FEE_PERCENT', 20),
 
+    'minimum_checkout_amount' => (float) env('PAYMENT_MINIMUM_CHECKOUT_AMOUNT', 0.50),
+    'minimum_checkout_safety_margin_percent' => (float) env('PAYMENT_MINIMUM_CHECKOUT_SAFETY_MARGIN_PERCENT', 20),
+    'max_test_price' => (float) env('PAYMENT_MAX_TEST_PRICE', 10000000),
+
     'checkout_session_expires_after_minutes' => (int) env(
         'PAYMENT_CHECKOUT_SESSION_EXPIRES_AFTER_MINUTES',
         30
@@ -18,13 +22,15 @@ return [
 
     'success_url' => env(
         'PAYMENT_SUCCESS_URL',
-        env('APP_URL') . '/api/v1/payments/checkout/success?session_id={CHECKOUT_SESSION_ID}'
+        env('APP_URL') . '/payment/return/success?session_id={CHECKOUT_SESSION_ID}'
     ),
 
     'cancel_url' => env(
         'PAYMENT_CANCEL_URL',
-        env('APP_URL') . '/api/v1/payments/checkout/cancel'
+        env('APP_URL') . '/payment/return/cancel'
     ),
+
+    'app_deep_link_scheme' => env('PAYMENT_APP_DEEP_LINK_SCHEME', 'nerd'),
 
     'stripe' => [
         'secret' => env('STRIPE_SECRET'),
@@ -35,7 +41,8 @@ return [
 
     'currency_conversion' => [
         'provider' => env('PAYMENT_EXCHANGE_RATE_PROVIDER', 'exchange_rate_api'),
-        'timeout_seconds' => (int) env('PAYMENT_EXCHANGE_RATE_TIMEOUT_SECONDS', 3),
+        'timeout_seconds' => (int) env('PAYMENT_EXCHANGE_RATE_TIMEOUT_SECONDS', 8),
+        'connect_timeout_seconds' => (int) env('PAYMENT_EXCHANGE_RATE_CONNECT_TIMEOUT_SECONDS', 4),
         'cache_fallback_minutes' => (int) env('PAYMENT_EXCHANGE_RATE_CACHE_FALLBACK_MINUTES', 15),
         'fallback_max_stale_days' => (int) env('PAYMENT_EXCHANGE_RATE_FALLBACK_MAX_STALE_DAYS', 3),
 

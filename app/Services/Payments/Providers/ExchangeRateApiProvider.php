@@ -20,8 +20,10 @@ class ExchangeRateApiProvider implements ExchangeRateProviderInterface
 
         $baseUrl = rtrim((string) config('payments.currency_conversion.providers.exchange_rate_api.base_url'), '/');
         $timeout = (int) config('payments.currency_conversion.timeout_seconds', 3);
+        $connectTimeout = (int) config('payments.currency_conversion.connect_timeout_seconds', 3);
 
-        $response = Http::timeout($timeout)
+        $response = Http::connectTimeout(max(1, $connectTimeout))
+            ->timeout(max(1, $timeout))
             ->acceptJson()
             ->get(sprintf(
                 '%s/%s/pair/%s/%s',

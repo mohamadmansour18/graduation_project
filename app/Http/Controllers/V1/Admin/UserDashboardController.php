@@ -24,8 +24,10 @@ use App\Http\Resources\UserBanHistoryResource;
 use App\Models\User;
 use App\Models\UserAcademicVerificationRequest;
 use App\Services\Admin\UserDashboardService;
+use App\Support\DashboardUsersCursor;
 use App\Trait\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Pagination\CursorPaginator;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UserDashboardController extends Controller
@@ -34,17 +36,46 @@ class UserDashboardController extends Controller
 
     public function users(ListDashboardUsersRequest $request, UserDashboardService $service): JsonResponse
     {
+        $type = $request->validated('type');
+        $sortBy = $request->validated('sort_by', 'created_at');
+
         $result = $service->listUsers(
-            type: $request->validated('type'),
-            sortBy: $request->validated('sort_by', 'created_at'),
+            type: $type,
+            sortBy: $sortBy,
             perPage: (int) $request->validated('per_page', 20),
+            cursor: DashboardUsersCursor::decode(
+                $request->validated('cursor'),
+                $type,
+                $sortBy,
+            ),
         );
 
-        return $this->cursorPaginatedResponse(
+        return $this->usersCursorPaginatedResponse(
             paginator: $result,
             data: DashboardUserResource::collection($result->items()),
-            title: '! تم جلب المستخدمين بنجاح'
+            type: $type,
+            sortBy: $sortBy,
         );
+    }
+
+    private function usersCursorPaginatedResponse(
+        CursorPaginator $paginator,
+        mixed $data,
+        string $type,
+        string $sortBy,
+    ): JsonResponse {
+        return response()->json([
+            'success' => true,
+            'message' => '! تم جلب المستخدمين بنجاح',
+            'data' => $data,
+            'meta' => [
+                'per_page' => $paginator->perPage(),
+                'next_cursor' => DashboardUsersCursor::encode($paginator->nextCursor(), $type, $sortBy),
+                'prev_cursor' => DashboardUsersCursor::encode($paginator->previousCursor(), $type, $sortBy),
+                'has_more_pages' => $paginator->hasMorePages(),
+            ],
+            'status_code' => 200,
+        ]);
     }
 
     public function searchUsers(SearchDashboardUsersRequest $request, UserDashboardService $service): JsonResponse

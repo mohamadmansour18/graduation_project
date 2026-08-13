@@ -13,6 +13,7 @@ use App\Models\TestQuestionOption;
 use App\Repositories\Tests\TestRepository;
 use App\Services\Cache\CacheKeys;
 use App\Services\Notifications\NotificationCenter;
+use App\Services\Payments\CheckoutMinimumAmountService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -25,6 +26,7 @@ class UpdateTestService
         private readonly TestRepository $testRepository,
         private readonly ScientificChangeDetector $changeDetector,
         private readonly NotificationCenter $notificationCenter,
+        private readonly CheckoutMinimumAmountService $checkoutMinimumAmountService,
     ) {}
 
     public function updateTest(int $testId, int $userId, array $payload): array
@@ -306,6 +308,8 @@ class UpdateTestService
 
     private function applyBasicUpdates(Test $test, array $payload): void
     {
+        $this->assertPaidPriceMeetsCheckoutMinimum($test, $payload);
+
         $fields = [
             'title',
             'description',
@@ -331,6 +335,34 @@ class UpdateTestService
         }
 
         $test->save();
+    }
+
+    private function assertPaidPriceMeetsCheckoutMinimum(Test $test, array $payload): void
+    {
+        if (! array_key_exists('price', $payload) || $payload['price'] === null || (float) $payload['price'] <= 0) {
+            return;
+        }
+
+        $finalTestType = $payload['test_type'] ?? $test->test_type->value;
+
+        if ($finalTestType !== self::TYPE_PUBLIC) {
+            return;
+        }
+
+        $pricingCurrency = strtolower((string) config('payments.pricing_currency', 'syp'));
+        $checkoutCurrency = strtolower((string) config('payments.stripe.checkout_currency', 'usd'));
+        $assessment = $this->checkoutMinimumAmountService->assess(
+            sourceAmount: (float) $payload['price'],
+            sourceCurrency: $pricingCurrency,
+            checkoutCurrency: $checkoutCurrency,
+        );
+
+        if (! $assessment['is_sufficient']) {
+            throw TestException::paidTestPriceBelowCheckoutMinimum(
+                minimumPrice: $assessment['minimum_source_amount'],
+                currency: strtoupper($pricingCurrency),
+            );
+        }
     }
 
     private function syncInterestsIfPresent(Test $test, array $payload): void

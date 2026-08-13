@@ -4,6 +4,15 @@ namespace App\Exceptions\Api;
 
 class DashboardUserException extends ApiException
 {
+    public static function invalidUsersCursor(): self
+    {
+        return new self(
+            title: '! مؤشر الصفحة غير صالح',
+            message: 'يرجى إعادة تحميل قائمة المستخدمين بعد تغيير النوع أو الترتيب',
+            status: 422
+        );
+    }
+
     public static function onlyOwnerCanCreateSupervisor(): self
     {
         return new self(

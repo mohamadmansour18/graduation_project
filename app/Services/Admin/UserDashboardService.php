@@ -14,6 +14,7 @@ use App\Repositories\Admin\UserDashboardRepository;
 use App\Services\Notifications\NotificationCenter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -28,12 +29,18 @@ class UserDashboardService
         private readonly NotificationCenter $notificationCenter,
     ) {}
 
-    public function listUsers(string $type, string $sortBy = 'created_at', int $perPage = 20): \Illuminate\Pagination\CursorPaginator
+    public function listUsers(
+        string $type,
+        string $sortBy = 'created_at',
+        int $perPage = 20,
+        ?Cursor $cursor = null,
+    ): \Illuminate\Pagination\CursorPaginator
     {
         return $this->repository->paginateUsersForDashboard(
             type: $type,
             sortBy: $sortBy,
             perPage: min($perPage, 50),
+            cursor: $cursor,
         );
     }
 

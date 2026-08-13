@@ -107,6 +107,8 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
         Route::middleware(['jwt.auth.api', 'role:mobile_user'])->group(function () {
 
             Route::post('/logout' , [AuthController::class , 'logout']);
+            Route::get('/payments/attempts/{attemptId}/status', [TestPaymentController::class, 'paymentAttemptStatus'])
+                ->whereNumber('attemptId');
 
             //HOME
             Route::prefix('home')->group(function () {
@@ -324,6 +326,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/status/certificate-request', [AcademicVerificationController::class, 'status']);
                 Route::get('/sold-tests', [UserSalesController::class, 'soldTests']);
                 Route::get('/get-setting' , [SettingsController::class, 'show']);
+                Route::get('/get-my-purchases' , [UserSalesController::class, 'myPurchasesTest']);
 
                 Route::middleware(['idempotency' , 'throttle:4,5'])->group(function () {
                     Route::patch('/task-reminders/enable', [SettingsController::class, 'enableTaskReminders']);
@@ -536,6 +539,4 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
         }
     });
 });
-
-
 

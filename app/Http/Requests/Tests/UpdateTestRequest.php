@@ -41,7 +41,7 @@ class UpdateTestRequest extends ApiFormRequest
 
             'language' => ['sometimes' , 'string' , Rule::enum(Language::class)],
 
-            'price' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:1000'],
+            'price' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:' . (float) config('payments.max_test_price', 10000000)],
 
             'target_level' => ['sometimes', 'string' , Rule::enum(TargetLevel::class)],
 
@@ -107,7 +107,7 @@ class UpdateTestRequest extends ApiFormRequest
             // price
             'price.numeric' => 'السعر يجب أن يكون رقماً.',
             'price.min' => 'السعر يجب ألا يكون أقل من 0.',
-            'price.max' => 'السعر يجب ألا يزيد عن 1000.',
+            'price.max' => 'سعر الاختبار كبير جداً.',
 
             // target_level
             'target_level.string' => 'المستوى المستهدف يجب أن يكون نصاً.',

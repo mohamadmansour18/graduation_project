@@ -78,6 +78,27 @@ class PaymentAttemptRepository
             ->first();
     }
 
+    public function findForBuyer(int $attemptId, int $buyerUserId): ?object
+    {
+        return DB::table('payment_attempts')
+            ->join('test_purchases', 'test_purchases.id', '=', 'payment_attempts.test_purchase_id')
+            ->where('payment_attempts.id', $attemptId)
+            ->where('test_purchases.buyer_user_id', $buyerUserId)
+            ->select([
+                'payment_attempts.id',
+                'payment_attempts.status as attempt_status',
+                'payment_attempts.expires_at',
+                'payment_attempts.paid_at',
+                'payment_attempts.failed_at',
+                'payment_attempts.expired_at',
+                'payment_attempts.cancelled_at',
+                'test_purchases.id as purchase_id',
+                'test_purchases.test_id',
+                'test_purchases.payment_status as purchase_status',
+            ])
+            ->first();
+    }
+
     public function findForCheckoutSession(?int $attemptId, string $checkoutSessionId): ?object
     {
         if ($attemptId) {

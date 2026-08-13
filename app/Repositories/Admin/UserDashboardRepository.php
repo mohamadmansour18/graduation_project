@@ -20,13 +20,19 @@ use App\Models\UserBan;
 use App\Models\UserProfile;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Traits\EnumeratesValues;
 
 class UserDashboardRepository
 {
-    public function paginateUsersForDashboard(string $type, string $sortBy, int $perPage): CursorPaginator
+    public function paginateUsersForDashboard(
+        string $type,
+        string $sortBy,
+        int $perPage,
+        ?Cursor $cursor = null,
+    ): CursorPaginator
     {
         $banStatusSubquery = DB::table('users as ban_users')
             ->select('ban_users.id as user_id')
@@ -60,6 +66,8 @@ class UserDashboardRepository
                 'user_profile.avatar_disk',
                 'user_profile.avatar_path',
                 'user_profile.governorate',
+                DB::raw('(CASE WHEN user_profile.governorate IS NULL THEN 1 ELSE 0 END) AS dashboard_governorate_is_missing'),
+                DB::raw("COALESCE(user_profile.governorate, '') AS dashboard_governorate_sort"),
                 'ban_status.is_banned',
             ])
             ->join('roles', 'roles.id', '=', 'users.role_id')
@@ -71,7 +79,7 @@ class UserDashboardRepository
         $this->applyUserTypeFilter($query, $type);
         $this->applySorting($query, $sortBy);
 
-        return $query->cursorPaginate($perPage);
+        return $query->cursorPaginate($perPage, cursor: $cursor);
     }
 
     private function applyUserTypeFilter(Builder $query, string $type): void
@@ -96,7 +104,8 @@ class UserDashboardRepository
                 ->orderBy('users.id'),
 
             'governorate' => $query
-                ->orderBy('user_profile.governorate')
+                ->orderBy('dashboard_governorate_is_missing')
+                ->orderBy('dashboard_governorate_sort')
                 ->orderBy('users.id'),
 
             'gender' => $query
