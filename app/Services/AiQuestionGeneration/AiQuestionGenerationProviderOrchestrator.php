@@ -32,6 +32,7 @@ class AiQuestionGenerationProviderOrchestrator
      */
     public function generate(AiQuestionGenerationRequest $generationRequest): array
     {
+        $orchestrationStartedAt = hrtime(true);
         $providerNames = $this->routingPolicy->buildProviderChain($generationRequest);
 
         $providerEntries = $this->providerManager->namedChain($providerNames);
@@ -49,12 +50,14 @@ class AiQuestionGenerationProviderOrchestrator
                     'provider_name' => $providerName,
                     'provider_class' => $provider::class,
                     'health_reason' => $this->providerHealthService->unavailableReason($providerName),
+                    'orchestration_elapsed_ms' => $this->elapsedMilliseconds($orchestrationStartedAt),
                 ]);
 
                 continue;
             }
 
             $attemptedProviderCount++;
+            $attemptStartedAt = hrtime(true);
 
             try {
                 Log::info('AI question generation provider attempt started.', [
@@ -63,6 +66,8 @@ class AiQuestionGenerationProviderOrchestrator
                     'provider_class' => $provider::class,
                     'attempt_index' => $attemptedProviderCount,
                     'source_type' => $generationRequest->source_type,
+                    'provider_timeout_seconds' => config("ai_question_generation.{$providerName}.timeout_seconds"),
+                    'orchestration_elapsed_ms' => $this->elapsedMilliseconds($orchestrationStartedAt),
                 ]);
 
                 $result = $provider->generate($generationRequest);
@@ -78,6 +83,8 @@ class AiQuestionGenerationProviderOrchestrator
                     'input_mode' => $result['input_mode'] ?? 'unknown',
                     'questions_count' => count($result['questions'] ?? []),
                     'attempted_provider_count' => $attemptedProviderCount,
+                    'attempt_elapsed_ms' => $this->elapsedMilliseconds($attemptStartedAt),
+                    'orchestration_elapsed_ms' => $this->elapsedMilliseconds($orchestrationStartedAt),
                 ]);
 
                 return $result;
@@ -115,6 +122,8 @@ class AiQuestionGenerationProviderOrchestrator
                     'exception_context' => $exception instanceof ApiException
                         ? $exception->getContext()
                         : [],
+                    'attempt_elapsed_ms' => $this->elapsedMilliseconds($attemptStartedAt),
+                    'orchestration_elapsed_ms' => $this->elapsedMilliseconds($orchestrationStartedAt),
                 ]);
 
                 if (! $decision->shouldTryNextProvider || ! $hasNextAvailableProvider) {
@@ -154,6 +163,11 @@ class AiQuestionGenerationProviderOrchestrator
         }
 
         return false;
+    }
+
+    private function elapsedMilliseconds(int $startedAt): float
+    {
+        return round((hrtime(true) - $startedAt) / 1_000_000, 2);
     }
 
 }

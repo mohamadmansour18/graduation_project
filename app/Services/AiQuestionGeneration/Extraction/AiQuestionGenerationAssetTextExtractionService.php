@@ -5,7 +5,9 @@ namespace App\Services\AiQuestionGeneration\Extraction;
 use App\Exceptions\Api\AiQuestionGenerationException;
 use App\Models\AiQuestionGenerationAsset;
 use App\Models\AiQuestionGenerationRequest;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class AiQuestionGenerationAssetTextExtractionService
 {
@@ -41,25 +43,55 @@ class AiQuestionGenerationAssetTextExtractionService
 
     public function extractAsset(AiQuestionGenerationAsset $asset): ExtractedAssetText
     {
-        $filePath = $this->getStoredAssetPath($asset);
+        $startedAt = hrtime(true);
 
-        $rawText = match (true) {
-            $this->isPdfAsset($asset) => $this->pdfTextExtractor->extract($asset, $filePath),
-            $this->isImageAsset($asset) => $this->imageOcrTextExtractor->extract($asset, $filePath),
-            default => throw AiQuestionGenerationException::providerUnsupportedSourceType(
-                provider: 'TextExtraction',
-                sourceType: $asset->mime_type
-            ),
-        };
+        Log::info('AI question generation asset text extraction started.', [
+            'generation_request_id' => $asset->ai_question_generation_id,
+            'asset_id' => $asset->id,
+            'asset_position' => $asset->position,
+            'mime_type' => $asset->mime_type,
+            'size_bytes' => $asset->size_bytes,
+        ]);
 
-        $text = $this->prepareExtractedText($asset, $rawText);
+        try {
+            $filePath = $this->getStoredAssetPath($asset);
 
-        return new ExtractedAssetText(
-            assetId: $asset->id,
-            originalName: (string) $asset->original_name,
-            mimeType: (string) $asset->mime_type,
-            text: $text,
-        );
+            $rawText = match (true) {
+                $this->isPdfAsset($asset) => $this->pdfTextExtractor->extract($asset, $filePath),
+                $this->isImageAsset($asset) => $this->imageOcrTextExtractor->extract($asset, $filePath),
+                default => throw AiQuestionGenerationException::providerUnsupportedSourceType(
+                    provider: 'TextExtraction',
+                    sourceType: $asset->mime_type
+                ),
+            };
+
+            $text = $this->prepareExtractedText($asset, $rawText);
+
+            Log::info('AI question generation asset text extraction completed.', [
+                'generation_request_id' => $asset->ai_question_generation_id,
+                'asset_id' => $asset->id,
+                'extracted_characters_count' => mb_strlen($text),
+                'elapsed_ms' => $this->elapsedMilliseconds($startedAt),
+            ]);
+
+            return new ExtractedAssetText(
+                assetId: $asset->id,
+                originalName: (string) $asset->original_name,
+                mimeType: (string) $asset->mime_type,
+                text: $text,
+            );
+        } catch (Throwable $exception) {
+            Log::channel('errors')->error('AI question generation asset text extraction failed.', [
+                'generation_request_id' => $asset->ai_question_generation_id,
+                'asset_id' => $asset->id,
+                'mime_type' => $asset->mime_type,
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+                'elapsed_ms' => $this->elapsedMilliseconds($startedAt),
+            ]);
+
+            throw $exception;
+        }
     }
 
     public function prepareExtractedText(AiQuestionGenerationAsset $asset, string $rawText): string
@@ -124,5 +156,10 @@ class AiQuestionGenerationAssetTextExtractionService
     private function isPdfAsset(AiQuestionGenerationAsset $asset): bool
     {
         return $asset->mime_type === 'application/pdf';
+    }
+
+    private function elapsedMilliseconds(int $startedAt): float
+    {
+        return round((hrtime(true) - $startedAt) / 1_000_000, 2);
     }
 }

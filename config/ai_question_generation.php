@@ -41,7 +41,7 @@ return [
     | Polling / Jobs
     |--------------------------------------------------------------------------
     */
-    'queue_name' => env('AI_QUESTION_GENERATION_QUEUE', 'default'),
+    'queue_name' => env('AI_QUESTION_GENERATION_QUEUE', 'heavy'),
 
 
     /*
@@ -64,7 +64,6 @@ return [
         'openrouter' => OpenRouterQuestionGenerationProvider::class,
         'deepseek' => DeepSeekQuestionGenerationProvider::class,
         'cloudflare_workers_ai' => CloudflareWorkersAiQuestionGenerationProvider::class,
-//        'ollama_cloud' => OllamaCloudQuestionGenerationProvider::class,
         'huggingface' => HuggingFaceInferenceQuestionGenerationProvider::class,
         'ollama_local' => OllamaLocalQuestionGenerationProvider::class,
     ],
