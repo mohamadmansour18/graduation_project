@@ -51,19 +51,26 @@ class LibraryDashboardService
     }
 
     /////////////////////////////////////////////////////////////
-    public function searchLibraryMaterials(int $userId, string $query, string $mode = 'all_public', int $perPage = 20): array
+    public function searchLibraryMaterials(
+        int $userId,
+        string $query,
+        string $mode = 'all_public',
+        int $perPage = 20,
+        ?string $cursor = null
+    ): array
     {
         $materialsPaginator = $this->materialRepository->searchMaterials(
             userId: $userId,
             query: $query,
             mode: $mode,
-            perPage: $perPage
+            perPage: $perPage,
+            cursor: $cursor
         );
 
         return [
             'query' => $query,
             'mode' => $mode,
-            'materials' => LibraryMaterialListResource::collection($materialsPaginator),
+            'materials' => LibraryMaterialListResource::collection($materialsPaginator->items()),
             'meta' => [
                 'per_page' => $materialsPaginator->perPage(),
                 'next_cursor' => optional($materialsPaginator->nextCursor())->encode(),

@@ -65,6 +65,13 @@ class AuthController extends Controller
         }
 
         $newToken = JWTAuth::setToken($token)->refresh();
+        $user = JWTAuth::setToken($newToken)->authenticate();
+
+        if (! $user) {
+            throw new TokenMissingException();
+        }
+
+        $this->authService->assertUserIsNotBanned($user);
 
         return $this->dataResponse([
             'newToken' => $newToken,

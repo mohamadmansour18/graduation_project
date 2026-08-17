@@ -48,6 +48,7 @@ class LibraryMaterialController extends Controller
             query: $request->input('query'),
             mode: $request->input('mode', 'all_public'),
             perPage: (int) $request->input('per_page', 20),
+            cursor: $request->input('cursor'),
         );
 
         return $this->dataResponse(

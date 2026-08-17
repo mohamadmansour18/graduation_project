@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Exceptions\Jwt\RefreshTokenExpiredException;
 use App\Exceptions\Jwt\TokenMissingException;
+use App\Services\Auth\AuthService;
 use Closure;
 use Illuminate\Http\Request;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
@@ -11,6 +12,10 @@ use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 class JwtAuthMiddleware
 {
+    public function __construct(
+        private readonly AuthService $authService
+    ) {}
+
     public function handle(Request $request, Closure $next)
     {
         // is token exists ?
@@ -26,6 +31,8 @@ class JwtAuthMiddleware
         if (! $user) {
             throw new TokenMissingException();
         }
+
+        $this->authService->assertUserIsNotBanned($user);
 
         auth()->setUser($user);
 

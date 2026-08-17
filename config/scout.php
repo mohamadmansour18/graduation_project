@@ -208,7 +208,6 @@ return [
                 'searchableAttributes' => [
                     'normalized_title',
                     'title',
-                    'description',
                 ],
                 'filterableAttributes' => [
                     'id',

@@ -36,6 +36,7 @@ class LibraryDashboardController
             query: $request->input('query'),
             mode: $request->input('mode', 'all_public'),
             perPage: (int) $request->input('per_page', 50),
+            cursor: $request->input('cursor'),
         );
 
         return $this->dataResponse(

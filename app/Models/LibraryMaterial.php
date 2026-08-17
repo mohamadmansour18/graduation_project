@@ -138,6 +138,11 @@ class LibraryMaterial extends Model
             'review_status' => $this->review_status,
             'visibility_type' => $this->visibility_type,
             'published_at_timestamp' => optional($this->published_at)->timestamp,
+            'interest_ids' => $this->libraryMaterialInterestSelections()
+                ->pluck('interest_id')
+                ->map(fn ($id) => (int) $id)
+                ->all(),
+            'like_count' => (int) ($this->like_count ?? 0),
         ];
     }
 }

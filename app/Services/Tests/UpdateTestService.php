@@ -841,6 +841,11 @@ class UpdateTestService
         int $userId,
         $revisionRequests = null
     ): void {
+        [$existingQuestionIds, $existingOptionIds] = $this->existingScientificChangeTargetIds(
+            test: $test,
+            changes: $changes
+        );
+
         foreach ($changes as $change) {
             $revisionRequestId = null;
 
@@ -859,13 +864,74 @@ class UpdateTestService
                 testId: (int) $test->id,
                 revisionRequestId: $revisionRequestId,
                 revisionType: $change['type'],
-                targetQuestionId: $change['target_question_id'],
-                targetOptionId: $change['target_option_id'],
+                targetQuestionId: $this->existingTargetId(
+                    targetId: $change['target_question_id'],
+                    existingIds: $existingQuestionIds
+                ),
+                targetOptionId: $this->existingTargetId(
+                    targetId: $change['target_option_id'],
+                    existingIds: $existingOptionIds
+                ),
                 beforeValue: $change['before'],
                 afterValue: $change['after'],
                 changedByUserId: $userId
             );
         }
+    }
+
+    private function existingScientificChangeTargetIds(Test $test, array $changes): array
+    {
+        $targetQuestionIds = collect($changes)
+            ->pluck('target_question_id')
+            ->filter(fn ($id) => $id !== null)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $targetOptionIds = collect($changes)
+            ->pluck('target_option_id')
+            ->filter(fn ($id) => $id !== null)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $existingQuestionIds = empty($targetQuestionIds)
+            ? []
+            : TestQuestion::query()
+                ->where('test_id', $test->id)
+                ->whereIn('id', $targetQuestionIds)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+        $existingOptionIds = empty($targetOptionIds)
+            ? []
+            : TestQuestionOption::query()
+                ->whereIn('id', $targetOptionIds)
+                ->whereHas('testQuestion', function ($query) use ($test) {
+                    $query->where('test_id', $test->id);
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+        return [
+            array_fill_keys($existingQuestionIds, true),
+            array_fill_keys($existingOptionIds, true),
+        ];
+    }
+
+    private function existingTargetId(mixed $targetId, array $existingIds): ?int
+    {
+        if ($targetId === null) {
+            return null;
+        }
+
+        $targetId = (int) $targetId;
+
+        return isset($existingIds[$targetId]) ? $targetId : null;
     }
 
     private function result(Test $test, bool $requiresReview, bool $statusChanged, string $message): array

@@ -498,45 +498,5 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
     });
 
-    Route::get('/test-fcm', function (NotificationCenter $fcm) {
-        try {
-            $payload = NotificationPayload::make(
-                title: 'عملية تسجيل اعجاب',
-                body: 'قام بتسجيل إعجابه بالمحتوى الخاص بك',
-                metadata: [
-                    'type' => 'library_material_liked',
-                    'category' => 'social',
-
-                    'presentation' => [
-                        'mode' => 'user',
-                        'floor_color' => null,
-                        'icon' => null,
-                    ],
-
-                    'actor' => BuildActor::buildUserActor(35),
-
-                    'navigation' => [
-                        'screen' => 'my_library_material_details',
-                        'action' => 'open',
-                    ],
-
-                    'params' => [
-                        'material_id' => 12,
-                        'actor_user_id' => 35,
-                    ],
-                ]);
-            $fcm->sendToUser(
-                828,
-                $payload,
-            );
-            return "تمت العملية بنجاح";
-        }catch (\Exception $e)
-        {
-            return response()->json([
-                'title' => "خطا اتصال من الشبكة!",
-                'body' => $e->getMessage(),
-            ], 422);
-        }
-    });
 });
 

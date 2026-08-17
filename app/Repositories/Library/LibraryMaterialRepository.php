@@ -2,19 +2,19 @@
 
 namespace App\Repositories\Library;
 
-use App\Enums\Decision;
 use App\Enums\LibraryDecision;
 use App\Enums\LibraryMaterialReviewStatus;
 use App\Enums\LibraryTriggerType;
 use App\Enums\SystemRole;
 use App\Enums\VisibilityType;
+use App\Helpers\ArabicSearchNormalizer;
 use App\Models\LibraryMaterial;
 use App\Models\LibraryMaterialAsset;
 use App\Models\LibraryMaterialInterestSelection;
 use App\Models\LibraryMaterialReviewRound;
 use App\Models\LibraryMaterialStatusHistory;
-use App\Models\Test;
 use App\Models\User;
+use App\Support\SearchCursorPaginator;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -87,36 +87,51 @@ class LibraryMaterialRepository
         };
     }
 
-    public function searchMaterials(int $userId, string $query, string $mode = 'all_public', int $perPage = 10): CursorPaginator
+    public function searchMaterials(
+        int $userId,
+        string $query,
+        string $mode = 'all_public',
+        int $perPage = 10,
+        ?string $cursor = null
+    ): SearchCursorPaginator
     {
-        $searchBuilder = LibraryMaterial::search($query);
+        $normalizedQuery = ArabicSearchNormalizer::normalize($query);
+        $searchContext = hash('sha256', implode('|', [
+            $userId,
+            $mode,
+            $perPage,
+            $normalizedQuery,
+        ]));
+
+        $currentPage = SearchCursorPaginator::resolveCurrentPage(
+            encodedCursor: $cursor,
+            expectedContext: $searchContext
+        );
+
+        $searchBuilder = LibraryMaterial::search($normalizedQuery)
+            ->query(fn (Builder $builder) => $builder->select('id'));
 
         if ($mode === 'all_public') {
-            $searchBuilder->query(fn (Builder $builder) =>
-            $builder->where('visibility_type', VisibilityType::Public->value)
+            $searchBuilder
+                ->where('visibility_type', VisibilityType::Public->value)
                 ->where('review_status', LibraryMaterialReviewStatus::Approved->value)
-                ->where('creator_user_id', '!=', $userId)
-            );
+                ->where('creator_user_id', '!=', $userId);
         } elseif ($mode === 'user_owned') {
-            $searchBuilder->query(fn (Builder $builder) =>
-            $builder->where('creator_user_id', $userId)
-            );
+            $searchBuilder->where('creator_user_id', $userId);
         }
 
-        $searchIds = $searchBuilder->keys();
+        $searchPaginator = $searchBuilder->simplePaginate(
+            perPage: $perPage,
+            pageName: 'search_page',
+            page: $currentPage
+        );
 
-        if ($searchIds->isEmpty()) {
-            return LibraryMaterial::query()
-                ->whereIn('id', [0])
-                ->cursorPaginate($perPage);
-        }
-
-        $ids = $searchIds->toArray();
-        $idsString = implode(',', array_map('intval', $ids));
+        $ids = collect($searchPaginator->items())
+            ->map(fn (LibraryMaterial $material) => (int) $material->id)
+            ->values()
+            ->all();
 
         $queryBuilder = LibraryMaterial::with(['firstAsset', 'interests'])
-            ->select('library_material.*')
-            ->selectRaw("FIELD(id, {$idsString}) as search_order")
             ->whereIn('id', $ids);
 
         if ($mode === 'all_public') {
@@ -128,10 +143,20 @@ class LibraryMaterialRepository
             $queryBuilder->where('creator_user_id', $userId);
         }
 
-        return $queryBuilder
-            ->orderBy('search_order')
-            ->orderBy('id')
-            ->cursorPaginate($perPage);
+        $materialsById = $queryBuilder->get()->keyBy('id');
+
+        $materials = collect($ids)
+            ->map(fn (int $id) => $materialsById->get($id))
+            ->filter()
+            ->values();
+
+        return new SearchCursorPaginator(
+            items: $materials,
+            perPage: $perPage,
+            currentPage: $currentPage,
+            hasMorePages: $searchPaginator->hasMorePages(),
+            context: $searchContext,
+        );
     }
 
     ////////////////////////////////////////////////////////////////////
@@ -377,7 +402,7 @@ class LibraryMaterialRepository
         $materialId = $material->id;
 
         DB::afterCommit(function () use ($materialId) {
-            Test::query()
+            LibraryMaterial::query()
                 ->whereKey($materialId)
                 ->first()
                 ?->searchable();

@@ -21,6 +21,7 @@ class SearchLibraryMaterialRequest extends ApiFormRequest
             'query' => ['required', 'string', 'min:2'],
             'mode' => ['nullable', Rule::in(['all_public', 'user_owned'])],
             'per_page' => ['nullable', 'integer', 'min:5', 'max:20'],
+            'cursor' => ['nullable', 'string', 'max:2048'],
         ];
     }
 

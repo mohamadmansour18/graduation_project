@@ -71,13 +71,20 @@ class LibraryMaterialService
         ];
     }
 
-    public function searchLibraryMaterials(int $userId, string $query, string $mode = 'all_public', int $perPage = 20): array
+    public function searchLibraryMaterials(
+        int $userId,
+        string $query,
+        string $mode = 'all_public',
+        int $perPage = 20,
+        ?string $cursor = null
+    ): array
     {
         $materialsPaginator = $this->libraryMaterialRepository->searchMaterials(
             userId: $userId,
             query: $query,
             mode: $mode,
-            perPage: $perPage
+            perPage: $perPage,
+            cursor: $cursor
         );
 
         $materials = collect($materialsPaginator->items());

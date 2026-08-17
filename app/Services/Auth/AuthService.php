@@ -12,6 +12,7 @@ use App\Exceptions\Api\PasswordResetException;
 use App\Jobs\SendFailedLoginAlertJob;
 use App\Jobs\SendOtpMailJob;
 use App\Models\Role;
+use App\Models\User;
 use App\Repositories\Auth\AuthRepository;
 use App\Services\Notifications\FcmTokenService;
 use Illuminate\Support\Facades\DB;
@@ -84,24 +85,7 @@ class AuthService
 
         $this->authRepository->clearFailedLoginForEmail($data['email']);
 
-        //verify user account it not ban
-        $activeBan = $this->authRepository->getActiveBanForUser($user->id);
-
-        if($activeBan)
-        {
-            Log::warning("محاولة تسجيل دخول لحساب محظور" , [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'ban_type' => $activeBan->ban_type,
-            ]);
-
-            throw AuthenticationException::accountBanned(
-                reason: $activeBan->reason ?? "لم يتم تحديد سبب الحظر لحسابك" ,
-                startsAt: $activeBan->starts_at?->toDateTimeString() ?? '',
-                endsAt: $activeBan->ends_at?->toDateTimeString() ?? '',
-                isPermanent: $activeBan->ban_type === BanType::Permanent
-            );
-        }
+        $this->assertUserIsNotBanned($user);
 
 
         if($user->isMobileUser()) {
@@ -146,6 +130,28 @@ class AuthService
             'token' => $token,
             'expires_in' => JWTAuth::factory()->getTTL() * 60,
         ];
+    }
+
+    public function assertUserIsNotBanned(User $user): void
+    {
+        $activeBan = $this->authRepository->getActiveBanForUser($user->id);
+
+        if (! $activeBan) {
+            return;
+        }
+
+        Log::warning('محاولة وصول لحساب محظور', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'ban_type' => $activeBan->ban_type,
+        ]);
+
+        throw AuthenticationException::accountBanned(
+            reason: $activeBan->reason ?? 'لم يتم تحديد سبب الحظر لحسابك',
+            startsAt: $activeBan->starts_at?->toDateTimeString() ?? '',
+            endsAt: $activeBan->ends_at?->toDateTimeString() ?? '',
+            isPermanent: $activeBan->ban_type === BanType::Permanent
+        );
     }
 
     protected function handleFailedLoginAttempt(string $email, $user = null, ?string $ipAddress = null, ?string $userAgent = null): void
