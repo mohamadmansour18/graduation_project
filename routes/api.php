@@ -481,6 +481,11 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
             Route::get('/scientific-interest-categories' , [AllocationDashboardController::class , 'scientificInterestCategories']);
 
             Route::middleware('idempotency')->group(function () {
+                Route::post('/academic-verification-requests/approve/{verificationRequestId}' , [UserDashboardController::class , 'approveAcademicVerificationRequest'])
+                    ->whereNumber('verificationRequestId');
+                Route::post('/academic-verification-requests/reject/{verificationRequestId}' , [UserDashboardController::class , 'rejectAcademicVerificationRequest'])
+                    ->whereNumber('verificationRequestId');
+
                 Route::post('/add/supervisors' , [UserDashboardController::class , 'storeSupervisor']);
                 Route::delete('/delete/supervisor/{supervisorId}' , [UserDashboardController::class , 'deleteSupervisor']);
 
@@ -499,4 +504,3 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
     });
 
 });
-

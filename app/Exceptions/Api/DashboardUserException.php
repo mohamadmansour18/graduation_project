@@ -49,12 +49,84 @@ class DashboardUserException extends ApiException
         );
     }
 
+    public static function academicVerificationRequestNotFound(): self
+    {
+        return new self(
+            title: '! طلب التوثيق غير موجود',
+            message: 'طلب توثيق المستوى الأكاديمي المطلوب غير موجود',
+            status: 404
+        );
+    }
+
+    public static function academicVerificationRequestAlreadyApproved(): self
+    {
+        return new self(
+            title: '! لا يمكن مراجعة طلب التوثيق',
+            message: 'تمت الموافقة على طلب توثيق المستوى الأكاديمي مسبقاً',
+            status: 409
+        );
+    }
+
+    public static function academicVerificationRequestAlreadyRejected(): self
+    {
+        return new self(
+            title: '! لا يمكن مراجعة طلب التوثيق',
+            message: 'تم رفض طلب توثيق المستوى الأكاديمي مسبقاً',
+            status: 409
+        );
+    }
+
     public static function userAlreadyBanned(): self
     {
         return new self(
             title: '! لا يمكن تنفيذ العملية',
             message: 'هذا المستخدم لديه حظر قائم أو مجدول مسبقاً',
             status: 409
+        );
+    }
+
+    public static function banTargetUserNotFound(): self
+    {
+        return new self(
+            title: '! خطأ تحقق',
+            message: 'المستخدم المطلوب حظره غير موجود',
+            status: 422
+        );
+    }
+
+    public static function cannotBanOwner(): self
+    {
+        return new self(
+            title: '! خطأ تحقق',
+            message: 'لا يمكن حظر مالك التطبيق',
+            status: 422
+        );
+    }
+
+    public static function supervisorCanOnlyBanMobileUsers(): self
+    {
+        return new self(
+            title: '! خطأ تحقق',
+            message: 'المشرف يستطيع حظر مستخدمي الموبايل فقط، ولا يمكنه حظر مشرف آخر',
+            status: 422
+        );
+    }
+
+    public static function ownerCanOnlyBanMobileUsersAndSupervisors(): self
+    {
+        return new self(
+            title: '! خطأ تحقق',
+            message: 'مالك التطبيق يستطيع حظر مستخدمي الموبايل والمشرفين فقط',
+            status: 422
+        );
+    }
+
+    public static function roleCannotBanUsers(): self
+    {
+        return new self(
+            title: '! غير مصرح',
+            message: 'دور المستخدم الحالي لا يسمح له بحظر المستخدمين',
+            status: 403
         );
     }
 

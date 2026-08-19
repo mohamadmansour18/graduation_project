@@ -4,6 +4,8 @@ namespace App\Services\Admin;
 
 use App\DTOs\Notifications\NotificationPayload;
 use App\Enums\BanType;
+use App\Enums\Status;
+use App\Enums\SystemRole;
 use App\Exceptions\Api\DashboardUserException;
 use App\Exceptions\Api\ProfileException;
 use App\Helpers\ImageProcessor;
@@ -130,6 +132,148 @@ class UserDashboardService
         ];
     }
 
+    public function approveAcademicVerificationRequest(int $ownerId, int $verificationRequestId): void
+    {
+        $this->reviewAcademicVerificationRequest(
+            ownerId: $ownerId,
+            verificationRequestId: $verificationRequestId,
+            decision: Status::APPROVED,
+        );
+    }
+
+    public function rejectAcademicVerificationRequest(int $ownerId, int $verificationRequestId, string $rejectionReason): void
+    {
+        $this->reviewAcademicVerificationRequest(
+            ownerId: $ownerId,
+            verificationRequestId: $verificationRequestId,
+            decision: Status::REJECTED,
+            rejectionReason: trim($rejectionReason),
+        );
+    }
+
+    private function reviewAcademicVerificationRequest(
+        int $ownerId,
+        int $verificationRequestId,
+        Status $decision,
+        ?string $rejectionReason = null,
+    ): void {
+        $notificationPayload = null;
+
+        DB::transaction(function () use ($ownerId, $verificationRequestId, $decision, $rejectionReason, &$notificationPayload) {
+            $verificationRequest = $this->repository->findAcademicVerificationRequestForUpdate(
+                verificationRequestId: $verificationRequestId,
+            );
+
+            if (! $verificationRequest) {
+                throw DashboardUserException::academicVerificationRequestNotFound();
+            }
+
+            $this->ensureAcademicVerificationRequestIsPending($verificationRequest);
+
+            $requestUser = $this->repository->findAcademicVerificationUserForUpdate(
+                userId: (int) $verificationRequest->user_id,
+            );
+
+            if (! $requestUser) {
+                throw DashboardUserException::academicVerificationRequestNotFound();
+            }
+
+            $reviewedAt = now();
+            $isApproved = $decision === Status::APPROVED;
+
+            $this->repository->updateAcademicVerificationRequest(
+                verificationRequest: $verificationRequest,
+                data: [
+                    'status' => $decision->value,
+                    'reviewer_user_id' => $ownerId,
+                    'reviewed_at' => $reviewedAt,
+                    'rejection_reason' => $isApproved ? null : $rejectionReason,
+                ],
+            );
+
+            $this->repository->updateUserAcademicVerification(
+                user: $requestUser,
+                isVerified: $isApproved,
+                verifiedAt: $isApproved ? $reviewedAt : null,
+            );
+
+            $notificationPayload = [
+                'verification_request_id' => (int) $verificationRequest->id,
+                'user_id' => (int) $verificationRequest->user_id,
+                'status' => $isApproved ? 'approved' : 'rejected',
+                'rejection_reason' => $isApproved ? null : $rejectionReason,
+            ];
+
+            Log::channel('audit')->info('Academic verification request reviewed', [
+                'action' => 'dashboard.academic_verification.review',
+                'verification_request_id' => $verificationRequest->id,
+                'owner_id' => $ownerId,
+                'user_id' => $verificationRequest->user_id,
+                'decision' => $decision->value,
+            ]);
+        });
+
+        if ($notificationPayload !== null) {
+            $this->sendAcademicVerificationDecisionNotification($notificationPayload);
+        }
+    }
+
+    private function ensureAcademicVerificationRequestIsPending(UserAcademicVerificationRequest $verificationRequest): void
+    {
+        if ($verificationRequest->status === Status::APPROVED) {
+            throw DashboardUserException::academicVerificationRequestAlreadyApproved();
+        }
+
+        if ($verificationRequest->status === Status::REJECTED) {
+            throw DashboardUserException::academicVerificationRequestAlreadyRejected();
+        }
+    }
+
+    private function sendAcademicVerificationDecisionNotification(array $data): void
+    {
+        $isApproved = $data['status'] === 'approved';
+
+        $payload = NotificationPayload::make(
+            title: $isApproved
+                ? 'تم توثيق مستواك الأكاديمي'
+                : 'تم رفض طلب توثيق المستوى الأكاديمي',
+            body: $isApproved
+                ? 'تمت الموافقة على طلب توثيق مستواك الأكاديمي بنجاح.'
+                : "تم رفض طلب توثيق مستواك الأكاديمي. السبب: {$data['rejection_reason']}",
+            metadata: [
+                'type' => $isApproved
+                    ? 'academic_verification_approved'
+                    : 'academic_verification_rejected',
+                'category' => 'verification',
+                'presentation' => [
+                    'mode' => 'system',
+                    'floor_color' => $isApproved ? '#E4FFE5' : '#FFE7E7',
+                    'icon' => ImageProcessor::urlOrDefault(
+                        $isApproved
+                            ? 'system-notification/true.svg'
+                            : 'system-notification/trash.svg',
+                        'defaults/notification.svg',
+                        'public'
+                    ),
+                ],
+                'actor' => null,
+                'navigation' => [
+                    'screen' => 'my_profile',
+                    'action' => 'open',
+                ],
+                'params' => [
+                    'verification_request_id' => (int) $data['verification_request_id'],
+                    'status' => $data['status'],
+                ],
+            ],
+        );
+
+        $this->notificationCenter->sendToMobile(
+            userIds: (int) $data['user_id'],
+            payload: $payload,
+        );
+    }
+
     public function showUserProfile(int $userId): array
     {
 
@@ -198,6 +342,15 @@ class UserDashboardService
         $notificationPayload = null;
 
         DB::transaction(function () use ($owner, $targetUserId, $data, &$notificationPayload) {
+            $targetUser = $this->repository->findUserForBanWithLock($targetUserId);
+
+            if (! $targetUser) {
+                throw DashboardUserException::banTargetUserNotFound();
+            }
+
+            $owner->loadMissing('role:id,name');
+            $this->ensureCanBanUser($owner, $targetUser);
+
             $hasActiveBan = $this->repository->hasActiveBanForUserWithLock(
                 userId: $targetUserId,
             );
@@ -256,6 +409,37 @@ class UserDashboardService
         if ($notificationPayload !== null) {
             $this->sendUserBannedNotification($notificationPayload);
         }
+    }
+
+    private function ensureCanBanUser(User $actor, User $targetUser): void
+    {
+        $actorRole = $actor->role?->name;
+        $targetRole = $targetUser->role?->name;
+
+        if ($targetRole === SystemRole::Owner) {
+            throw DashboardUserException::cannotBanOwner();
+        }
+
+        if ($actorRole === SystemRole::Supervisor) {
+            if ($targetRole !== SystemRole::Mobile_User) {
+                throw DashboardUserException::supervisorCanOnlyBanMobileUsers();
+            }
+
+            return;
+        }
+
+        if ($actorRole === SystemRole::Owner) {
+            if (! in_array($targetRole, [
+                SystemRole::Mobile_User,
+                SystemRole::Supervisor,
+            ], true)) {
+                throw DashboardUserException::ownerCanOnlyBanMobileUsersAndSupervisors();
+            }
+
+            return;
+        }
+
+        throw DashboardUserException::roleCannotBanUsers();
     }
 
     public function getUserBanHistory(int $userId): \Illuminate\Support\Collection|EnumeratesValues

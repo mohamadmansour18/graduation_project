@@ -7,21 +7,26 @@ use App\Services\TestAiEvaluation\Providers\OllamaLocalTestAiEvaluationProvider;
 use App\Services\TestAiEvaluation\Providers\OpenRouterTestAiEvaluationProvider;
 
 return [
-    'queue_name' => env('AI_QUESTION_GENERATION_QUEUE', 'default'),
+    'queue_name' => env(
+        'AI_TEST_EVALUATION_QUEUE',
+        env('AI_QUESTION_GENERATION_QUEUE', 'heavy')
+    ),
 
     'cache_ttl_days' => 30,
 
+    'pending_redispatch_after_seconds' => 300,
+
     'provider_chain' => [
-//        'gemini',
-//        'openrouter',
+        'gemini',
+        'openrouter',
         'cloudflare_workers_ai',
         'huggingface',
         'ollama_local',
     ],
 
     'providers' => [
-//        'gemini' => GeminiTestAiEvaluationProvider::class,
-//        'openrouter' => OpenRouterTestAiEvaluationProvider::class,
+        'gemini' => GeminiTestAiEvaluationProvider::class,
+        'openrouter' => OpenRouterTestAiEvaluationProvider::class,
         'cloudflare_workers_ai' => CloudflareWorkersAiTestAiEvaluationProvider::class,
         'huggingface' => HuggingFaceTestAiEvaluationProvider::class,
         'ollama_local' => OllamaLocalTestAiEvaluationProvider::class,

@@ -106,15 +106,24 @@ class TestAiEvaluationRepository
         ])->save();
     }
 
-    public function markAsProcessing(TestAiEvaluationRequest $evaluationRequest, CarbonInterface $startedAt): void
+    public function markAsProcessing(TestAiEvaluationRequest $evaluationRequest, CarbonInterface $startedAt): bool
     {
-        $evaluationRequest->forceFill([
-            'status' => self::STATUS_PROCESSING,
-            'started_at' => $startedAt,
-            'failed_at' => null,
-            'failure_code' => null,
-            'failure_message' => null,
-        ])->save();
+        $claimed = TestAiEvaluationRequest::query()
+            ->whereKey($evaluationRequest->getKey())
+            ->where('status', self::STATUS_PENDING)
+            ->update([
+                'status' => self::STATUS_PROCESSING,
+                'started_at' => $startedAt,
+                'failed_at' => null,
+                'failure_code' => null,
+                'failure_message' => null,
+            ]) === 1;
+
+        if ($claimed) {
+            $evaluationRequest->refresh();
+        }
+
+        return $claimed;
     }
 
     public function markAsCompleted(TestAiEvaluationRequest $evaluationRequest, array $providerResult, CarbonInterface $completedAt): void

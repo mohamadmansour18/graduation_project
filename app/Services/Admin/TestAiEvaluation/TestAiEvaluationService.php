@@ -41,6 +41,8 @@ class TestAiEvaluationService
         $cachedRequest = $this->findCachedReusableRequest($testId, $contentHash);
 
         if ($cachedRequest) {
+            $this->redispatchPendingRequestIfStale($cachedRequest);
+
             return $this->formatCreateResponse($cachedRequest, reused: true, retried: false);
         }
 
@@ -55,8 +57,7 @@ class TestAiEvaluationService
                     questionsCount: $questionsCount
                 );
 
-                ProcessTestAiEvaluationJob::dispatch($existingRequest->id)
-                    ->onQueue(config('test_ai_evaluation.queue_name'));
+                ProcessTestAiEvaluationJob::dispatch($existingRequest->id);
 
                 $existingRequest->refresh();
 
@@ -65,6 +66,7 @@ class TestAiEvaluationService
                 return $this->formatCreateResponse($existingRequest, reused: false, retried: true);
             }
 
+            $this->redispatchPendingRequestIfStale($existingRequest);
             $this->rememberRequest($existingRequest);
 
             return $this->formatCreateResponse($existingRequest, reused: true, retried: false);
@@ -92,8 +94,7 @@ class TestAiEvaluationService
 
         $this->rememberRequest($evaluationRequest);
 
-        ProcessTestAiEvaluationJob::dispatch($evaluationRequest->id)
-            ->onQueue(config('test_ai_evaluation.queue_name'));
+        ProcessTestAiEvaluationJob::dispatch($evaluationRequest->id);
 
         return $this->formatCreateResponse($evaluationRequest, reused: false, retried: false);
     }
@@ -164,6 +165,38 @@ class TestAiEvaluationService
                 ],
                 now()->addDays((int) config('test_ai_evaluation.cache_ttl_days', 30))
             );
+    }
+
+    private function redispatchPendingRequestIfStale(TestAiEvaluationRequest $evaluationRequest): void
+    {
+        $retryAfterSeconds = max(
+            60,
+            (int) config('test_ai_evaluation.pending_redispatch_after_seconds', 300)
+        );
+
+        if (
+            $evaluationRequest->status !== TestAiEvaluationRepository::STATUS_PENDING
+            || ! $evaluationRequest->updated_at
+            || $evaluationRequest->updated_at->isAfter(now()->subSeconds($retryAfterSeconds))
+        ) {
+            return;
+        }
+
+        Cache::lock("test_ai_evaluation:redispatch:{$evaluationRequest->id}", 30)
+            ->get(function () use ($evaluationRequest, $retryAfterSeconds): void {
+                $evaluationRequest->refresh();
+
+                if (
+                    $evaluationRequest->status !== TestAiEvaluationRepository::STATUS_PENDING
+                    || ! $evaluationRequest->updated_at
+                    || $evaluationRequest->updated_at->isAfter(now()->subSeconds($retryAfterSeconds))
+                ) {
+                    return;
+                }
+
+                ProcessTestAiEvaluationJob::dispatch($evaluationRequest->id);
+                $evaluationRequest->touch();
+            });
     }
 
     private function formatCreateResponse(TestAiEvaluationRequest $evaluationRequest, bool $reused, bool $retried): array

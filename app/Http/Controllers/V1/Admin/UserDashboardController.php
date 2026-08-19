@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\BanUserRequest;
 use App\Http\Requests\Admin\ListAcademicVerificationRequestsRequest;
 use App\Http\Requests\Admin\ListBannedUsersRequest;
 use App\Http\Requests\Admin\ListDashboardUsersRequest;
+use App\Http\Requests\Admin\RejectAcademicVerificationRequest;
 use App\Http\Requests\Admin\SearchDashboardUsersRequest;
 use App\Http\Requests\Admin\ShowAcademicVerificationAssetRequest;
 use App\Http\Requests\Admin\StoreSupervisorRequest;
@@ -141,6 +142,31 @@ class UserDashboardController extends Controller
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store, no-cache, must-revalidate',
         ]);
+    }
+
+    public function approveAcademicVerificationRequest(int $verificationRequestId, UserDashboardService $dashboardUserService): JsonResponse
+    {
+        $dashboardUserService->approveAcademicVerificationRequest(
+            ownerId: (int) \Auth::id(),
+            verificationRequestId: $verificationRequestId,
+        );
+
+        return $this->successResponse(
+            message: '! تمت الموافقة على طلب توثيق المستوى الأكاديمي بنجاح'
+        );
+    }
+
+    public function rejectAcademicVerificationRequest(RejectAcademicVerificationRequest $request, int $verificationRequestId, UserDashboardService $dashboardUserService): JsonResponse
+    {
+        $dashboardUserService->rejectAcademicVerificationRequest(
+            ownerId: (int) $request->user()->id,
+            verificationRequestId: $verificationRequestId,
+            rejectionReason: $request->validated('rejection_reason'),
+        );
+
+        return $this->successResponse(
+            message: '! تم رفض طلب توثيق المستوى الأكاديمي بنجاح'
+        );
     }
 
     public function showUserProfile(UserDashboardService $dashboardUserService, int $userId): JsonResponse

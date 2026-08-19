@@ -18,6 +18,7 @@ use App\Models\UserAcademicAsset;
 use App\Models\UserAcademicVerificationRequest;
 use App\Models\UserBan;
 use App\Models\UserProfile;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\Cursor;
@@ -267,6 +268,48 @@ class UserDashboardRepository
             ->where('verification_request_id', $verificationRequestId)
             ->where('asset_type', $assetType)
             ->first();
+    }
+
+    public function findAcademicVerificationRequestForUpdate(int $verificationRequestId): ?UserAcademicVerificationRequest
+    {
+        return UserAcademicVerificationRequest::query()
+            ->select([
+                'id',
+                'user_id',
+                'status',
+                'reviewer_user_id',
+                'reviewed_at',
+                'rejection_reason',
+            ])
+            ->whereKey($verificationRequestId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function findAcademicVerificationUserForUpdate(int $userId): ?User
+    {
+        return User::withTrashed()
+            ->select([
+                'id',
+                'is_academically_verified',
+                'academically_verified_at',
+            ])
+            ->whereKey($userId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function updateAcademicVerificationRequest(UserAcademicVerificationRequest $verificationRequest, array $data): bool
+    {
+        return $verificationRequest->forceFill($data)->save();
+    }
+
+    public function updateUserAcademicVerification(User $user, bool $isVerified, ?DateTimeInterface $verifiedAt): bool
+    {
+        return $user->forceFill([
+            'is_academically_verified' => $isVerified,
+            'academically_verified_at' => $verifiedAt,
+        ])->save();
     }
 
     public function getUserProfileDetails(int $userId): User
@@ -519,6 +562,16 @@ class UserDashboardRepository
             })
             ->lockForUpdate()
             ->exists();
+    }
+
+    public function findUserForBanWithLock(int $userId): ?User
+    {
+        return User::query()
+            ->select(['id', 'role_id'])
+            ->with('role:id,name')
+            ->whereKey($userId)
+            ->lockForUpdate()
+            ->first();
     }
 
     public function createUserBan(array $data): UserBan

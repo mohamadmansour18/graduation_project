@@ -25,7 +25,7 @@ class ProcessTestAiEvaluationJob implements ShouldQueue
     public function __construct(
         private readonly int $evaluationRequestId
     ) {
-        $this->onQueue('heavy');
+        $this->onQueue(config('test_ai_evaluation.queue_name', 'heavy'));
     }
 
     public function handle(TestAiEvaluationRepository $repository, TestAiEvaluationProviderOrchestrator $providerOrchestrator): void
@@ -36,15 +36,11 @@ class ProcessTestAiEvaluationJob implements ShouldQueue
             return;
         }
 
-        if ($evaluationRequest->status !== TestAiEvaluationRepository::STATUS_PENDING) {
+        if (! $repository->markAsProcessing($evaluationRequest, now())) {
             return;
         }
 
-        $repository->markAsProcessing($evaluationRequest, now());
-
         try {
-            $evaluationRequest->refresh();
-
             $result = $providerOrchestrator->evaluate($evaluationRequest);
 
             $repository->markAsCompleted(
