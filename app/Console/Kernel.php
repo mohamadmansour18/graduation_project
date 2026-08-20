@@ -15,17 +15,17 @@ class Kernel extends ConsoleKernel
         $schedule->command('pdf-cache:cleanup-test-downloads --days=7')
             ->dailyAt('03:00')
             ->runInBackground();
-//
-//        $schedule->command('tests:cleanup-stale-review-statuses --hours=48 --limit=200')
-//            ->hourly()
-//            ->withoutOverlapping(60)
-//            ->runInBackground();
-//
-//        $schedule->command('library-materials:cleanup-stale-review-statuses --hours=48 --limit=200')
-//            ->hourly()
-//            ->withoutOverlapping(60)
-//            ->runInBackground();
-//
+
+        $schedule->command('tests:cleanup-stale-review-statuses --hours=48 --limit=200')
+            ->hourly()
+            ->withoutOverlapping(60)
+            ->runInBackground();
+
+        $schedule->command('library-materials:cleanup-stale-review-statuses --hours=48 --limit=200')
+            ->hourly()
+            ->withoutOverlapping(60)
+            ->runInBackground();
+
         $schedule->command('study-notifications:task-start')
             ->everyMinute()
             ->withoutOverlapping()
