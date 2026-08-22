@@ -157,7 +157,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::get('/tests/filter', [TestFilterController::class, 'filter']);
 
-                Route::middleware('throttle:4,3')->group(function () {
+                Route::middleware('throttle:12,3')->group(function () {
                     Route::post('/like/{testId}' , [TestLikeController::class , 'like']);
                     Route::delete('/unlike/{testId}' , [TestLikeController::class , 'unlike']);
 
@@ -208,7 +208,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/followers/{userId}', [PublicProfileController::class, 'followers']); //يلي متابعيني
                 Route::get('/following/{userId}', [PublicProfileController::class, 'following']); //يلي انا متابعهن
 
-                Route::middleware(['throttle:8,2' , 'idempotency'])->group(function () {
+                Route::middleware(['throttle:10,2' , 'idempotency'])->group(function () {
                     Route::post('/follow/{userId}' , [FollowController::class , 'follow']);
                     Route::delete('/unfollow/{userId}' , [FollowController::class , 'unfollow']);
 
@@ -242,7 +242,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 });
 
                 Route::middleware('idempotency')->group(function () {
-                    Route::post('/create-content' , [LibraryMaterialController::class , 'store'])->middleware('throttle:3,2');
+                    Route::post('/create-content' , [LibraryMaterialController::class , 'store'])->middleware('throttle:10,2');
                     Route::post('/reports/{libraryMaterial}' , [LibraryMaterialReportController::class , 'store']);
                     Route::delete('/delete/material/{libraryMaterial}', [LibraryMaterialController::class, 'destroy']);
                     Route::post('/update/material/{libraryMaterial}' , [LibraryMaterialController::class, 'update']);
@@ -263,7 +263,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/folder/{userId}' , [MyProfileController::class , 'folders']);
 
 
-                Route::middleware(['idempotency' , 'throttle:8,1'])->group(function () {
+                Route::middleware(['idempotency' , 'throttle:10,1'])->group(function () {
                     Route::post('/update/basic-info/{userId}' , [MyProfileController::class, 'updatePersonalInformation']);
                     Route::post('/update/academic-info/{userId}' , [MyProfileController::class, 'updateAcademicInformation']);
                     Route::post('/update/scientific-interests/{userId}' , [MyProfileController::class, 'updateScientificInterests']);
@@ -299,7 +299,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
 
                 Route::get('/reminder-schedule' , [StudyPlanController::class , 'index']);
 
-                Route::middleware(['idempotency' , 'throttle:10,5'])->group(function () {
+                Route::middleware(['idempotency' , 'throttle:20,2'])->group(function () {
                     Route::post('/create' , [StudyPlanController::class, 'store']);
 
                     Route::post('/create/study-subjects' , [StudySubjectController::class , 'store']);
@@ -328,7 +328,7 @@ Route::prefix('v1')->middleware(['force.json' , 'request.id' ])->group(function 
                 Route::get('/get-setting' , [SettingsController::class, 'show']);
                 Route::get('/get-my-purchases' , [UserSalesController::class, 'myPurchasesTest']);
 
-                Route::middleware(['idempotency' , 'throttle:4,5'])->group(function () {
+                Route::middleware(['idempotency' , 'throttle:20,2'])->group(function () {
                     Route::patch('/task-reminders/enable', [SettingsController::class, 'enableTaskReminders']);
                     Route::patch('/task-reminders/disable', [SettingsController::class, 'disableTaskReminders']);
                     Route::post('/date-time', [SettingsController::class, 'updateDateTimeSettings']);

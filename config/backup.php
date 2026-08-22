@@ -13,7 +13,8 @@ return [
             'files' => [
 
                 'include' => [
-                    base_path(),
+                    storage_path('app/public'),
+                    storage_path('app/academic-verification'),
                 ],
 
                 'exclude' => [
@@ -25,6 +26,7 @@ return [
                     storage_path('framework/sessions'),
                     storage_path('framework/views'),
                     storage_path('app/backup-temp'),
+                    storage_path('app/public/downloads/nerd.apk'),
                 ],
 
                 'follow_links' => false,

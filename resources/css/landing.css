@@ -542,7 +542,6 @@ html[data-theme="dark"] .theme-icon--moon {
 .primary-button svg {
     width: 19px;
     height: 19px;
-    transform: rotate(180deg);
 }
 
 .text-link {
@@ -1774,6 +1773,381 @@ html[data-theme="dark"] .theme-icon--moon {
     font-weight: 500;
 }
 
+.download {
+    padding-block: 145px 0;
+}
+
+.download-card {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(390px, 0.95fr);
+    align-items: center;
+    min-height: 660px;
+    padding: 70px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-lg);
+    background:
+        radial-gradient(circle at 14% 18%, rgba(101, 209, 255, 0.2), transparent 30%),
+        linear-gradient(125deg, #081731 0%, #102b69 48%, #315fe2 100%);
+    color: #fff;
+    box-shadow:
+        0 45px 110px rgba(19, 52, 137, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.download-grid-pattern {
+    position: absolute;
+    z-index: -2;
+    inset: 0;
+    opacity: 0.12;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.26) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.26) 1px, transparent 1px);
+    background-size: 58px 58px;
+    mask-image: linear-gradient(90deg, #000, rgba(0, 0, 0, 0.22) 70%, transparent);
+}
+
+.download-glow {
+    position: absolute;
+    z-index: -1;
+    display: block;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(2px);
+}
+
+.download-glow--one {
+    inset-block-start: -210px;
+    inset-inline-start: -150px;
+    width: 530px;
+    height: 530px;
+    background: radial-gradient(circle, rgba(102, 216, 255, 0.3), transparent 68%);
+}
+
+.download-glow--two {
+    inset-inline-end: -180px;
+    inset-block-end: -260px;
+    width: 650px;
+    height: 650px;
+    background: radial-gradient(circle, rgba(120, 101, 255, 0.34), transparent 65%);
+}
+
+.download-copy {
+    position: relative;
+    z-index: 3;
+}
+
+.download-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin-block-end: 29px;
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.09);
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 0.68rem;
+    font-weight: 600;
+    backdrop-filter: blur(14px);
+}
+
+.download-badge > span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #70e3b0;
+    box-shadow: 0 0 0 5px rgba(112, 227, 176, 0.12), 0 0 17px rgba(112, 227, 176, 0.7);
+}
+
+.download-copy h2 {
+    margin: 12px 0 0;
+    font-size: clamp(2.65rem, 4.6vw, 4.85rem);
+    font-weight: 800;
+    letter-spacing: -0.055em;
+    line-height: 1.2;
+}
+
+.download-copy h2 span {
+    color: #bde9ff;
+}
+
+.download-copy > p:not(.download-note) {
+    max-width: 590px;
+    margin: 23px 0 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.87rem;
+    font-weight: 300;
+    line-height: 2;
+}
+
+.download-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 17px 22px;
+    margin-block-start: 32px;
+}
+
+.apk-download-button {
+    position: relative;
+    display: inline-grid;
+    grid-template-columns: 45px auto 38px;
+    align-items: center;
+    gap: 13px;
+    min-width: 315px;
+    min-height: 76px;
+    padding: 10px 12px 10px 15px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    background: #fff;
+    color: #102451;
+    box-shadow: 0 21px 50px rgba(3, 13, 40, 0.28);
+    transition: transform 0.28s var(--ease), box-shadow 0.28s ease;
+}
+
+.apk-download-button::before {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 25%, rgba(92, 152, 255, 0.14), transparent 70%);
+    content: "";
+    transform: translateX(115%);
+    transition: transform 0.7s var(--ease);
+}
+
+.apk-download-button:hover {
+    box-shadow: 0 25px 60px rgba(3, 13, 40, 0.36);
+    transform: translateY(-4px);
+}
+
+.apk-download-button:hover::before {
+    transform: translateX(-115%);
+}
+
+.apk-download-button__icon {
+    display: grid;
+    place-items: center;
+    width: 45px;
+    height: 45px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #315fe2, #4d82ff);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(49, 95, 226, 0.24);
+}
+
+.apk-download-button__icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.apk-download-button__copy {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.5;
+}
+
+.apk-download-button__copy small {
+    color: #71809d;
+    font-size: 0.59rem;
+    font-weight: 500;
+}
+
+.apk-download-button__copy strong {
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.apk-download-button__type {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    height: 30px;
+    border: 1px solid #dbe4f8;
+    border-radius: 9px;
+    background: #f3f6fc;
+    color: #4f6286;
+    direction: ltr;
+    font-size: 0.56rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.download-meta {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: rgba(255, 255, 255, 0.7);
+    direction: ltr;
+    font-size: 0.62rem;
+    font-weight: 500;
+}
+
+.download-meta i {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.download-note {
+    margin: 17px 0 0;
+    color: rgba(255, 255, 255, 0.48);
+    font-size: 0.58rem;
+    font-weight: 300;
+}
+
+.download-showcase {
+    --download-shift-x: 0px;
+    --download-shift-y: 0px;
+    --download-float-x: 0px;
+    --download-float-y: 0px;
+    position: relative;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    min-height: 545px;
+    perspective: 1100px;
+}
+
+.download-orbit {
+    position: absolute;
+    border: 1px solid rgba(255, 255, 255, 0.17);
+    border-radius: 50%;
+}
+
+.download-orbit::before,
+.download-orbit::after {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #7edcff;
+    box-shadow: 0 0 17px rgba(126, 220, 255, 0.8);
+    content: "";
+}
+
+.download-orbit--outer {
+    width: 500px;
+    height: 500px;
+    transform: rotate(-11deg);
+}
+
+.download-orbit--outer::before {
+    inset-block-start: 15%;
+    inset-inline-end: 10%;
+}
+
+.download-orbit--outer::after {
+    inset-block-end: 12%;
+    inset-inline-start: 12%;
+}
+
+.download-orbit--inner {
+    width: 385px;
+    height: 385px;
+    border-style: dashed;
+    opacity: 0.62;
+    transform: rotate(18deg);
+}
+
+.download-orbit--inner::before {
+    inset-block-start: 50%;
+    inset-inline-start: -4px;
+}
+
+.download-orbit--inner::after {
+    display: none;
+}
+
+.phone-shell--download {
+    width: 258px;
+    transform:
+        translate3d(var(--download-shift-x), var(--download-shift-y), 0)
+        rotateY(-7deg)
+        rotateX(2deg)
+        rotateZ(3deg);
+    box-shadow:
+        0 45px 90px rgba(1, 9, 31, 0.48),
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    transition: transform 0.25s ease-out;
+}
+
+.download-format-pill,
+.download-floating-status {
+    position: absolute;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.17);
+    background: rgba(5, 18, 53, 0.76);
+    box-shadow: 0 20px 45px rgba(2, 11, 34, 0.34);
+    backdrop-filter: blur(17px);
+    transition: transform 0.25s ease-out;
+}
+
+.download-format-pill {
+    inset-block-start: 77px;
+    inset-inline-start: -10px;
+    gap: 11px;
+    padding: 12px 15px;
+    border-radius: 18px;
+    transform: translate3d(var(--download-float-x), var(--download-float-y), 0);
+}
+
+.download-format-pill > span,
+.download-status-icon {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: rgba(100, 166, 255, 0.18);
+    color: #8bdcff;
+}
+
+.download-format-pill svg,
+.download-status-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.download-format-pill small,
+.download-floating-status small {
+    display: block;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.53rem;
+}
+
+.download-format-pill strong,
+.download-floating-status strong {
+    display: block;
+    color: #fff;
+    font-size: 0.66rem;
+}
+
+.download-floating-status {
+    inset-inline-end: -12px;
+    inset-block-end: 74px;
+    gap: 11px;
+    min-width: 175px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    transform: translate3d(var(--download-float-x), var(--download-float-y), 0);
+}
+
+.download-status-icon {
+    background: rgba(72, 213, 155, 0.16);
+    color: #78e4b6;
+}
+
 .closing {
     padding-block-start: 135px;
 }
@@ -2028,6 +2402,20 @@ html[data-theme="dark"] .theme-icon--moon {
     .preview-controls {
         inset-inline: 24px;
     }
+
+    .download-card {
+        grid-template-columns: minmax(0, 1fr) minmax(350px, 0.82fr);
+        padding: 58px;
+    }
+
+    .download-showcase {
+        min-height: 520px;
+    }
+
+    .download-orbit--outer {
+        width: 440px;
+        height: 440px;
+    }
 }
 
 @media (max-width: 900px) {
@@ -2176,6 +2564,26 @@ html[data-theme="dark"] .theme-icon--moon {
 
     .audience-card--featured:hover {
         transform: translateY(-6px);
+    }
+
+    .download-card {
+        grid-template-columns: 1fr;
+        padding: 55px 48px 35px;
+        text-align: center;
+    }
+
+    .download-copy > p:not(.download-note) {
+        margin-inline: auto;
+    }
+
+    .download-actions {
+        justify-content: center;
+    }
+
+    .download-showcase {
+        width: min(100%, 570px);
+        min-height: 555px;
+        margin-inline: auto;
     }
 
     .closing-card {
@@ -2420,6 +2828,74 @@ html[data-theme="dark"] .theme-icon--moon {
         inset-inline-end: 25px;
     }
 
+    .download {
+        padding-block: 88px 0;
+    }
+
+    .download-card {
+        padding: 40px 22px 22px;
+        border-radius: 28px;
+    }
+
+    .download-copy h2 {
+        font-size: clamp(2.15rem, 10.5vw, 3.25rem);
+    }
+
+    .download-copy > p:not(.download-note) {
+        font-size: 0.78rem;
+    }
+
+    .download-actions {
+        flex-direction: column;
+        margin-block-start: 27px;
+    }
+
+    .apk-download-button {
+        grid-template-columns: 43px auto 36px;
+        width: min(100%, 345px);
+        min-width: 0;
+        text-align: start;
+    }
+
+    .download-meta {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .download-note {
+        max-width: 330px;
+        margin-inline: auto;
+        line-height: 1.8;
+    }
+
+    .download-showcase {
+        min-height: 485px;
+    }
+
+    .phone-shell--download {
+        width: 226px;
+    }
+
+    .download-orbit--outer {
+        width: 390px;
+        height: 390px;
+    }
+
+    .download-orbit--inner {
+        width: 310px;
+        height: 310px;
+    }
+
+    .download-format-pill {
+        inset-block-start: 67px;
+        inset-inline-start: -3px;
+    }
+
+    .download-floating-status {
+        inset-inline-end: -3px;
+        inset-block-end: 62px;
+    }
+
     .closing {
         padding-block-start: 88px;
     }
@@ -2445,6 +2921,8 @@ html[data-theme="dark"] .theme-icon--moon {
 
     .footer-links {
         order: 2;
+        justify-content: center;
+        flex-wrap: wrap;
     }
 }
 
@@ -2467,6 +2945,33 @@ html[data-theme="dark"] .theme-icon--moon {
 
     .phone-shell--hero {
         width: 238px;
+    }
+
+    .download-card {
+        padding-inline: 17px;
+    }
+
+    .apk-download-button {
+        grid-template-columns: 40px auto 34px;
+        gap: 9px;
+        padding-inline: 9px;
+    }
+
+    .apk-download-button__copy strong {
+        font-size: 0.76rem;
+    }
+
+    .download-format-pill,
+    .download-floating-status {
+        transform: scale(0.9);
+    }
+
+    .download-format-pill {
+        inset-inline-start: -18px;
+    }
+
+    .download-floating-status {
+        inset-inline-end: -20px;
     }
 }
 

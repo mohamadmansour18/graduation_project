@@ -86,6 +86,8 @@ class SendFcmNotificationJob implements ShouldQueue
                         'notification_key' => $payload->notificationKey,
                         'message' => $exception->getMessage(),
                     ]);
+
+                    throw $exception;
                 }
             });
     }

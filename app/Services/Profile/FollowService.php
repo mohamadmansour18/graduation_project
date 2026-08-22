@@ -45,6 +45,11 @@ class FollowService
 
             $this->followRepository->incrementFollowingCount($followerUserId);
             $this->followRepository->incrementFollowersCount($followedUserId);
+
+            $notificationPayload = [
+                'follower_user_id' => $followerUserId,
+                'followed_user_id' => $followedUserId,
+            ];
         });
 
         CacheKeys::clearMyBasicProfileInfo($followerUserId);

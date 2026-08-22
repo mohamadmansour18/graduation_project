@@ -42,7 +42,7 @@ class Kernel extends ConsoleKernel
             ->runInBackground();
 
         $schedule
-            ->command('backup:run --only-db')
+            ->command('backup:run')
             ->weeklyOn(5, '04:00')
             ->withoutOverlapping(180);
 

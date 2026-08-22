@@ -29,7 +29,7 @@ class ImageContentHeuristicValidator
     public function validate(UploadedFile $file, int $fileIndex): void
     {
         $imagePath = $file->getRealPath();
-        $imageInfo = $imagePath ? @getimagesize($imagePath) : false ;
+        $imageInfo = $imagePath ? @getimagesize($imagePath) : false;
 
         if ($imageInfo === false) {
             throw AiQuestionGenerationException::imageCannotBeProcessed($fileIndex);
@@ -83,7 +83,7 @@ class ImageContentHeuristicValidator
 
     private function createImageResource(string $imagePath, int $imageType): ?GdImage
     {
-        //check if the GD library is active or not
+        // check if the GD library is active or not
         if (! extension_loaded('gd')) {
             return null;
         }
@@ -98,13 +98,13 @@ class ImageContentHeuristicValidator
     private function createSampleImage(GdImage $sourceImage, int $sourceWidth, int $sourceHeight): ?GdImage
     {
         $sampleSize = (int) config('ai_question_generation.local_validation.image_sample_size', 64);
-        $sampleImage = imagecreatetruecolor($sampleSize, $sampleSize);  //create an empty image with specific dimensions
+        $sampleImage = imagecreatetruecolor($sampleSize, $sampleSize);  // create an empty image with specific dimensions
 
         if (! $sampleImage) {
             return null;
         }
 
-        //copy content of original image to empty image
+        // copy content of original image to empty image
         $resampled = imagecopyresampled(
             $sampleImage,
             $sourceImage,
@@ -132,16 +132,21 @@ class ImageContentHeuristicValidator
         $width = imagesx($sampleImage);
         $height = imagesy($sampleImage);
         $pixelCount = $width * $height;
+        $darkPixelBrightnessThreshold = (float) config(
+            'ai_question_generation.local_validation.blank_brightness_low',
+            8
+        );
 
-        $sum = 0.0;             //Total brightness per pixel
-        $sumSquares = 0.0;      //the sum of the squares of the brightness is later used to calculate the contrast
-        $min = 255.0;           //min brightness in image "start with 255 because the highest value of brightness is 255"
-        $max = 0.0;             //max brightness in image "start with 0 because the lowest value of brightness is 0"
+        $sum = 0.0;             // Total brightness per pixel
+        $sumSquares = 0.0;      // the sum of the squares of the brightness is later used to calculate the contrast
+        $min = 255.0;           // min brightness in image "start with 255 because the highest value of brightness is 255"
+        $max = 0.0;             // max brightness in image "start with 0 because the lowest value of brightness is 0"
+        $darkPixelCount = 0;
 
         for ($y = 0; $y < $height; $y++) {
             for ($x = 0; $x < $width; $x++) {
 
-                $rgb = imagecolorat($sampleImage, $x, $y);      //get RGB value for specific pixel "the function return color in one int value like : 255150200"
+                $rgb = imagecolorat($sampleImage, $x, $y);      // get RGB value for specific pixel "the function return color in one int value like : 255150200"
 
                 $red = ($rgb >> 16) & 0xFF;
                 $green = ($rgb >> 8) & 0xFF;
@@ -153,6 +158,10 @@ class ImageContentHeuristicValidator
                 $sumSquares += $brightness * $brightness;
                 $min = min($min, $brightness);
                 $max = max($max, $brightness);
+
+                if ($brightness <= $darkPixelBrightnessThreshold) {
+                    $darkPixelCount++;
+                }
             }
         }
 
@@ -160,27 +169,25 @@ class ImageContentHeuristicValidator
         $variance = max(0, ($sumSquares / $pixelCount) - ($mean * $mean));
 
         return [
-            'mean' => $mean,                //avg brightness
-            'stddev' => sqrt($variance),    //الانحراف المعياري يخبرنا هل الصورة موحدة أم فيها اختلافات
-            'range' => $max - $min,         //المدى بين افتح بكسل واغمق بكسل
+            'mean' => $mean,                // avg brightness
+            'stddev' => sqrt($variance),    // الانحراف المعياري يخبرنا هل الصورة موحدة أم فيها اختلافات
+            'range' => $max - $min,         // المدى بين افتح بكسل واغمق بكسل
+            'dark_ratio' => $darkPixelCount / $pixelCount,
         ];
     }
 
     private function isBlankOrUniform(array $stats): bool
     {
-        $lowBrightness = (float) config('ai_question_generation.local_validation.blank_brightness_low', 8);
-        $highBrightness = (float) config('ai_question_generation.local_validation.blank_brightness_high', 247);
         $stddevThreshold = (float) config('ai_question_generation.local_validation.blank_stddev_threshold', 2.5);
         $rangeThreshold = (float) config('ai_question_generation.local_validation.blank_range_threshold', 8);
+        $darkRatioThreshold = (float) config(
+            'ai_question_generation.local_validation.blank_dark_ratio_threshold',
+            0.97
+        );
 
         $isNearlyUniform = $stats['stddev'] <= $stddevThreshold && $stats['range'] <= $rangeThreshold;
+        $isMostlyDark = $stats['dark_ratio'] >= $darkRatioThreshold;
 
-        if (! $isNearlyUniform) {
-            return false;
-        }
-
-        return $stats['mean'] <= $lowBrightness
-            || $stats['mean'] >= $highBrightness
-            || $stats['range'] <= $rangeThreshold;
+        return $isNearlyUniform || $isMostlyDark;
     }
 }

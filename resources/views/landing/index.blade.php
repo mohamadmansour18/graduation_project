@@ -77,11 +77,12 @@
                 <a href="#experience">التجربة</a>
                 <a href="#features">المزايا</a>
                 <a href="#audience">لمن نيرد؟</a>
+                <a href="#download">تحميل التطبيق</a>
                 <a href="#contact">تواصل معنا</a>
             </nav>
 
             <div class="header-actions">
-                <a class="header-explore" href="#experience">استكشف نيرد</a>
+                <a class="header-explore" href="#download">حمّل التطبيق</a>
                 <button
                     class="theme-toggle"
                     id="theme-toggle"
@@ -124,14 +125,14 @@
                     </p>
 
                     <div class="hero-actions">
-                        <a class="primary-button" href="#experience">
-                            <span>شاهد نيرد عن قرب</span>
+                        <a class="primary-button" href="#download">
+                            <span>حمّل تطبيق نيرد</span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 12h14m-6-6 6 6-6 6"/>
+                                <path d="M12 4v11m-4-4 4 4 4-4M5 19h14"/>
                             </svg>
                         </a>
-                        <a class="text-link" href="#features">
-                            اكتشف المزايا
+                        <a class="text-link" href="#experience">
+                            شاهد نيرد عن قرب
                             <span aria-hidden="true">↓</span>
                         </a>
                     </div>
@@ -620,6 +621,102 @@
             </div>
         </section>
 
+        <section class="download section" id="download">
+            <div class="container">
+                <div class="download-card reveal">
+                    <div class="download-grid-pattern" aria-hidden="true"></div>
+                    <span class="download-glow download-glow--one" aria-hidden="true"></span>
+                    <span class="download-glow download-glow--two" aria-hidden="true"></span>
+
+                    <div class="download-copy">
+                        <div class="download-badge">
+                            <span aria-hidden="true"></span>
+                            متوفر لأجهزة Android
+                        </div>
+
+                        <span class="section-kicker section-kicker--light">نيرد معك أينما درست</span>
+                        <h2>حمّل التطبيق،<br><span>وابدأ رحلة تعلّم أذكى.</span></h2>
+                        <p>
+                            خذ اختباراتك، مكتبتك، خطتك الدراسية ومجتمعك المعرفي
+                            معك في تجربة واحدة صُممت لتبقي تعلّمك مستمرًا.
+                        </p>
+
+                        <div class="download-actions">
+                            <a
+                                class="apk-download-button"
+                                href="{{ asset('storage/downloads/nerd.apk') }}"
+                                download="Nerd.apk"
+                                aria-label="تحميل تطبيق نيرد بصيغة APK لأجهزة Android"
+                            >
+                                <span class="apk-download-button__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M12 3v12m-4-4 4 4 4-4M5 20h14"/>
+                                    </svg>
+                                </span>
+                                <span class="apk-download-button__copy">
+                                    <small>تنزيل مباشر بصيغة APK</small>
+                                    <strong>تحميل تطبيق نيرد</strong>
+                                </span>
+                                <span class="apk-download-button__type" aria-hidden="true">APK</span>
+                            </a>
+
+                            <div class="download-meta" aria-label="معلومات ملف التطبيق">
+                                <span>Android</span>
+                                <i aria-hidden="true"></i>
+                                <span>APK</span>
+                                <i aria-hidden="true"></i>
+                                <span>حوالي 80 MB</span>
+                            </div>
+                        </div>
+
+                        <p class="download-note">
+                            قد يطلب Android السماح بالتثبيت من هذا المصدر عند فتح الملف لأول مرة.
+                        </p>
+                    </div>
+
+                    <div class="download-showcase" id="download-showcase" aria-hidden="true">
+                        <span class="download-orbit download-orbit--outer"></span>
+                        <span class="download-orbit download-orbit--inner"></span>
+
+                        <div class="download-format-pill">
+                            <span>
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 3v12m-4-4 4 4 4-4M5 20h14"/>
+                                </svg>
+                            </span>
+                            <small>نسخة Android</small>
+                            <strong>جاهزة للتنزيل</strong>
+                        </div>
+
+                        <div class="phone-shell phone-shell--download">
+                            <div class="phone-speaker"></div>
+                            <div class="phone-screen">
+                                <img
+                                    src="{{ asset('images/landing/home.png') }}"
+                                    width="373"
+                                    height="842"
+                                    alt=""
+                                    loading="lazy"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="download-floating-status">
+                            <span class="download-status-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="m6.5 12.5 3.2 3.2L17.5 8"/>
+                                </svg>
+                            </span>
+                            <span>
+                                <small>كل أدواتك</small>
+                                <strong>في مكان واحد</strong>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="closing section" id="contact">
             <div class="container">
                 <div class="closing-card reveal">
@@ -673,6 +770,7 @@
                 <a href="#experience">التجربة</a>
                 <a href="#features">المزايا</a>
                 <a href="#audience">لمن نيرد؟</a>
+                <a href="#download">تحميل التطبيق</a>
             </div>
         </div>
     </footer>

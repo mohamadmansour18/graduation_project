@@ -287,6 +287,32 @@ if (heroVisual && !prefersReducedMotion && window.matchMedia('(pointer: fine)').
     });
 }
 
+const downloadShowcase = document.querySelector('#download-showcase');
+
+if (
+    downloadShowcase
+    && !prefersReducedMotion
+    && window.matchMedia('(pointer: fine)').matches
+) {
+    downloadShowcase.addEventListener('pointermove', (event) => {
+        const bounds = downloadShowcase.getBoundingClientRect();
+        const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+        const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+
+        downloadShowcase.style.setProperty('--download-shift-x', `${x * 10}px`);
+        downloadShowcase.style.setProperty('--download-shift-y', `${y * 8}px`);
+        downloadShowcase.style.setProperty('--download-float-x', `${x * -7}px`);
+        downloadShowcase.style.setProperty('--download-float-y', `${y * -6}px`);
+    });
+
+    downloadShowcase.addEventListener('pointerleave', () => {
+        downloadShowcase.style.removeProperty('--download-shift-x');
+        downloadShowcase.style.removeProperty('--download-shift-y');
+        downloadShowcase.style.removeProperty('--download-float-x');
+        downloadShowcase.style.removeProperty('--download-float-y');
+    });
+}
+
 const currentYear = document.querySelector('#current-year');
 
 if (currentYear) {
