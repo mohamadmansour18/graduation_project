@@ -212,6 +212,8 @@ class LibraryDashboardRepository
         return LibraryMaterial::query()
             ->select([
                 'id',
+                'creator_user_id',
+                'title',
                 'review_status',
                 'current_approval_version',
                 'published_at',
