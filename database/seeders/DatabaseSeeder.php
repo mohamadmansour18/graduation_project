@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
             InterestCategorySeeder::class,
             InterestSeeder::class,
             DashboardUsersSeeder::class,
-//            TestDiscoveryRecommendationSeeder::class,
+            TestDiscoveryRecommendationSeeder::class,
 //            LibraryMaterialArabicSeeder::class,
         ]);
     }

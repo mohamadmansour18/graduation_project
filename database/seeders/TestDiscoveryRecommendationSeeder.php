@@ -7,6 +7,7 @@ use App\Enums\DiscoverySource;
 use App\Enums\Decision;
 use App\Enums\EducationLevel;
 use App\Enums\Gender;
+use App\Enums\Governorate;
 use App\Enums\Language;
 use App\Enums\PaymentStatus;
 use App\Enums\RevisionType;
@@ -95,6 +96,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             $userSchoolRows = [];
             $userUniversityRows = [];
             $userInterestRows = [];
+            $userProfileRows = [];
             $userProfileStatsSeed = [];
             $resolvedUsers = [];
 
@@ -130,6 +132,20 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                     'user_id' => $userId,
                     'interest_id' => $blueprint['interest_id'],
                     'slot_no' => 1,
+                    'created_at' => $blueprint['timestamps']['created_at'],
+                    'updated_at' => $blueprint['timestamps']['updated_at'],
+                ];
+
+                $userProfileRows[] = [
+                    'user_id' => $userId,
+                    'phone' => null,
+                    'birth_date' => null,
+                    'avatar_disk' => null,
+                    'avatar_path' => null,
+                    'cover_disk' => null,
+                    'cover_path' => null,
+                    'profile_slug' => null,
+                    'governorate' => $this->pickValueByIndex(Governorate::cases(), $userId),
                     'created_at' => $blueprint['timestamps']['created_at'],
                     'updated_at' => $blueprint['timestamps']['updated_at'],
                 ];
@@ -266,6 +282,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             $this->insertInChunks('user_school_profiles', $userSchoolRows);
             $this->insertInChunks('user_university_profiles', $userUniversityRows);
             $this->insertInChunks('user_interest_selections', $userInterestRows);
+            $this->insertInChunks('user_profile', $userProfileRows);
             $this->insertInChunks('user_follows', $userFollowRows);
             $this->insertInChunks('test', $testsRows);
 
@@ -439,10 +456,8 @@ class TestDiscoveryRecommendationSeeder extends Seeder
                     'onboarding_completed_at' => $timestamps['completed_at'],
                     'last_login_at' => $timestamps['last_login_at'],
                     'gender' => $gender,
-                    'is_academically_verified' => $educationLevel !== EducationLevel::School->value,
-                    'academically_verified_at' => $educationLevel !== EducationLevel::School->value
-                        ? $timestamps['completed_at']
-                        : null,
+                    'is_academically_verified' => false,
+                    'academically_verified_at' => null,
                     'created_at' => $timestamps['created_at'],
                     'updated_at' => $timestamps['updated_at'],
                 ],
@@ -1527,25 +1542,11 @@ class TestDiscoveryRecommendationSeeder extends Seeder
     ): string {
         $variant = ($testIndex + $questionPosition) % 4;
 
-        return match ($language) {
-            Language::English->value => match ($variant) {
-                0 => "Which statement best describes the core objective of {$interestName} for {$targetLevel} at {$difficulty} level?",
-                1 => "In a realistic {$interestName} scenario, what should the learner do first to meet the {$difficulty} objective?",
-                2 => "Which option reflects the most accurate best practice for {$interestName} when the audience is {$targetLevel}?",
-                default => "What is the most suitable next step when applying {$interestName} concepts in an {$difficulty} assessment for {$targetLevel}?",
-            },
-            Language::Mixed->value => match ($variant) {
-                0 => "أي option يشرح best practice في {$interestName} لفئة {$targetLevel} بمستوى {$difficulty}؟",
-                1 => "في هذا السؤال عن {$interestName}، ما هو next step الأنسب حتى نحقق learning objective الخاص بـ {$targetLevel}؟",
-                2 => "أي statement أدق عند تطبيق {$interestName} داخل scenario موجه إلى {$targetLevel} وبصعوبة {$difficulty}؟",
-                default => "ما هو most appropriate action عند تحليل {$interestName} ضمن اختبار {$difficulty} لفئة {$targetLevel}؟",
-            },
-            default => match ($variant) {
-                0 => "ما الهدف الأساسي من توظيف {$interestName} في سؤال موجه إلى {$targetLevel} وبدرجة {$difficulty}؟",
-                1 => "في سياق {$interestName}، ما الخطوة الأولى الأكثر منطقية للوصول إلى فهم صحيح للمفهوم؟",
-                2 => "أي عبارة تعبّر بدقة أكبر عن best practice المرتبطة بـ {$interestName} لهذه الفئة الدراسية؟",
-                default => "عند حل مسألة ضمن {$interestName}، ما التصرف الأنسب الذي يعكس فهماً عملياً للمحتوى؟",
-            },
+        return match ($variant) {
+            0 => "ما الهدف الأساسي من توظيف {$interestName} في سؤال موجه إلى {$targetLevel} وبدرجة {$difficulty}؟",
+            1 => "في سياق {$interestName}، ما الخطوة الأولى الأكثر منطقية للوصول إلى فهم صحيح للمفهوم؟",
+            2 => "أي عبارة تعبّر بدقة أكبر عن أفضل ممارسة مرتبطة بـ {$interestName} لهذه الفئة الدراسية؟",
+            default => "عند حل مسألة ضمن {$interestName}، ما التصرف الأنسب الذي يعكس فهماً عملياً للمحتوى؟",
         };
     }
 
@@ -1559,11 +1560,7 @@ class TestDiscoveryRecommendationSeeder extends Seeder
             return null;
         }
 
-        return match ($language) {
-            Language::English->value => "Hint: focus on the core concept of {$interestName} before checking the detailed wording.",
-            Language::Mixed->value => "Hint: ركّز على core concept في {$interestName} ولا تنخدع بالتفاصيل الثانوية.",
-            default => "ابدأ بالفكرة الأساسية في {$interestName} ثم استبعد الخيارات التي تركز على تفاصيل جانبية.",
-        };
+        return "ابدأ بالفكرة الأساسية في {$interestName} ثم استبعد الخيارات التي تركز على تفاصيل جانبية.";
     }
 
     private function buildQuestionOptions(
